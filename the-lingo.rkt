@@ -23,6 +23,7 @@
 (define:type or-t or/c)
 (define:type any-t any/c)
 (define:type symbol-t symbol?)
+(define:type char-t char?)
 (define:type vector-t vector/c)
 
 (define:type nothing-t 'nothing)
@@ -36,7 +37,20 @@
 
 (define:type value-symbol-t-id-t (and-t t-id-t 0))
 (define/t value-symbol-t-id value-symbol-t-id-t 0)
+(define:type value-pair-t-id-t (and-t t-id-t 1))
+(define/t value-pair-t-id value-pair-t-id-t 1)
+(define:type value-null-t-id-t (and-t t-id-t 2))
+(define/t value-null-t-id value-null-t-id-t 2)
+(define:type value-data-t-id-t (and-t t-id-t 3))
+(define/t value-data-t-id value-data-t-id-t 3)
+(define:type value-char-t-id-t (and-t t-id-t 4))
+(define/t value-char-t-id value-char-t-id-t 4)
+
 (define:type value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t)))
+(define:type value-pair-t (and-t value-struct-t (vector-t value-pair-t-id-t value-t value-t nothing-t)))
+(define:type value-null-t (and-t value-struct-t (vector-t value-null-t-id-t nothing-t nothing-t nothing-t)))
+(define:type value-data-t (and-t value-struct-t (vector-t value-data-t-id-t value-t value-t nothing-t)))
+(define:type value-char-t (and-t value-struct-t (vector-t value-char-t-id-t char-t nothing-t nothing-t)))
 
 (define/t (cons-value-symbol x)
   (-> symbol-t value-symbol-t)
@@ -44,3 +58,12 @@
 (define/t (elim-value-symbol x)
   (-> value-symbol-t symbol-t)
   (vector-ref x 1))
+(define/t (cons-value-pair x y)
+  (-> value-t value-t value-pair-t)
+  (vector value-pair-t-id x y nothing))
+(define/t (elim-value-pair x)
+  (-> value-pair-t (vector-t value-t value-t))
+  (vector (vector-ref x 1) (vector-ref x 2)))
+(define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing))
+
+
