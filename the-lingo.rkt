@@ -16,24 +16,31 @@
 |#
 #lang racket
 (require racket/contract)
+(define-syntax-rule (define:type . xs) (define . xs))
+(define-syntax-rule (define/t . xs) (define/contract . xs))
 
-(define and-t and/c)
-(define any-t any/c)
-(define symbol-t symbol?)
-(define vector-t vector/c)
+(define:type and-t and/c)
+(define:type or-t or/c)
+(define:type any-t any/c)
+(define:type symbol-t symbol?)
+(define:type vector-t vector/c)
 
-(define nothing-t 'nothing)
-(define/contract nothing nothing-t 'nothing)
+(define:type nothing-t 'nothing)
+(define/t nothing nothing-t 'nothing)
 
-(define t-id-t natural-number/c)
-(define value-struct-t (vector-t t-id-t any-t any-t any-t))
+(define:type t-id-t natural-number/c)
+(define:type value-struct-t (vector-t t-id-t any-t any-t any-t))
+(define:type value-t
+  (or-t
+   (recursive-contract value-symbol-t #:impersonator)))
 
+(define:type value-symbol-t-id-t (and-t t-id-t 0))
+(define/t value-symbol-t-id value-symbol-t-id-t 0)
+(define:type value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t)))
 
-(define value-symbol-t-id-t (and-t t-id-t 0))
-(define/contract value-symbol-t-id value-symbol-t-id-t 0)
-(define value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t)))
-
-
-(define/contract (create-value-symbol x)
+(define/t (cons-value-symbol x)
   (-> symbol-t value-symbol-t)
   (vector value-symbol-t-id x nothing nothing))
+(define/t (elim-value-symbol x)
+  (-> value-symbol-t symbol-t)
+  (vector-ref x 1))
