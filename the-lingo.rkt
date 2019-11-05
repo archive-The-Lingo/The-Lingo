@@ -47,7 +47,7 @@
 (define:type value-char-t-id-t (and-t t-id-t 4))
 (define/t value-char-t-id value-char-t-id-t 4)
 (define:type value-just-t-id-t (and-t t-id-t 5))
-(define/t value-just-t-id value-char-t-id-t 5)
+(define/t value-just-t-id value-just-t-id-t 5)
 
 (define:type value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t)))
 (define:type value-pair-t (and-t value-struct-t (vector-t value-pair-t-id-t value-t value-t nothing-t)))
