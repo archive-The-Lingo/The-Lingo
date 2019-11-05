@@ -15,26 +15,30 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 |#
 #lang racket
-(require racket/contract)
-(define-syntax-rule (define:type . xs) (define . xs))
-(define-syntax-rule (define/t . xs) (define/contract . xs))
-(define-syntax-rule (rec-type x) (recursive-contract x #:chaperone))
+{require racket/contract}
+{define-syntax-rule {define:type . xs} {define . xs}}
+{define-syntax-rule {define/t . xs} {define/contract . xs}}
+{define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
+{define:type and-t and/c}
+{define:type or-t or/c}
+{define:type any-t any/c}
+{define:type symbol-t symbol?}
+{define:type char-t char?}
+{define:type vector-t vector/c}
+{define:type void-t void?}
+{define:type boolean-t boolean?}
+{define:type hash-t hash/c}
+{define:type arrayof-t listof} ;; A array is a variable length vector
+{define (create-array . xs) xs}
+{define (linear-array-add-element xs x) (cons x xs)} ;; Add a element to a array.Can change source array."linear-" means linear type system
+{define-syntax-rule {array-foreach xs v . c} {for ([v xs]) . c}}
 
-(define:type and-t and/c)
-(define:type or-t or/c)
-(define:type any-t any/c)
-(define:type symbol-t symbol?)
-(define:type char-t char?)
-(define:type vector-t vector/c)
-(define:type void-t void?)
-(define:type hash-t hash/c)
+{define:type nothing-t void-t}
+{define/t nothing nothing-t (void)}
 
-(define:type nothing-t 'nothing)
-(define/t nothing nothing-t 'nothing)
-
-(define:type t-id-t natural-number/c)
-(define:type value-struct-t (vector-t t-id-t any-t any-t any-t))
-(define:type value-t
+{define:type t-id-t natural-number/c}
+{define:type value-struct-t (vector-t t-id-t any-t any-t any-t)}
+{define:type value-t
   (or-t
    (rec-type value-symbol-t)
    (rec-type value-pair-t)
@@ -43,64 +47,97 @@
    (rec-type value-char-t)
    (rec-type value-just-t)
    (rec-type value-delay-t)
-   ))
+   )}
 
-(define:type value-symbol-t-id-t (and-t t-id-t 0))
-(define/t value-symbol-t-id value-symbol-t-id-t 0)
-(define:type value-pair-t-id-t (and-t t-id-t 1))
-(define/t value-pair-t-id value-pair-t-id-t 1)
-(define:type value-null-t-id-t (and-t t-id-t 2))
-(define/t value-null-t-id value-null-t-id-t 2)
-(define:type value-data-t-id-t (and-t t-id-t 3))
-(define/t value-data-t-id value-data-t-id-t 3)
-(define:type value-char-t-id-t (and-t t-id-t 4))
-(define/t value-char-t-id value-char-t-id-t 4)
-(define:type value-just-t-id-t (and-t t-id-t 5))
-(define/t value-just-t-id value-just-t-id-t 5)
-(define:type value-delay-t-id-t (and-t t-id-t 6))
-(define/t value-delay-t-id value-delay-t-id-t 6)
+{define:type value-symbol-t-id-t (and-t t-id-t 0)}
+{define/t value-symbol-t-id value-symbol-t-id-t 0}
+{define:type value-pair-t-id-t (and-t t-id-t 1)}
+{define/t value-pair-t-id value-pair-t-id-t 1}
+{define:type value-null-t-id-t (and-t t-id-t 2)}
+{define/t value-null-t-id value-null-t-id-t 2}
+{define:type value-data-t-id-t (and-t t-id-t 3)}
+{define/t value-data-t-id value-data-t-id-t 3}
+{define:type value-char-t-id-t (and-t t-id-t 4)}
+{define/t value-char-t-id value-char-t-id-t 4}
+{define:type value-just-t-id-t (and-t t-id-t 5)}
+{define/t value-just-t-id value-just-t-id-t 5}
+{define:type value-delay-t-id-t (and-t t-id-t 6)}
+{define/t value-delay-t-id value-delay-t-id-t 6}
 
-(define:type value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t)))
-(define:type value-pair-t (and-t value-struct-t (vector-t value-pair-t-id-t value-t value-t nothing-t)))
-(define:type value-null-t (and-t value-struct-t (vector-t value-null-t-id-t nothing-t nothing-t nothing-t)))
-(define:type value-data-t (and-t value-struct-t (vector-t value-data-t-id-t value-t value-t nothing-t)))
-(define:type value-char-t (and-t value-struct-t (vector-t value-char-t-id-t char-t nothing-t nothing-t)))
-(define:type value-just-t (and-t value-struct-t (vector-t value-just-t-id-t value-t nothing-t nothing-t)))
-(define:type value-delay-t (and-t value-struct-t (vector-t value-delay-t-id-t (-> value-t) (-> (vector-t (rec-type env-t) value-t)) nothing-t))) ;; exec/display
+{define:type value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t))}
+{define:type value-pair-t (and-t value-struct-t (vector-t value-pair-t-id-t value-t value-t nothing-t))}
+{define:type value-null-t (and-t value-struct-t (vector-t value-null-t-id-t nothing-t nothing-t nothing-t))}
+{define:type value-data-t (and-t value-struct-t (vector-t value-data-t-id-t value-t value-t nothing-t))}
+{define:type value-char-t (and-t value-struct-t (vector-t value-char-t-id-t char-t nothing-t nothing-t))}
+{define:type value-just-t (and-t value-struct-t (vector-t value-just-t-id-t value-t nothing-t nothing-t))}
+{define:type value-delay-t (and-t value-struct-t (vector-t value-delay-t-id-t (-> value-t) (-> (vector-t (rec-type env-t) value-t)) nothing-t))} ;; exec/display
 
-(define/t (cons-value-symbol x)
+{define/t (value-symbol? x)
+  (-> value-t boolean-t)
+  (= (vector-ref x 0) value-symbol-t-id)}
+{define/t (value-pair? x)
+  (-> value-t boolean-t)
+  (= (vector-ref x 0) value-pair-t-id)}
+{define/t (value-null? x)
+  (-> value-t boolean-t)
+  (= (vector-ref x 0) value-null-t-id)}
+{define/t (value-data? x)
+  (-> value-t boolean-t)
+  (= (vector-ref x 0) value-data-t-id)}
+{define/t (value-char? x)
+  (-> value-t boolean-t)
+  (= (vector-ref x 0) value-char-t-id)}
+{define/t (value-just? x)
+  (-> value-t boolean-t)
+  (= (vector-ref x 0) value-just-t-id)}
+{define/t (value-delay? x)
+  (-> value-t boolean-t)
+  (= (vector-ref x 0) value-delay-t-id)}
+
+{define/t (cons-value-symbol x)
   (-> symbol-t value-symbol-t)
-  (vector value-symbol-t-id x nothing nothing))
-(define/t (elim-value-symbol x)
+  (vector value-symbol-t-id x nothing nothing)}
+{define/t (elim-value-symbol x)
   (-> value-symbol-t symbol-t)
-  (vector-ref x 1))
-(define/t (cons-value-pair x y)
+  (vector-ref x 1)}
+{define/t (cons-value-pair x y)
   (-> value-t value-t value-pair-t)
-  (vector value-pair-t-id x y nothing))
-(define/t (elim-value-pair x)
+  (vector value-pair-t-id x y nothing)}
+{define/t (elim-value-pair x)
   (-> value-pair-t (vector-t value-t value-t))
-  (vector (vector-ref x 1) (vector-ref x 2)))
-(define/t (cons-value-data x y)
+  (vector (vector-ref x 1) (vector-ref x 2))}
+{define/t (cons-value-data x y)
   (-> value-t value-t value-data-t)
-  (vector value-data-t-id x y nothing))
-(define/t (elim-value-data x)
+  (vector value-data-t-id x y nothing)}
+{define/t (elim-value-data x)
   (-> value-data-t (vector-t value-t value-t))
-  (vector (vector-ref x 1) (vector-ref x 2)))
-(define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing))
-(define/t (cons-value-char x)
+  (vector (vector-ref x 1) (vector-ref x 2))}
+{define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing)}
+{define/t (cons-value-char x)
   (-> char-t value-char-t)
-  (vector value-char-t-id x nothing nothing))
-(define/t (elim-value-char x)
+  (vector value-char-t-id x nothing nothing)}
+{define/t (elim-value-char x)
   (-> value-char-t char-t)
-  (vector-ref x 1))
+  (vector-ref x 1)}
 
-(define/t (value-unsafe-set-to-just! x v)
+{define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
   (vector-set*! x
                 0 value-just-t-id
                 1 v
                 2 nothing
-                3 nothing))
+                3 nothing)}
+{define/t (must-value-unjust-1 x)
+  (-> value-just-t value-t)
+  (vector-ref x 1)}
+{define/t (value-unjust x)
+  (-> value-t value-t)
+  (value-unjust-aux x (create-array x))}
+{define/t (value-unjust-aux x history)
+  (-> value-t (arrayof-t value-t) void-t)
+  (if (value-just? x) (value-unjust-aux (vector-ref x 1) (linear-array-add-element history x))
+      {begin
+        {array-foreach history hist_v (value-unsafe-set-to-just! hist_v x)}
+        x})}
 
-
-(define:type env-t (hash-t value-t value-t))
+{define:type env-t (hash-t value-t value-t)}
