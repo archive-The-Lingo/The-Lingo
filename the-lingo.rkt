@@ -25,6 +25,7 @@
 (define:type symbol-t symbol?)
 (define:type char-t char?)
 (define:type vector-t vector/c)
+(define:type void-t void?)
 
 (define:type nothing-t 'nothing)
 (define/t nothing nothing-t 'nothing)
@@ -45,12 +46,15 @@
 (define/t value-data-t-id value-data-t-id-t 3)
 (define:type value-char-t-id-t (and-t t-id-t 4))
 (define/t value-char-t-id value-char-t-id-t 4)
+(define:type value-just-t-id-t (and-t t-id-t 5))
+(define/t value-just-t-id value-char-t-id-t 5)
 
 (define:type value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t)))
 (define:type value-pair-t (and-t value-struct-t (vector-t value-pair-t-id-t value-t value-t nothing-t)))
 (define:type value-null-t (and-t value-struct-t (vector-t value-null-t-id-t nothing-t nothing-t nothing-t)))
 (define:type value-data-t (and-t value-struct-t (vector-t value-data-t-id-t value-t value-t nothing-t)))
 (define:type value-char-t (and-t value-struct-t (vector-t value-char-t-id-t char-t nothing-t nothing-t)))
+(define:type value-just-t (and-t value-struct-t (vector-t value-just-t-id-t value-t nothing-t nothing-t)))
 
 (define/t (cons-value-symbol x)
   (-> symbol-t value-symbol-t)
@@ -77,3 +81,10 @@
 (define/t (elim-value-char x)
   (-> value-char-t char-t)
   (vector-ref x 1))
+
+(define/t (value-unsafe-set-to-just! x v)
+  (-> value-t value-t void-t)
+  (vector-set! x 0 value-just-t-id)
+  (vector-set! x 1 v)
+  (vector-set! x 2 nothing)
+  (vector-set! x 3 nothing))
