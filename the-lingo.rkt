@@ -18,6 +18,7 @@
 (require racket/contract)
 (define-syntax-rule (define:type . xs) (define . xs))
 (define-syntax-rule (define/t . xs) (define/contract . xs))
+(define-syntax-rule (rec-type x) (recursive-contract x #:chaperone))
 
 (define:type and-t and/c)
 (define:type or-t or/c)
@@ -26,6 +27,7 @@
 (define:type char-t char?)
 (define:type vector-t vector/c)
 (define:type void-t void?)
+(define:type hash-t hash/c)
 
 (define:type nothing-t 'nothing)
 (define/t nothing nothing-t 'nothing)
@@ -34,7 +36,14 @@
 (define:type value-struct-t (vector-t t-id-t any-t any-t any-t))
 (define:type value-t
   (or-t
-   (recursive-contract value-symbol-t #:impersonator)))
+   (rec-type value-symbol-t)
+   (rec-type value-pair-t)
+   (rec-type value-null-t)
+   (rec-type value-data-t)
+   (rec-type value-char-t)
+   (rec-type value-just-t)
+   (rec-type value-delay-t)
+   ))
 
 (define:type value-symbol-t-id-t (and-t t-id-t 0))
 (define/t value-symbol-t-id value-symbol-t-id-t 0)
@@ -48,6 +57,8 @@
 (define/t value-char-t-id value-char-t-id-t 4)
 (define:type value-just-t-id-t (and-t t-id-t 5))
 (define/t value-just-t-id value-just-t-id-t 5)
+(define:type value-delay-t-id-t (and-t t-id-t 6))
+(define/t value-delay-t-id value-delay-t-id-t 6)
 
 (define:type value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t)))
 (define:type value-pair-t (and-t value-struct-t (vector-t value-pair-t-id-t value-t value-t nothing-t)))
@@ -55,6 +66,7 @@
 (define:type value-data-t (and-t value-struct-t (vector-t value-data-t-id-t value-t value-t nothing-t)))
 (define:type value-char-t (and-t value-struct-t (vector-t value-char-t-id-t char-t nothing-t nothing-t)))
 (define:type value-just-t (and-t value-struct-t (vector-t value-just-t-id-t value-t nothing-t nothing-t)))
+(define:type value-delay-t (and-t value-struct-t (vector-t value-delay-t-id-t (-> value-t) (-> (vector-t (rec-type env-t) value-t)) nothing-t))) ;; exec/display
 
 (define/t (cons-value-symbol x)
   (-> symbol-t value-symbol-t)
@@ -88,3 +100,6 @@
   (vector-set! x 1 v)
   (vector-set! x 2 nothing)
   (vector-set! x 3 nothing))
+
+
+(define:type env-t (hash-t value-t value-t))
