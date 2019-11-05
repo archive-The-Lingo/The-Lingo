@@ -96,10 +96,11 @@
 
 (define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
-  (vector-set! x 0 value-just-t-id)
-  (vector-set! x 1 v)
-  (vector-set! x 2 nothing)
-  (vector-set! x 3 nothing))
+  (vector-set*! x
+                0 value-just-t-id
+                1 v
+                2 nothing
+                3 nothing))
 
 
 (define:type env-t (hash-t value-t value-t))
