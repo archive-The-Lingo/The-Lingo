@@ -64,6 +64,16 @@
 (define/t (elim-value-pair x)
   (-> value-pair-t (vector-t value-t value-t))
   (vector (vector-ref x 1) (vector-ref x 2)))
+(define/t (cons-value-data x y)
+  (-> value-t value-t value-data-t)
+  (vector value-data-t-id x y nothing))
+(define/t (elim-value-data x)
+  (-> value-data-t (vector-t value-t value-t))
+  (vector (vector-ref x 1) (vector-ref x 2)))
 (define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing))
-
-
+(define/t (cons-value-char x)
+  (-> char-t value-char-t)
+  (vector value-char-t-id x nothing nothing))
+(define/t (elim-value-char x)
+  (-> value-char-t char-t)
+  (vector-ref x 1))
