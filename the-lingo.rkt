@@ -48,6 +48,7 @@
    (rec-type value-just-t)
    (rec-type value-delay-t)
    )}
+{define:type env-t (hash-t value-t value-t)}
 
 {define:type value-symbol-t-id-t (and-t t-id-t 0)}
 {define/t value-symbol-t-id value-symbol-t-id-t 0}
@@ -135,9 +136,10 @@
   (value-unjust-aux x (create-array x))}
 {define/t (value-unjust-aux x history)
   (-> value-t (arrayof-t value-t) void-t)
-  (if (value-just? x) (value-unjust-aux (vector-ref x 1) (linear-array-add-element history x))
+  (if (value-just? x) (value-unjust-aux (must-value-unjust-1 x) (linear-array-add-element history x))
       {begin
-        {array-foreach history hist_v (value-unsafe-set-to-just! hist_v x)}
+        {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
         x})}
-
-{define:type env-t (hash-t value-t value-t)}
+{define/t (must-value-force-1 x)
+  (-> value-delay-t value-t)
+  (if (value-delay? x) 0 0)} ;; wip
