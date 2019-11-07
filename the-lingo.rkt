@@ -18,6 +18,10 @@
 {require racket/contract}
 {define-syntax-rule {define:type . xs} {define . xs}}
 {define-syntax-rule {define/t . xs} {define/contract . xs}}
+{define-syntax let/t
+  {syntax-rules ()
+               [(_ () . b) ({λ () . b})]
+    [(_ ([id typ val] . rs) . b) ({λ () {define/t id typ val} {let/t rs . b}})]}}
 {define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
 {define:type and-t and/c}
 {define:type or-t or/c}
@@ -142,4 +146,7 @@
         x})}
 {define/t (must-value-force-1 x)
   (-> value-delay-t value-t)
-  (if (value-delay? x) 0 0)} ;; wip
+  {let/t ([exec (-> value-t) (vector-ref x 1)])
+         {let/t ([v value-t (exec)])
+                (value-unsafe-set-to-just! x v)
+                v}}}
