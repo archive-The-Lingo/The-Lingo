@@ -139,14 +139,24 @@
   (-> value-t value-t)
   (value-unjust-aux x (create-array x))}
 {define/t (value-unjust-aux x history)
-  (-> value-t (arrayof-t value-t) void-t)
+  (-> value-t (arrayof-t value-t) value-t)
   (if (value-just? x) (value-unjust-aux (must-value-unjust-1 x) (linear-array-add-element history x))
       {begin
         {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
         x})}
-{define/t (must-value-force-1 x)
+{define/t (must-nocache-value-force-1 x)
   (-> value-delay-t value-t)
   {let/t ([exec (-> value-t) (vector-ref x 1)])
          {let/t ([v value-t (exec)])
-                (value-unsafe-set-to-just! x v)
                 v}}}
+{define/t (value-force x)
+  (-> value-t value-t)
+  (value-force-aux x (create-array x))}
+{define/t (value-force-aux x history)
+  (-> value-t (arrayof-t value-t) value-t)
+  {cond
+    [(value-just? x) (value-force-aux (must-value-unjust-1 x) (linear-array-add-element history x))]
+    [(value-delay? x) (value-force-aux (must-nocache-value-force-1 x) (linear-array-add-element history x))]
+    [else
+     {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
+     x]}}
