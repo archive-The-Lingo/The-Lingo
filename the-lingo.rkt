@@ -68,6 +68,8 @@
 {define/t value-just-t-id value-just-t-id-t 5}
 {define:type value-delay-t-id-t (and-t t-id-t 6)}
 {define/t value-delay-t-id value-delay-t-id-t 6}
+{define:type value-comment-t-id-t (and-t t-id-t 7)}
+{define/t value-comment-t-id value-comment-t-id-t 7}
 
 {define:type value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t))}
 {define:type value-pair-t (and-t value-struct-t (vector-t value-pair-t-id-t value-t value-t nothing-t))}
@@ -75,7 +77,8 @@
 {define:type value-data-t (and-t value-struct-t (vector-t value-data-t-id-t value-t value-t nothing-t))}
 {define:type value-char-t (and-t value-struct-t (vector-t value-char-t-id-t char-t nothing-t nothing-t))}
 {define:type value-just-t (and-t value-struct-t (vector-t value-just-t-id-t value-t nothing-t nothing-t))}
-{define:type value-delay-t (and-t value-struct-t (vector-t value-delay-t-id-t (-> value-t) (-> (vector-t (rec-type env-t) value-t)) nothing-t))} ;; exec/display
+{define:type value-delay-t (and-t value-struct-t (vector-t value-delay-t-id-t (-> value-t) (-> (vector-t (rec-type env-t) value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t env-t value-t))`
+{define:type value-comment-t (and-t value-struct-t (vector-t value-comment-t-id-t value-t value-t nothing-t))} ;; val:value-t/comment:value-t
 
 {define/t (value-symbol? x)
   (-> value-t boolean-t)
@@ -98,6 +101,9 @@
 {define/t (value-delay? x)
   (-> value-t boolean-t)
   (= (vector-ref x 0) value-delay-t-id)}
+{define/t (value-comment? x)
+  (-> value-t boolean-t)
+  (= (vector-ref x 0) value-comment-t-id)}
 
 {define/t (cons-value-symbol x)
   (-> symbol-t value-symbol-t)
@@ -124,6 +130,12 @@
 {define/t (elim-value-char x)
   (-> value-char-t char-t)
   (vector-ref x 1)}
+{define/t (cons-value-comment x comment)
+  (-> value-t value-t value-comment-t)
+  (vector value-comment-t-id x comment nothing)}
+{define/t (elim-value-comment x)
+  (-> value-comment-t (vector-t value-t value-t))
+  (vector (vector-ref x 1) (vector-ref x 2))}
 
 {define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
