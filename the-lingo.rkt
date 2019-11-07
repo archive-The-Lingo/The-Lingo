@@ -166,6 +166,9 @@
   {let/t ([exec (-> value-t) (vector-ref x 1)])
          {let/t ([v value-t (exec)])
                 v}}}
+{define/t (must-value-force-1 x)
+  (-> value-delay-t value-t)
+  "WIP"}
 {define/t (value-force x)
   (-> value-t value-t)
   (value-force-aux x (create-array x))}
@@ -178,10 +181,10 @@
      {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
      x]}}
 {define/t (value-undelay-1_>>= x display_f f)
-  (-> value-t (-> (vector-t env-t value-t)) (-> value-t (arrayof-t value-t) any-t) any-t)
+  (-> value-t (-> (vector-t env-t value-t)) (-> value-t (arrayof-t value-t) value-t) value-t)
   (value-undelay-1_>>=_aux x display_f (create-array) f)}
 {define/t (value-undelay-1_>>=_aux x display_f comments f)
-  (-> value-t (-> (vector-t env-t value-t)) (arrayof-t value-t) (-> value-t (arrayof-t value-t) any-t) any-t)
+  (-> value-t (-> (vector-t env-t value-t)) (arrayof-t value-t) (-> value-t (arrayof-t value-t) value-t) value-t)
   {cond
     [(value-comment? x)
      {let/t ([r (vector-t value-t (arrayof-t value-t)) (elim-value-comment x)])
@@ -189,4 +192,4 @@
               (value-undelay-1_>>=_aux new-v (linear-array-append comments new-comments) f)}}]
     [(value-just? x) (value-undelay-1_>>=_aux (value-unjust-* x) display_f comments f)]
     [(value-delay? x) "WIP"]
-    [else "WIP"]}}
+    [else (f x)]}}
