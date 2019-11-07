@@ -20,7 +20,7 @@
 {define-syntax-rule {define/t . xs} {define/contract . xs}}
 {define-syntax let/t
   {syntax-rules ()
-               [(_ () . b) ({λ () . b})]
+    [(_ () . b) ({λ () . b})]
     [(_ ([id typ val] . rs) . b) ({λ () {define/t id typ val} {let/t rs . b}})]}}
 {define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
 {define:type and-t and/c}
@@ -141,11 +141,12 @@
 
 {define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
-  (vector-set*! x
-                0 value-just-t-id
-                1 v
-                2 nothing
-                3 nothing)}
+  (if (eq? x v) (void)
+      (vector-set*! x
+                    0 value-just-t-id
+                    1 v
+                    2 nothing
+                    3 nothing))}
 {define/t (must-value-unjust-1 x)
   (-> value-just-t value-t)
   (vector-ref x 1)}
@@ -168,7 +169,9 @@
                 v}}}
 {define/t (must-value-force-1 x)
   (-> value-delay-t value-t)
-  "WIP"}
+  {let/t ([v value-t (must-nocache-value-force-1 x)])
+         (value-unsafe-set-to-just! x v)
+         v}}
 {define/t (value-force x)
   (-> value-t value-t)
   (value-force-aux x (create-array x))}
@@ -188,8 +191,8 @@
   {cond
     [(value-comment? x)
      {let/t ([r (vector-t value-t (arrayof-t value-t)) (elim-value-comment x)])
-       {let/t ([new-v value-t (vector-ref r 0)] [new-comments (arrayof-t value-t) (vector-ref r 1)])
-              (value-undelay-1_>>=_aux new-v (linear-array-append comments new-comments) f)}}]
+            {let/t ([new-v value-t (vector-ref r 0)] [new-comments (arrayof-t value-t) (vector-ref r 1)])
+                   (value-undelay-1_>>=_aux new-v (linear-array-append comments new-comments) f)}}]
     [(value-just? x) (value-undelay-1_>>=_aux (value-unjust-* x) display_f comments f)]
-    [(value-delay? x) "WIP"]
+    [(value-delay? x) (cons-value-delay {λ () (value-undelay-1_>>=_aux (must-value-force-1 x) display_f comments f)} display_f)]
     [else (f x)]}}
