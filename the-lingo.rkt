@@ -18,7 +18,7 @@
 #|
   { .. }    macro/syntax
   /t -t    type
-  -tt    a function retuning types
+  -tt    a function returning types
   -*    all
   !    read/write mutable values
   :    type annotation
