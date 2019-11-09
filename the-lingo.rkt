@@ -23,16 +23,17 @@
     [(_ () . b) ({λ () . b})]
     [(_ ([id typ val] . rs) . b) ({λ () {define/t id typ val} {let/t rs . b}})]}}
 {define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
-{define:type and-t and/c}
-{define:type or-t or/c}
+{define:type and-tt and/c}
+{define:type or-tt or/c}
 {define:type any-t any/c}
-{define:type symbol-t symbol?}
+{define:type string-t string?}
 {define:type char-t char?}
-{define:type vector-t vector/c}
+{define:type vector-tt vector/c}
 {define:type void-t void?}
 {define:type boolean-t boolean?}
-{define:type hash-t hash/c}
-{define:type arrayof-t listof} ;; A array is a variable length vector
+{define:type hash-tt hash/c}
+{define:type box-t box/c}
+{define:type array-of-tt listof} ;; A array is a variable length vector
 {define (create-array . xs) xs}
 {define (linear-array-add-element xs x) (cons x xs)} ;; Add a element to a array.Can destory source array."linear-" means linear type system
 {define (linear-array-append xs ys) (append xs ys)}
@@ -45,12 +46,13 @@
   {syntax-rules (<- =:)
     [(_ x) {λ (pure bind) x}]
     [(_ #{x := v} . r) {let ([x v]) {do . r}}]
-    [(_ #{x <- v} . r) {λ (pure bind) (bind x {λ (v) ({do . r} pure bind)})}]}}
+    [(_ #{x <- v} . r) {λ (pure bind) (bind v {λ (x) ({do . r} pure bind)})}]
+    [(_ v . r) {do #{x <- v} . r}]}}
 
 {define:type t-id-t natural-number/c}
-{define:type value-struct-t (vector-t t-id-t any-t any-t any-t)}
+{define:type value-struct-t (vector-tt t-id-t any-t any-t any-t)}
 {define:type value-t
-  (or-t
+  (or-tt
    (rec-type value-symbol-t)
    (rec-type value-pair-t)
    (rec-type value-null-t)
@@ -60,33 +62,33 @@
    (rec-type value-delay-t)
    (rec-type value-comment-t)
    )}
-{define:type env-t (hash-t value-t value-t)}
+{define:type env-t (hash-tt value-t value-t)}
 
-{define:type value-symbol-t-id-t (and-t t-id-t 0)}
+{define:type value-symbol-t-id-t (and-tt t-id-t 0)}
 {define/t value-symbol-t-id value-symbol-t-id-t 0}
-{define:type value-pair-t-id-t (and-t t-id-t 1)}
+{define:type value-pair-t-id-t (and-tt t-id-t 1)}
 {define/t value-pair-t-id value-pair-t-id-t 1}
-{define:type value-null-t-id-t (and-t t-id-t 2)}
+{define:type value-null-t-id-t (and-tt t-id-t 2)}
 {define/t value-null-t-id value-null-t-id-t 2}
-{define:type value-data-t-id-t (and-t t-id-t 3)}
+{define:type value-data-t-id-t (and-tt t-id-t 3)}
 {define/t value-data-t-id value-data-t-id-t 3}
-{define:type value-char-t-id-t (and-t t-id-t 4)}
+{define:type value-char-t-id-t (and-tt t-id-t 4)}
 {define/t value-char-t-id value-char-t-id-t 4}
-{define:type value-just-t-id-t (and-t t-id-t 5)}
+{define:type value-just-t-id-t (and-tt t-id-t 5)}
 {define/t value-just-t-id value-just-t-id-t 5}
-{define:type value-delay-t-id-t (and-t t-id-t 6)}
+{define:type value-delay-t-id-t (and-tt t-id-t 6)}
 {define/t value-delay-t-id value-delay-t-id-t 6}
-{define:type value-comment-t-id-t (and-t t-id-t 7)}
+{define:type value-comment-t-id-t (and-tt t-id-t 7)}
 {define/t value-comment-t-id value-comment-t-id-t 7}
 
-{define:type value-symbol-t (and-t value-struct-t (vector-t value-symbol-t-id-t symbol-t nothing-t nothing-t))}
-{define:type value-pair-t (and-t value-struct-t (vector-t value-pair-t-id-t value-t value-t nothing-t))}
-{define:type value-null-t (and-t value-struct-t (vector-t value-null-t-id-t nothing-t nothing-t nothing-t))}
-{define:type value-data-t (and-t value-struct-t (vector-t value-data-t-id-t value-t value-t nothing-t))}
-{define:type value-char-t (and-t value-struct-t (vector-t value-char-t-id-t char-t nothing-t nothing-t))}
-{define:type value-just-t (and-t value-struct-t (vector-t value-just-t-id-t value-t nothing-t nothing-t))}
-{define:type value-delay-t (and-t value-struct-t (vector-t value-delay-t-id-t (-> value-t) (-> (vector-t (rec-type env-t) value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t env-t value-t))`
-{define:type value-comment-t (and-t value-struct-t (vector-t value-comment-t-id-t value-t (arrayof-t value-t) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
+{define:type value-symbol-t (and-tt value-struct-t (vector-tt value-symbol-t-id-t string-t nothing-t nothing-t))}
+{define:type value-pair-t (and-tt value-struct-t (vector-tt value-pair-t-id-t value-t value-t nothing-t))}
+{define:type value-null-t (and-tt value-struct-t (vector-tt value-null-t-id-t nothing-t nothing-t nothing-t))}
+{define:type value-data-t (and-tt value-struct-t (vector-tt value-data-t-id-t value-t value-t nothing-t))}
+{define:type value-char-t (and-tt value-struct-t (vector-tt value-char-t-id-t char-t nothing-t nothing-t))}
+{define:type value-just-t (and-tt value-struct-t (vector-tt value-just-t-id-t value-t nothing-t nothing-t))}
+{define:type value-delay-t (and-tt value-struct-t (vector-tt value-delay-t-id-t (-> value-t) (-> (vector-tt (rec-type env-t) value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t env-t value-t))`
+{define:type value-comment-t (and-tt value-struct-t (vector-tt value-comment-t-id-t value-t (array-of-tt value-t) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
 
 {define/t (value-symbol? x)
   (-> value-t boolean-t)
@@ -114,22 +116,22 @@
   (= (vector-ref x 0) value-comment-t-id)}
 
 {define/t (cons-value-symbol x)
-  (-> symbol-t value-symbol-t)
+  (-> string-t value-symbol-t)
   (vector value-symbol-t-id x nothing nothing)}
 {define/t (elim-value-symbol x)
-  (-> value-symbol-t symbol-t)
+  (-> value-symbol-t string-t)
   (vector-ref x 1)}
 {define/t (cons-value-pair x y)
   (-> value-t value-t value-pair-t)
   (vector value-pair-t-id x y nothing)}
 {define/t (elim-value-pair x)
-  (-> value-pair-t (vector-t value-t value-t))
+  (-> value-pair-t (vector-tt value-t value-t))
   (vector (vector-ref x 1) (vector-ref x 2))}
 {define/t (cons-value-data x y)
   (-> value-t value-t value-data-t)
   (vector value-data-t-id x y nothing)}
 {define/t (elim-value-data x)
-  (-> value-data-t (vector-t value-t value-t))
+  (-> value-data-t (vector-tt value-t value-t))
   (vector (vector-ref x 1) (vector-ref x 2))}
 {define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing)}
 {define/t (cons-value-char x)
@@ -139,12 +141,30 @@
   (-> value-char-t char-t)
   (vector-ref x 1)}
 {define/t (cons-value-comment x comment)
-  (-> value-t (arrayof-t value-t) value-comment-t)
+  (-> value-t (array-of-tt value-t) value-comment-t)
   (vector value-comment-t-id x comment nothing)}
 {define/t (elim-value-comment x)
-  (-> value-comment-t (vector-t value-t (arrayof-t value-t)))
+  (-> value-comment-t (vector-tt value-t (array-of-tt value-t)))
   (vector (vector-ref x 1) (vector-ref x 2))}
+{define/t (cons-value-delay exec display_f)
+  (-> (-> value-t) (-> (vector-tt env-t value-t)) value-delay-t)
+  (vector value-delay-t-id exec display_f nothing)}
 
+{define/t (elim-value-comment-* x)
+  (-> value-comment-t (vector-tt value-t (array-of-tt value-t)))
+  (elim-value-comment-*-aux x (create-array x) (create-array))}
+{define/t (elim-value-comment-*-aux x history comments)
+  (-> value-t (array-of-tt value-t) (array-of-tt value-t) (vector-tt value-t (array-of-tt value-t)))
+  {cond
+    [(value-just? x) (elim-value-comment-*-aux (value-unjust-* x) (linear-array-add-element history x) comments)]
+    [(value-comment? x) {let ([x01 (elim-value-comment x)])
+                          (elim-value-comment-*-aux
+                           (vector-ref x 0)
+                           (linear-array-add-element history x)
+                           (linear-array-append comments (vector-ref x 1)))}]
+    [else
+     {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
+     (vector x comments)]}}
 {define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
   {when (not (eq? x v))
@@ -160,14 +180,11 @@
   (-> value-t value-t)
   (value-unjust-*-aux x (create-array x))}
 {define/t (value-unjust-*-aux x history)
-  (-> value-t (arrayof-t value-t) value-t)
+  (-> value-t (array-of-tt value-t) value-t)
   (if (value-just? x) (value-unjust-*-aux (must-value-unjust-1 x) (linear-array-add-element history x))
       {begin
         {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
         x})}
-{define/t (cons-value-delay exec display_f)
-  (-> (-> value-t) (-> (vector-t env-t value-t)) value-delay-t)
-  (vector value-delay-t-id exec display_f nothing)}
 {define/t (must-nocache-value-force-1 x)
   (-> value-delay-t value-t)
   {let/t ([exec (-> value-t) (vector-ref x 1)])
@@ -182,7 +199,7 @@
   (-> value-t value-t)
   (value-force-aux x (create-array x))}
 {define/t (value-force-aux x history)
-  (-> value-t (arrayof-t value-t) value-t)
+  (-> value-t (array-of-tt value-t) value-t)
   {cond
     [(value-just? x) (value-force-aux (must-value-unjust-1 x) (linear-array-add-element history x))]
     [(value-delay? x) (value-force-aux (must-nocache-value-force-1 x) (linear-array-add-element history x))]
@@ -190,15 +207,62 @@
      {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
      x]}}
 {define/t (value-undelay-1_>>= x display_f f)
-  (-> value-t (-> (vector-t env-t value-t)) (-> value-t (arrayof-t value-t) value-t) value-t)
+  (-> value-t (-> (vector-tt env-t value-t)) (-> value-t (array-of-tt value-t) value-t) value-t)
   (value-undelay-1_>>=_aux x display_f (create-array) f)}
 {define/t (value-undelay-1_>>=_aux x display_f comments f)
-  (-> value-t (-> (vector-t env-t value-t)) (arrayof-t value-t) (-> value-t (arrayof-t value-t) value-t) value-t)
+  (-> value-t (-> (vector-tt env-t value-t)) (array-of-tt value-t) (-> value-t (array-of-tt value-t) value-t) value-t)
   {cond
     [(value-comment? x)
-     {let/t ([r (vector-t value-t (arrayof-t value-t)) (elim-value-comment x)])
-            {let/t ([new-v value-t (vector-ref r 0)] [new-comments (arrayof-t value-t) (vector-ref r 1)])
+     {let/t ([x01 (vector-tt value-t (array-of-tt value-t)) (elim-value-comment-* x)])
+            {let/t ([new-v value-t (vector-ref x01 0)] [new-comments (array-of-tt value-t) (vector-ref x01 1)])
                    (value-undelay-1_>>=_aux new-v (linear-array-append comments new-comments) f)}}]
     [(value-just? x) (value-undelay-1_>>=_aux (value-unjust-* x) display_f comments f)]
     [(value-delay? x) (cons-value-delay {λ () (value-undelay-1_>>=_aux (must-value-force-1 x) display_f comments f)} display_f)]
     [else (f x)]}}
+
+{define/t (value-force+equal? x y)
+  (-> value-t value-t boolean-t)
+  (value-force+equal?-aux x y (box #f))}
+{define/t (value-force+equal?-aux x y inner-has-comment)
+  (-> value-t value-t (box-t boolean-t) boolean-t)
+  (if (eq? x y)
+      #t
+      {let/t ([x value-t (value-force x)] [y value-t (value-force y)])
+             {cond
+               [(eq? x y) #t]
+               [(value-comment? x)
+                {let/t ([x01 (vector-tt value-t (array-of-tt value-t)) (elim-value-comment-* x)])
+                       (set-box! inner-has-comment #t)
+                       (value-force+equal?-aux (vector-ref x 0) y inner-has-comment)}]
+               [(value-comment? y) (value-force+equal?-aux y x inner-has-comment)]
+               [(value-null? x) {if (value-null? y)
+                                    {begin
+                                      (value-unsafe-set-to-just! x y)
+                                      #t}
+                                    #f}]
+               [(value-symbol? x) {if (and (value-symbol? y) (string=? (elim-value-symbol x) (elim-value-symbol y)))
+                                      {begin
+                                        (value-unsafe-set-to-just! x y)
+                                        #t}
+                                      #f}]
+               [(value-char? x) {if (and (value-char? y) (char=? (elim-value-char x) (elim-value-char y)))
+                                    {begin
+                                      (value-unsafe-set-to-just! x y)
+                                      #t}
+                                    #f}]
+               [(value-pair? x) {if (value-pair? y)
+                                    {let ([x01 (elim-value-pair x)] [y01 (elim-value-pair y)])
+                                      (value-force+equal?-aux-aux-pair
+                                       x (vector-ref x01 0) (vector-ref x01 1)
+                                       y (vector-ref y01 0) (vector-ref y01 1)
+                                       inner-has-comment)}
+                                    #f}]
+               [(value-data? x) {if (value-data? y)
+                                    {let ([x01 (elim-value-data x)] [y01 (elim-value-data y)])
+                                      (value-force+equal?-aux-aux-pair
+                                       x (vector-ref x01 0) (vector-ref x01 1)
+                                       y (vector-ref y01 0) (vector-ref y01 1)
+                                       inner-has-comment)}
+                                    #f}]
+               [else "WIP"]}})}
+{define value-force+equal?-aux-aux-pair "WIP"}
