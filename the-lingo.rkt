@@ -42,6 +42,8 @@
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
 
+{define (assert-unreachable) (error 'assert-unreachable)}
+
 {define-syntax do
   {syntax-rules (<- =:)
     [(_ x) {λ (pure bind) x}]
@@ -223,7 +225,7 @@
 {define/t (value-force+equal? x y)
   (-> value-t value-t boolean-t)
   (value-force+equal?-aux x y (box #f))}
-{define/t (value-force+equal?-aux x y inner-has-comment)
+{define/t (value-force+equal?-aux x y inner-equal-and-has-comment)
   (-> value-t value-t (box-t boolean-t) boolean-t)
   (if (eq? x y)
       #t
@@ -232,9 +234,9 @@
                [(eq? x y) #t]
                [(value-comment? x)
                 {let/t ([x01 (vector-tt value-t (array-of-tt value-t)) (elim-value-comment-* x)])
-                       (set-box! inner-has-comment #t)
-                       (value-force+equal?-aux (vector-ref x 0) y inner-has-comment)}]
-               [(value-comment? y) (value-force+equal?-aux y x inner-has-comment)]
+                       (set-box! inner-equal-and-has-comment #t)
+                       (value-force+equal?-aux (vector-ref x 0) y inner-equal-and-has-comment)}]
+               [(value-comment? y) (value-force+equal?-aux y x inner-equal-and-has-comment)]
                [(value-null? x) {if (value-null? y)
                                     {begin
                                       (value-unsafe-set-to-just! x y)
@@ -255,14 +257,23 @@
                                       (value-force+equal?-aux-aux-pair
                                        x (vector-ref x01 0) (vector-ref x01 1)
                                        y (vector-ref y01 0) (vector-ref y01 1)
-                                       inner-has-comment)}
+                                       inner-equal-and-has-comment)}
                                     #f}]
                [(value-data? x) {if (value-data? y)
                                     {let ([x01 (elim-value-data x)] [y01 (elim-value-data y)])
                                       (value-force+equal?-aux-aux-pair
                                        x (vector-ref x01 0) (vector-ref x01 1)
                                        y (vector-ref y01 0) (vector-ref y01 1)
-                                       inner-has-comment)}
+                                       inner-equal-and-has-comment)}
                                     #f}]
-               [else "WIP"]}})}
-{define value-force+equal?-aux-aux-pair "WIP"}
+               [else (assert-unreachable)]}})}
+{define/t (value-force+equal?-aux-aux-pair x x0 x1 y y0 y1 inner-has-comment)
+  (-> value-t value-t value-t value-t value-t value-t (box-t boolean-t) boolean-t)
+  {let/t ([xy-equal-and-has-comment (box-t boolean-t) (box #f)])
+         {if (and (value-force+equal?-aux x0 y0 xy-equal-and-has-comment) (value-force+equal?-aux x1 y1 xy-equal-and-has-comment))
+             {begin
+               {if (unbox xy-equal-and-has-comment)
+                   (set-box! inner-has-comment #t)
+                   (value-unsafe-set-to-just! x y)}
+               #t}
+             #f}}}
