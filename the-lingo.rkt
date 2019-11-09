@@ -16,7 +16,7 @@
 |#
 #lang racket
 #|
-  { .. }    macro
+  { .. }    macro/syntax
   /t -t    type
   -tt    a function retuning types
   -*    all
