@@ -15,6 +15,17 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 |#
 #lang racket
+#|
+  { .. }    macro
+  /t -t    type
+  -tt    a function retuning types
+  -*    all
+  !    read/write mutable values
+  :    type annotation
+  create-    create mutable values
+  cons-    constructor
+  elim-    eliminator
+|#
 {require racket/contract}
 {define-syntax-rule {define:type . xs} {define . xs}}
 {define-syntax-rule {define/t . xs} {define/contract . xs}}
@@ -64,7 +75,21 @@
    (rec-type value-delay-t)
    (rec-type value-comment-t)
    )}
-{define:type env-t (hash-tt value-t value-t)}
+
+{define (value? x)
+  {with-handlers ([exn:fail:contract? {λ (e) #f}])
+    {let/t ([_ value-t x]) #t}}}
+{define-values (identifierspace? identifierspace-null identifierspace-ref identifierspace-set)
+  ({λ ()
+     {define (val-eq? x y) (value-force+equal? x y)} ;; because "cannot reference an identifier before its definition"
+     {define-custom-hash-types identifierspace
+       #:key? value?
+       val-eq?}
+     {define identifierspace-null (make-immutable-identifierspace '())}
+     {define identifierspace-ref hash-ref}
+     {define identifierspace-set hash-set}
+     (values immutable-identifierspace? identifierspace-null identifierspace-ref identifierspace-set)})}
+{define:type identifierspace-t identifierspace?}
 
 {define:type value-symbol-t-id-t (and-tt t-id-t 0)}
 {define/t value-symbol-t-id value-symbol-t-id-t 0}
@@ -89,7 +114,7 @@
 {define:type value-data-t (and-tt value-struct-t (vector-tt value-data-t-id-t value-t value-t nothing-t))}
 {define:type value-char-t (and-tt value-struct-t (vector-tt value-char-t-id-t char-t nothing-t nothing-t))}
 {define:type value-just-t (and-tt value-struct-t (vector-tt value-just-t-id-t value-t nothing-t nothing-t))}
-{define:type value-delay-t (and-tt value-struct-t (vector-tt value-delay-t-id-t (-> value-t) (-> (vector-tt (rec-type env-t) value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t env-t value-t))`
+{define:type value-delay-t (and-tt value-struct-t (vector-tt value-delay-t-id-t (-> value-t) (-> (vector-tt (rec-type identifierspace-t) value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
 {define:type value-comment-t (and-tt value-struct-t (vector-tt value-comment-t-id-t value-t (array-of-tt value-t) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
 
 {define/t (value-symbol? x)
@@ -149,7 +174,7 @@
   (-> value-comment-t (vector-tt value-t (array-of-tt value-t)))
   (vector (vector-ref x 1) (vector-ref x 2))}
 {define/t (cons-value-delay exec display_f)
-  (-> (-> value-t) (-> (vector-tt env-t value-t)) value-delay-t)
+  (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
   (vector value-delay-t-id exec display_f nothing)}
 
 {define/t (elim-value-comment-* x)
@@ -209,10 +234,10 @@
      {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
      x]}}
 {define/t (value-undelay-1_>>= x display_f f)
-  (-> value-t (-> (vector-tt env-t value-t)) (-> value-t (array-of-tt value-t) value-t) value-t)
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (-> value-t (array-of-tt value-t) value-t) value-t)
   (value-undelay-1_>>=_aux x display_f (create-array) f)}
 {define/t (value-undelay-1_>>=_aux x display_f comments f)
-  (-> value-t (-> (vector-tt env-t value-t)) (array-of-tt value-t) (-> value-t (array-of-tt value-t) value-t) value-t)
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (array-of-tt value-t) (-> value-t (array-of-tt value-t) value-t) value-t)
   {cond
     [(value-comment? x)
      {let/t ([x01 (vector-tt value-t (array-of-tt value-t)) (elim-value-comment-* x)])
