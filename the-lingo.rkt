@@ -28,7 +28,7 @@
   -m    monad/async/cps
 |#
 {require racket/contract}
-{define-syntax-rule {if-typecheck-on t f} f} ;; because changing the type of value was disallowed
+{define-syntax-rule {if-typecheck-on t f} f} ;; because it make the same value different and disallow changing the type of value
 {define-syntax-rule {define:type . xs} {define . xs}}
 {if-typecheck-on
  {define-syntax-rule {define/t . xs} {define/contract . xs}}
