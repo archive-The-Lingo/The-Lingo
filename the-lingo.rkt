@@ -25,14 +25,16 @@
   create-    create mutable values
   cons-    constructor
   elim-    eliminator
+  -m    monad/async/cps
 |#
 {require racket/contract}
+{define-syntax-rule {if-typecheck-on t f} f} ;; because changing the type of value was disallowed
 {define-syntax-rule {define:type . xs} {define . xs}}
-{define-syntax-rule {define/t . xs} {define/contract . xs}}
-{define-syntax let/t
-  {syntax-rules ()
-    [(_ () . b) ({λ () . b})]
-    [(_ ([id typ val] . rs) . b) ({λ () {define/t id typ val} {let/t rs . b}})]}}
+{if-typecheck-on
+ {define-syntax-rule {define/t . xs} {define/contract . xs}}
+ {define-syntax-rule {define/t n t . xs} {define n . xs}}}
+{define-syntax-rule {let/t ([id typ val] ...) . r}
+  {let ([id ({λ () {define/t tmp typ val} tmp})] ...) . r}}
 {define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
 {define:type and-tt and/c}
 {define:type or-tt or/c}
@@ -42,39 +44,26 @@
 {define:type vector-tt vector/c}
 {define:type void-t void?}
 {define:type boolean-t boolean?}
-{define:type hash-tt hash/c}
 {define:type box-t box/c}
 {define:type array-of-tt listof} ;; A array is a variable length vector
 {define (create-array . xs) xs}
 {define (linear-array-add-element xs x) (cons x xs)} ;; Add a element to a array.Can destory source array."linear-" means linear type system
 {define (linear-array-append xs ys) (append xs ys)}
 {define-syntax-rule {array-foreach xs v . c} {for ([v xs]) . c}}
-
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
-
 {define (assert-unreachable) (error 'assert-unreachable)}
+{define (id x) x}
 
 {define-syntax do
-  {syntax-rules (<- =:)
-    [(_ x) {λ (pure bind) x}]
-    [(_ #{x := v} . r) {let ([x v]) {do . r}}]
-    [(_ #{x <- v} . r) {λ (pure bind) (bind v {λ (x) ({do . r} pure bind)})}]
-    [(_ v . r) {do #{x <- v} . r}]}}
+  {syntax-rules (<- :=)
+    [(_ >>= x) x]
+    [(_ >>= #{x := v} . r) {let ([x v]) {do >>= . r}}]
+    [(_ >>= #{x <- v} . r) (>>= v {λ (x) {do >>= . r}})]
+    [(_ >>= v . r) {do >>= #{x <- v} . r}]}}
 
 {define:type t-id-t natural-number/c}
 {define:type value-struct-t (vector-tt t-id-t any-t any-t any-t)}
-{define:type value-t
-  (or-tt
-   (rec-type value-symbol-t)
-   (rec-type value-pair-t)
-   (rec-type value-null-t)
-   (rec-type value-data-t)
-   (rec-type value-char-t)
-   (rec-type value-just-t)
-   (rec-type value-delay-t)
-   (rec-type value-comment-t)
-   )}
 
 {define (value? x)
   {with-handlers ([exn:fail:contract? {λ (e) #f}])
@@ -86,8 +75,8 @@
        #:key? value?
        val-eq?}
      {define identifierspace-null (make-immutable-identifierspace '())}
-     {define identifierspace-ref hash-ref}
-     {define identifierspace-set hash-set}
+     {define identifierspace-ref dict-ref}
+     {define identifierspace-set dict-set}
      (values immutable-identifierspace? identifierspace-null identifierspace-ref identifierspace-set)})}
 {define:type identifierspace-t identifierspace?}
 
@@ -109,13 +98,24 @@
 {define/t value-comment-t-id value-comment-t-id-t 7}
 
 {define:type value-symbol-t (and-tt value-struct-t (vector-tt value-symbol-t-id-t string-t nothing-t nothing-t))}
-{define:type value-pair-t (and-tt value-struct-t (vector-tt value-pair-t-id-t value-t value-t nothing-t))}
+{define:type value-pair-t (and-tt value-struct-t (vector-tt value-pair-t-id-t (rec-type value-t) (rec-type value-t) nothing-t))}
 {define:type value-null-t (and-tt value-struct-t (vector-tt value-null-t-id-t nothing-t nothing-t nothing-t))}
-{define:type value-data-t (and-tt value-struct-t (vector-tt value-data-t-id-t value-t value-t nothing-t))}
+{define:type value-data-t (and-tt value-struct-t (vector-tt value-data-t-id-t (rec-type value-t) (rec-type value-t) nothing-t))}
 {define:type value-char-t (and-tt value-struct-t (vector-tt value-char-t-id-t char-t nothing-t nothing-t))}
-{define:type value-just-t (and-tt value-struct-t (vector-tt value-just-t-id-t value-t nothing-t nothing-t))}
-{define:type value-delay-t (and-tt value-struct-t (vector-tt value-delay-t-id-t (-> value-t) (-> (vector-tt (rec-type identifierspace-t) value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
-{define:type value-comment-t (and-tt value-struct-t (vector-tt value-comment-t-id-t value-t (array-of-tt value-t) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
+{define:type value-just-t (and-tt value-struct-t (vector-tt value-just-t-id-t (rec-type value-t) nothing-t nothing-t))}
+{define:type value-delay-t (and-tt value-struct-t (vector-tt value-delay-t-id-t (-> (rec-type value-t)) (-> (vector-tt identifierspace-t (rec-type value-t))) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
+{define:type value-comment-t (and-tt value-struct-t (vector-tt value-comment-t-id-t (rec-type value-t) (array-of-tt (rec-type value-t)) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
+{define:type value-t
+  (or-tt
+   value-symbol-t
+   value-pair-t
+   value-null-t
+   value-data-t
+   value-char-t
+   value-just-t
+   value-delay-t
+   value-comment-t
+   )}
 
 {define/t (value-symbol? x)
   (-> value-t boolean-t)
@@ -194,6 +194,9 @@
      (vector x comments)]}}
 {define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
+  {displayln x}
+  {displayln v}
+  {displayln (eq? x v)}
   {when (not (eq? x v))
     (vector-set*! x
                   0 value-just-t-id
@@ -233,19 +236,26 @@
     [else
      {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
      x]}}
-{define/t (value-undelay-1_>>= x display_f f)
-  (-> value-t (-> (vector-tt identifierspace-t value-t)) (-> value-t (array-of-tt value-t) value-t) value-t)
-  (value-undelay-1_>>=_aux x display_f (create-array) f)}
-{define/t (value-undelay-1_>>=_aux x display_f comments f)
-  (-> value-t (-> (vector-tt identifierspace-t value-t)) (array-of-tt value-t) (-> value-t (array-of-tt value-t) value-t) value-t)
+{define:type (cont-tt a r) (-> (-> a r) r)}
+{define/t (cont-return x)
+  (-> any-t (cont-tt any-t any-t))
+  {λ (c) (c x)}}
+{define/t (cont->>= x f)
+  (-> (cont-tt any-t any-t) (-> any-t (cont-tt any-t any-t)) (cont-tt any-t any-t))
+  {λ (c) (x {λ (v) ((f v) c)})}}
+{define/t ((value-undelay-m x display_f) f)
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt value-t (array-of-tt value-t)) value-t))
+  (value-undelay-m-aux x display_f (create-array) f)}
+{define/t (value-undelay-m-aux x display_f comments f)
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (array-of-tt value-t) (-> (vector-tt value-t (array-of-tt value-t)) value-t) value-t)
   {cond
     [(value-comment? x)
      {let/t ([x01 (vector-tt value-t (array-of-tt value-t)) (elim-value-comment-* x)])
             {let/t ([new-v value-t (vector-ref x01 0)] [new-comments (array-of-tt value-t) (vector-ref x01 1)])
-                   (value-undelay-1_>>=_aux new-v (linear-array-append comments new-comments) f)}}]
-    [(value-just? x) (value-undelay-1_>>=_aux (value-unjust-* x) display_f comments f)]
-    [(value-delay? x) (cons-value-delay {λ () (value-undelay-1_>>=_aux (must-value-force-1 x) display_f comments f)} display_f)]
-    [else (f x)]}}
+                   (value-undelay-m-aux new-v (linear-array-append comments new-comments) f)}}]
+    [(value-just? x) (value-undelay-m-aux (value-unjust-* x) display_f comments f)]
+    [(value-delay? x) (cons-value-delay {λ () (value-undelay-m-aux (must-value-force-1 x) display_f comments f)} display_f)]
+    [else (f (vector x comments))]}}
 
 {define/t (value-force+equal? x y)
   (-> value-t value-t boolean-t)
@@ -302,3 +312,19 @@
                    (value-unsafe-set-to-just! x y)}
                #t}
              #f}}}
+
+{define/t (evaluate space x)
+  (-> identifierspace-t value-t value-t)
+  ((evaluate-aux space x) id)}
+{define/t (evaluate-aux space x)
+  ;; m a = (cont-tt a value-t)
+  (-> identifierspace-t value-t
+      (cont-tt value-t value-t))
+  {do cont->>=
+    #{x-comments <- (value-undelay-m x {λ () (vector space x)})}
+    #{x := (vector-ref x-comments 0)}
+    #{comments := (vector-ref x-comments 1)}
+    {cond
+      [(value-pair? x) "WIP"]
+      [else (cont-return (identifierspace-ref space x "WIP"))]}
+    }}
