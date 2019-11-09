@@ -26,6 +26,7 @@
   cons-    constructor
   elim-    eliminator
   -m    monad/async/cps
+  -aux    auxiliary
 |#
 {require racket/contract}
 {define-syntax-rule {if-typecheck-on t f} f} ;; because it make the same value different and disallow changing the type of value
@@ -194,9 +195,6 @@
      (vector x comments)]}}
 {define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
-  {displayln x}
-  {displayln v}
-  {displayln (eq? x v)}
   {when (not (eq? x v))
     (vector-set*! x
                   0 value-just-t-id
