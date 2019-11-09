@@ -41,6 +41,12 @@
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
 
+{define-syntax do
+  {syntax-rules (<- =:)
+    [(_ x) {λ (pure bind) x}]
+    [(_ #{x := v} . r) {let ([x v]) {do . r}}]
+    [(_ #{x <- v} . r) {λ (pure bind) (bind x {λ (v) ({do . r} pure bind)})}]}}
+
 {define:type t-id-t natural-number/c}
 {define:type value-struct-t (vector-t t-id-t any-t any-t any-t)}
 {define:type value-t
@@ -141,12 +147,12 @@
 
 {define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
-  (if (eq? x v) (void)
-      (vector-set*! x
-                    0 value-just-t-id
-                    1 v
-                    2 nothing
-                    3 nothing))}
+  {when (not (eq? x v))
+    (vector-set*! x
+                  0 value-just-t-id
+                  1 v
+                  2 nothing
+                  3 nothing)}}
 {define/t (must-value-unjust-1 x)
   (-> value-just-t value-t)
   (vector-ref x 1)}
