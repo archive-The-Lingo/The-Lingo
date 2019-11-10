@@ -42,9 +42,10 @@
  {define-syntax-rule {let/t ([id typ val] ...) . r}
    {let ([id val] ...) . r}}}
 {define-syntax-rule (t->? t)
-  {λ (x)
-    {with-handlers ([exn:fail:contract? {λ (e) #f}])
-      {let/t ([_ t x]) #t}}}}
+  {let ([t-lazy (delay t)])
+    {λ (x)
+      {with-handlers ([exn:fail:contract? {λ (e) #f}])
+        {let/t ([_ (force t-lazy) x]) #t}}}}}
 {define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
 {define:type and-tt and/c}
 {define:type or-tt or/c}
