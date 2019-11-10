@@ -29,6 +29,7 @@
   -aux    auxiliary
 |#
 {require racket/contract}
+{require (only-in typed/racket assert)}
 {define-syntax-rule {if-typecheck-on t f} f} ;; because it make the same value different and disallow changing the type of value
 {define-syntax-rule {define:type . xs} {define . xs}}
 {if-typecheck-on
@@ -39,6 +40,7 @@
 {define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
 {define:type and-tt and/c}
 {define:type or-tt or/c}
+{define:type not-tt not/c}
 {define:type any-t any/c}
 {define:type string-t string?}
 {define:type char-t char?}
@@ -50,6 +52,9 @@
 {define (create-array . xs) xs}
 {define (linear-array-add-element xs x) (cons x xs)} ;; Add a element to a array.Can destory source array."linear-" means linear type system
 {define (linear-array-append xs ys) (append xs ys)}
+{define (array-length xs) (length xs)}
+{define:type array-null-t null?}
+{define (array-null? xs) (null? xs)}
 {define-syntax-rule {array-foreach xs v . c} {for ([v xs]) . c}}
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
@@ -168,9 +173,12 @@
 {define/t (elim-value-char x)
   (-> value-char-t char-t)
   (vector-ref x 1)}
-{define/t (cons-value-comment x comment)
-  (-> value-t (array-of-tt value-t) value-comment-t)
+{define/t (must-cons-value-comment x comment)
+  (-> value-t (and-tt (not-tt array-null-t) (array-of-tt value-t)) value-comment-t)
   (vector value-comment-t-id x comment nothing)}
+{define/t (cons-value-comment x comment)
+  (-> value-t (array-of-tt value-t) value-t)
+  (if (array-null? comment) x (must-cons-value-comment x comment))}
 {define/t (elim-value-comment x)
   (-> value-comment-t (vector-tt value-t (array-of-tt value-t)))
   (vector (vector-ref x 1) (vector-ref x 2))}
@@ -230,7 +238,7 @@
   (-> value-t (array-of-tt value-t) value-t)
   {cond
     [(value-just? x) (value-force-aux (must-value-unjust-1 x) (linear-array-add-element history x))]
-    [(value-delay? x) (value-force-aux (must-nocache-value-force-1 x) (linear-array-add-element history x))]
+    [(value-delay? x) (value-force-aux (must-value-force-1 x) (linear-array-add-element history x))]
     [else
      {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
      x]}}
