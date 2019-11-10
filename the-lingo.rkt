@@ -30,11 +30,17 @@
 |#
 {require racket/contract}
 {require (only-in typed/racket assert)}
+{define-syntax-rule {if-typecheck-on t f} t}
 {define-syntax-rule {define:type . xs} {define . xs}}
 {define-syntax-rule {define-syntax-rule:type . xs} {define-syntax-rule . xs}}
-{define-syntax-rule {define/t . xs} {define/contract . xs}}
-{define-syntax-rule {let/t ([id typ val] ...) . r}
-  {let ([id ({λ () {define/t tmp typ val} tmp})] ...) . r}}
+{if-typecheck-on
+ {define-syntax-rule {define/t . xs} {define/contract . xs}}
+ {define-syntax-rule {define/t n t . xs} {define n . xs}}}
+{if-typecheck-on
+ {define-syntax-rule {let/t ([id typ val] ...) . r}
+   {let ([id ({λ () {define/t tmp typ val} tmp})] ...) . r}}
+ {define-syntax-rule {let/t ([id typ val] ...) . r}
+   {let ([id val] ...) . r}}}
 {define-syntax-rule (t->? t)
   {λ (x)
     {with-handlers ([exn:fail:contract? {λ (e) #f}])
@@ -104,24 +110,25 @@
 
 {define-syntax-rule:type (value-tt x) (t->? (and-tt value-struct-t x))} ;; without t->?, it will make the same value different and disallow changing the type of value
 {define:type value-symbol-t (value-tt (vector-tt value-symbol-t-id-t string-t nothing-t nothing-t))}
-{define:type value-pair-t (value-tt (vector-tt value-pair-t-id-t (rec-type value-t) (rec-type value-t) nothing-t))}
+{define:type value-pair-t (value-tt (vector-tt value-pair-t-id-t value-t value-t nothing-t))}
 {define:type value-null-t (value-tt (vector-tt value-null-t-id-t nothing-t nothing-t nothing-t))}
-{define:type value-data-t (value-tt (vector-tt value-data-t-id-t (rec-type value-t) (rec-type value-t) nothing-t))}
+{define:type value-data-t (value-tt (vector-tt value-data-t-id-t value-t value-t nothing-t))}
 {define:type value-char-t (value-tt (vector-tt value-char-t-id-t char-t nothing-t nothing-t))}
-{define:type value-just-t (value-tt (vector-tt value-just-t-id-t (rec-type value-t) nothing-t nothing-t))}
-{define:type value-delay-t (value-tt (vector-tt value-delay-t-id-t (-> (rec-type value-t)) (-> (vector-tt identifierspace-t (rec-type value-t))) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
-{define:type value-comment-t (value-tt (vector-tt value-comment-t-id-t (rec-type value-t) (array-of-tt (rec-type value-t)) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
+{define:type value-just-t (value-tt (vector-tt value-just-t-id-t value-t nothing-t nothing-t))}
+{define:type value-delay-t (value-tt (vector-tt value-delay-t-id-t (-> value-t) (-> (vector-tt identifierspace-t value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
+{define:type value-comment-t (value-tt (vector-tt value-comment-t-id-t value-t (array-of-tt value-t) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
 {define:type value-t
-  (t->? (or-tt
-         value-symbol-t
-         value-pair-t
-         value-null-t
-         value-data-t
-         value-char-t
-         value-just-t
-         value-delay-t
-         value-comment-t
-         ))}
+  (t->?
+   (or-tt
+    value-symbol-t
+    value-pair-t
+    value-null-t
+    value-data-t
+    value-char-t
+    value-just-t
+    value-delay-t
+    value-comment-t
+    ))}
 
 {define/t (value-symbol? x)
   (-> value-t boolean-t)
