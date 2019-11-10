@@ -340,5 +340,5 @@
     #{comments := (vector-ref x-comments 1)}
     {cond
       [(value-pair? x) "WIP"]
-      [else (cont-return (identifierspace-ref space x "WIP"))]}
+      [else (cont-return (cons-value-comment (identifierspace-ref space x "WIP") comments))]}
     }}
