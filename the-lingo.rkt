@@ -30,13 +30,15 @@
 |#
 {require racket/contract}
 {require (only-in typed/racket assert)}
-{define-syntax-rule {if-typecheck-on t f} f} ;; because it make the same value different and disallow changing the type of value
 {define-syntax-rule {define:type . xs} {define . xs}}
-{if-typecheck-on
- {define-syntax-rule {define/t . xs} {define/contract . xs}}
- {define-syntax-rule {define/t n t . xs} {define n . xs}}}
+{define-syntax-rule {define-syntax-rule:type . xs} {define-syntax-rule . xs}}
+{define-syntax-rule {define/t . xs} {define/contract . xs}}
 {define-syntax-rule {let/t ([id typ val] ...) . r}
   {let ([id ({λ () {define/t tmp typ val} tmp})] ...) . r}}
+{define-syntax-rule (t->? t)
+  {λ (x)
+    {with-handlers ([exn:fail:contract? {λ (e) #f}])
+      {let/t ([_ t x]) #t}}}}
 {define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
 {define:type and-tt and/c}
 {define:type or-tt or/c}
@@ -71,14 +73,11 @@
 {define:type t-id-t natural-number/c}
 {define:type value-struct-t (vector-tt t-id-t any-t any-t any-t)}
 
-{define (value? x)
-  {with-handlers ([exn:fail:contract? {λ (e) #f}])
-    {let/t ([_ value-t x]) #t}}}
 {define-values (identifierspace? identifierspace-null identifierspace-ref identifierspace-set)
   ({λ ()
      {define (val-eq? x y) (value-force+equal? x y)} ;; because "cannot reference an identifier before its definition"
      {define-custom-hash-types identifierspace
-       #:key? value?
+       #:key? (t->? value-t)
        val-eq?}
      {define identifierspace-null (make-immutable-identifierspace '())}
      {define identifierspace-ref dict-ref}
@@ -103,25 +102,26 @@
 {define:type value-comment-t-id-t (and-tt t-id-t 7)}
 {define/t value-comment-t-id value-comment-t-id-t 7}
 
-{define:type value-symbol-t (and-tt value-struct-t (vector-tt value-symbol-t-id-t string-t nothing-t nothing-t))}
-{define:type value-pair-t (and-tt value-struct-t (vector-tt value-pair-t-id-t (rec-type value-t) (rec-type value-t) nothing-t))}
-{define:type value-null-t (and-tt value-struct-t (vector-tt value-null-t-id-t nothing-t nothing-t nothing-t))}
-{define:type value-data-t (and-tt value-struct-t (vector-tt value-data-t-id-t (rec-type value-t) (rec-type value-t) nothing-t))}
-{define:type value-char-t (and-tt value-struct-t (vector-tt value-char-t-id-t char-t nothing-t nothing-t))}
-{define:type value-just-t (and-tt value-struct-t (vector-tt value-just-t-id-t (rec-type value-t) nothing-t nothing-t))}
-{define:type value-delay-t (and-tt value-struct-t (vector-tt value-delay-t-id-t (-> (rec-type value-t)) (-> (vector-tt identifierspace-t (rec-type value-t))) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
-{define:type value-comment-t (and-tt value-struct-t (vector-tt value-comment-t-id-t (rec-type value-t) (array-of-tt (rec-type value-t)) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
+{define-syntax-rule:type (value-tt x) (t->? (and-tt value-struct-t x))} ;; without t->?, it will make the same value different and disallow changing the type of value
+{define:type value-symbol-t (value-tt (vector-tt value-symbol-t-id-t string-t nothing-t nothing-t))}
+{define:type value-pair-t (value-tt (vector-tt value-pair-t-id-t (rec-type value-t) (rec-type value-t) nothing-t))}
+{define:type value-null-t (value-tt (vector-tt value-null-t-id-t nothing-t nothing-t nothing-t))}
+{define:type value-data-t (value-tt (vector-tt value-data-t-id-t (rec-type value-t) (rec-type value-t) nothing-t))}
+{define:type value-char-t (value-tt (vector-tt value-char-t-id-t char-t nothing-t nothing-t))}
+{define:type value-just-t (value-tt (vector-tt value-just-t-id-t (rec-type value-t) nothing-t nothing-t))}
+{define:type value-delay-t (value-tt (vector-tt value-delay-t-id-t (-> (rec-type value-t)) (-> (vector-tt identifierspace-t (rec-type value-t))) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
+{define:type value-comment-t (value-tt (vector-tt value-comment-t-id-t (rec-type value-t) (array-of-tt (rec-type value-t)) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
 {define:type value-t
-  (or-tt
-   value-symbol-t
-   value-pair-t
-   value-null-t
-   value-data-t
-   value-char-t
-   value-just-t
-   value-delay-t
-   value-comment-t
-   )}
+  (t->? (or-tt
+         value-symbol-t
+         value-pair-t
+         value-null-t
+         value-data-t
+         value-char-t
+         value-just-t
+         value-delay-t
+         value-comment-t
+         ))}
 
 {define/t (value-symbol? x)
   (-> value-t boolean-t)
