@@ -45,7 +45,8 @@
   {let ([t-lazy (delay t)])
     {λ (x)
       {with-handlers ([exn:fail:contract? {λ (e) #f}])
-        {let/t ([_ (force t-lazy) x]) #t}}}}}
+        {define/contract _ (force t-lazy) x}
+        #t}}}}
 {define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
 {define:type and-tt and/c}
 {define:type or-tt or/c}
