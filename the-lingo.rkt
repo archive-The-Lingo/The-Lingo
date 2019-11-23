@@ -79,7 +79,7 @@
     [(_ >>= v . r) {do >>= #{x <- v} . r}]}}
 
 {define:type t-id-t natural-number/c}
-{define:type value-struct-t (vector-tt t-id-t any-t any-t any-t)}
+{define:type value-bone-t (vector-tt t-id-t any-t any-t any-t)}
 
 {define-values (identifierspace? identifierspace-null identifierspace-ref identifierspace-set)
   ({λ ()
@@ -99,8 +99,8 @@
 {define/t value-pair-t-id value-pair-t-id-t 1}
 {define:type value-null-t-id-t (and-tt t-id-t 2)}
 {define/t value-null-t-id value-null-t-id-t 2}
-{define:type value-data-t-id-t (and-tt t-id-t 3)}
-{define/t value-data-t-id value-data-t-id-t 3}
+{define:type value-struct-t-id-t (and-tt t-id-t 3)}
+{define/t value-struct-t-id value-struct-t-id-t 3}
 {define:type value-char-t-id-t (and-tt t-id-t 4)}
 {define/t value-char-t-id value-char-t-id-t 4}
 {define:type value-just-t-id-t (and-tt t-id-t 5)}
@@ -110,11 +110,11 @@
 {define:type value-comment-t-id-t (and-tt t-id-t 7)}
 {define/t value-comment-t-id value-comment-t-id-t 7}
 
-{define-syntax-rule:type (value-tt x) (t->? (and-tt value-struct-t x))} ;; without t->?, it will make the same value different and disallow changing the type of value
+{define-syntax-rule:type (value-tt x) (t->? (and-tt value-bone-t x))} ;; without t->?, it will make the same value different and disallow changing the type of value
 {define:type value-symbol-t (value-tt (vector-tt value-symbol-t-id-t string-t nothing-t nothing-t))}
 {define:type value-pair-t (value-tt (vector-tt value-pair-t-id-t value-t value-t nothing-t))}
 {define:type value-null-t (value-tt (vector-tt value-null-t-id-t nothing-t nothing-t nothing-t))}
-{define:type value-data-t (value-tt (vector-tt value-data-t-id-t value-t value-t nothing-t))}
+{define:type value-struct-t (value-tt (vector-tt value-struct-t-id-t value-t value-t nothing-t))}
 {define:type value-char-t (value-tt (vector-tt value-char-t-id-t char-t nothing-t nothing-t))}
 {define:type value-just-t (value-tt (vector-tt value-just-t-id-t value-t nothing-t nothing-t))}
 {define:type value-delay-t (value-tt (vector-tt value-delay-t-id-t (-> value-t) (-> (vector-tt identifierspace-t value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
@@ -125,7 +125,7 @@
     value-symbol-t
     value-pair-t
     value-null-t
-    value-data-t
+    value-struct-t
     value-char-t
     value-just-t
     value-delay-t
@@ -141,9 +141,9 @@
 {define/t (value-null? x)
   (-> value-t boolean-t)
   (= (vector-ref x 0) value-null-t-id)}
-{define/t (value-data? x)
+{define/t (value-struct? x)
   (-> value-t boolean-t)
-  (= (vector-ref x 0) value-data-t-id)}
+  (= (vector-ref x 0) value-struct-t-id)}
 {define/t (value-char? x)
   (-> value-t boolean-t)
   (= (vector-ref x 0) value-char-t-id)}
@@ -169,11 +169,11 @@
 {define/t (elim-value-pair x)
   (-> value-pair-t (vector-tt value-t value-t))
   (vector (vector-ref x 1) (vector-ref x 2))}
-{define/t (cons-value-data x y)
-  (-> value-t value-t value-data-t)
-  (vector value-data-t-id x y nothing)}
-{define/t (elim-value-data x)
-  (-> value-data-t (vector-tt value-t value-t))
+{define/t (cons-value-struct x y)
+  (-> value-t value-t value-struct-t)
+  (vector value-struct-t-id x y nothing)}
+{define/t (elim-value-struct x)
+  (-> value-struct-t (vector-tt value-t value-t))
   (vector (vector-ref x 1) (vector-ref x 2))}
 {define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing)}
 {define/t (cons-value-char x)
@@ -309,8 +309,8 @@
                                        y (vector-ref y01 0) (vector-ref y01 1)
                                        inner-equal-and-has-comment)}
                                     #f}]
-               [(value-data? x) {if (value-data? y)
-                                    {let ([x01 (elim-value-data x)] [y01 (elim-value-data y)])
+               [(value-struct? x) {if (value-struct? y)
+                                    {let ([x01 (elim-value-struct x)] [y01 (elim-value-struct y)])
                                       (value-force+equal?-aux-aux-pair
                                        x (vector-ref x01 0) (vector-ref x01 1)
                                        y (vector-ref y01 0) (vector-ref y01 1)
