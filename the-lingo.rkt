@@ -58,14 +58,9 @@
 {define:type void-t void?}
 {define:type boolean-t boolean?}
 {define:type box-t box/c}
-{define:type array-of-tt listof} ;; A array is a variable length vector
-{define (create-array . xs) xs}
-{define (linear-array-add-element xs x) (cons x xs)} ;; Add a element to a array.Can destory source array."linear-" means linear type system
-{define (linear-array-append xs ys) (append xs ys)}
-{define (array-length xs) (length xs)}
-{define:type array-null-t null?}
-{define (array-null? xs) (null? xs)}
-{define-syntax-rule {array-foreach xs v . c} {for ([v xs]) . c}}
+{define:type list-of-tt listof}
+{define:type null-t null?}
+{define-syntax-rule {list-foreach xs v . c} {for ([v xs]) . c}}
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
 {define (assert-unreachable) (error 'assert-unreachable)}
@@ -118,7 +113,7 @@
 {define:type value-char-t (value-tt (vector-tt value-char-t-id-t char-t nothing-t nothing-t))}
 {define:type value-just-t (value-tt (vector-tt value-just-t-id-t value-t nothing-t nothing-t))}
 {define:type value-delay-t (value-tt (vector-tt value-delay-t-id-t (-> value-t) (-> (vector-tt identifierspace-t value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
-{define:type value-comment-t (value-tt (vector-tt value-comment-t-id-t value-t (array-of-tt value-t) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
+{define:type value-comment-t (value-tt (vector-tt value-comment-t-id-t value-t (list-of-tt value-t) nothing-t))} ;; val:value-t/comment:`(arrayof-t value-t)`
 {define:type value-t
   (t->?
    (or-tt
@@ -183,32 +178,32 @@
   (-> value-char-t char-t)
   (vector-ref x 1)}
 {define/t (must-cons-value-comment x comment)
-  (-> value-t (and-tt (not-tt array-null-t) (array-of-tt value-t)) value-comment-t)
+  (-> value-t (and-tt (not-tt null-t) (list-of-tt value-t)) value-comment-t)
   (vector value-comment-t-id x comment nothing)}
 {define/t (cons-value-comment x comment)
-  (-> value-t (array-of-tt value-t) value-t)
-  (if (array-null? comment) x (must-cons-value-comment x comment))}
+  (-> value-t (list-of-tt value-t) value-t)
+  (if (null? comment) x (must-cons-value-comment x comment))}
 {define/t (elim-value-comment x)
-  (-> value-comment-t (vector-tt value-t (array-of-tt value-t)))
+  (-> value-comment-t (vector-tt value-t (list-of-tt value-t)))
   (vector (vector-ref x 1) (vector-ref x 2))}
 {define/t (cons-value-delay exec display_f)
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
   (vector value-delay-t-id exec display_f nothing)}
 
 {define/t (elim-value-comment-* x)
-  (-> value-comment-t (vector-tt value-t (array-of-tt value-t)))
-  (elim-value-comment-*-aux x (create-array x) (create-array))}
+  (-> value-comment-t (vector-tt value-t (list-of-tt value-t)))
+  (elim-value-comment-*-aux x (list x) (list))}
 {define/t (elim-value-comment-*-aux x history comments)
-  (-> value-t (array-of-tt value-t) (array-of-tt value-t) (vector-tt value-t (array-of-tt value-t)))
+  (-> value-t (list-of-tt value-t) (list-of-tt value-t) (vector-tt value-t (list-of-tt value-t)))
   {cond
-    [(value-just? x) (elim-value-comment-*-aux (value-unjust-* x) (linear-array-add-element history x) comments)]
+    [(value-just? x) (elim-value-comment-*-aux (value-unjust-* x) (cons history x) comments)]
     [(value-comment? x) {let ([x01 (elim-value-comment x)])
                           (elim-value-comment-*-aux
                            (vector-ref x 0)
-                           (linear-array-add-element history x)
-                           (linear-array-append comments (vector-ref x 1)))}]
+                           (cons history x)
+                           (append comments (vector-ref x 1)))}]
     [else
-     {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
+     {list-foreach history history_v (value-unsafe-set-to-just! history_v x)}
      (vector x comments)]}}
 {define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
@@ -223,12 +218,12 @@
   (vector-ref x 1)}
 {define/t (value-unjust-* x)
   (-> value-t value-t)
-  (value-unjust-*-aux x (create-array x))}
+  (value-unjust-*-aux x (list x))}
 {define/t (value-unjust-*-aux x history)
-  (-> value-t (array-of-tt value-t) value-t)
-  (if (value-just? x) (value-unjust-*-aux (must-value-unjust-1 x) (linear-array-add-element history x))
+  (-> value-t (list-of-tt value-t) value-t)
+  (if (value-just? x) (value-unjust-*-aux (must-value-unjust-1 x) (cons history x))
       {begin
-        {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
+        {list-foreach history history_v (value-unsafe-set-to-just! history_v x)}
         x})}
 {define/t (must-nocache-value-force-1 x)
   (-> value-delay-t value-t)
@@ -242,14 +237,14 @@
          v}}
 {define/t (value-force x)
   (-> value-t value-t)
-  (value-force-aux x (create-array x))}
+  (value-force-aux x (list x))}
 {define/t (value-force-aux x history)
-  (-> value-t (array-of-tt value-t) value-t)
+  (-> value-t (list-of-tt value-t) value-t)
   {cond
-    [(value-just? x) (value-force-aux (must-value-unjust-1 x) (linear-array-add-element history x))]
-    [(value-delay? x) (value-force-aux (must-value-force-1 x) (linear-array-add-element history x))]
+    [(value-just? x) (value-force-aux (must-value-unjust-1 x) (cons history x))]
+    [(value-delay? x) (value-force-aux (must-value-force-1 x) (cons history x))]
     [else
-     {array-foreach history history_v (value-unsafe-set-to-just! history_v x)}
+     {list-foreach history history_v (value-unsafe-set-to-just! history_v x)}
      x]}}
 {define:type (cont-tt a r) (-> (-> a r) r)}
 {define/t (cont-return x)
@@ -259,15 +254,15 @@
   (-> (cont-tt any-t any-t) (-> any-t (cont-tt any-t any-t)) (cont-tt any-t any-t))
   {λ (c) (x {λ (v) ((f v) c)})}}
 {define/t ((value-undelay-m x display_f) f)
-  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt value-t (array-of-tt value-t)) value-t))
-  (value-undelay-m-aux x display_f (create-array) f)}
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt value-t (list-of-tt value-t)) value-t))
+  (value-undelay-m-aux x display_f (list) f)}
 {define/t (value-undelay-m-aux x display_f comments f)
-  (-> value-t (-> (vector-tt identifierspace-t value-t)) (array-of-tt value-t) (-> (vector-tt value-t (array-of-tt value-t)) value-t) value-t)
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (list-of-tt value-t) (-> (vector-tt value-t (list-of-tt value-t)) value-t) value-t)
   {cond
     [(value-comment? x)
-     {let/t ([x01 (vector-tt value-t (array-of-tt value-t)) (elim-value-comment-* x)])
-            {let/t ([new-v value-t (vector-ref x01 0)] [new-comments (array-of-tt value-t) (vector-ref x01 1)])
-                   (value-undelay-m-aux new-v (linear-array-append comments new-comments) f)}}]
+     {let/t ([x01 (vector-tt value-t (list-of-tt value-t)) (elim-value-comment-* x)])
+            {let/t ([new-v value-t (vector-ref x01 0)] [new-comments (list-of-tt value-t) (vector-ref x01 1)])
+                   (value-undelay-m-aux new-v (append comments new-comments) f)}}]
     [(value-just? x) (value-undelay-m-aux (value-unjust-* x) display_f comments f)]
     [(value-delay? x) (cons-value-delay {λ () (value-undelay-m-aux (must-value-force-1 x) display_f comments f)} display_f)]
     [else (f (vector x comments))]}}
@@ -283,7 +278,7 @@
              {cond
                [(eq? x y) #t]
                [(value-comment? x)
-                {let/t ([x01 (vector-tt value-t (array-of-tt value-t)) (elim-value-comment-* x)])
+                {let/t ([x01 (vector-tt value-t (list-of-tt value-t)) (elim-value-comment-* x)])
                        (set-box! inner-equal-and-has-comment #t)
                        (value-force+equal?-aux (vector-ref x 0) y inner-equal-and-has-comment)}]
                [(value-comment? y) (value-force+equal?-aux y x inner-equal-and-has-comment)]
