@@ -16,17 +16,18 @@
 |#
 #lang racket
 #|
+  create-    create mutable values
+  cons-    constructor
+  elim-    eliminator
   { .. }    macro/syntax
   /t -t    type
   -tt    a function returning types
   -*    all
   !    read/write mutable values
   :    type annotation
-  create-    create mutable values
-  cons-    constructor
-  elim-    eliminator
   -m    monad/async/cps
   -aux    auxiliary
+  -s    symbol
 |#
 {require racket/contract}
 {require (only-in typed/racket assert)}
@@ -323,6 +324,8 @@
                    (value-unsafe-set-to-just! x y)}
                #t}
              #f}}}
+
+{define/t exp-id-s value-symbol-t (cons-value-symbol "標符")}
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
