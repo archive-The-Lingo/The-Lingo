@@ -30,6 +30,14 @@
   -s    symbol
 |#
 {require racket/contract}
+
+{define (assert-unreachable) (error 'assert-unreachable)}
+{require (rename-in racket [cond cOnD])}
+{define-syntax cond
+  {syntax-rules (else =>)
+    [(_ head ... [else . then-body]) {cOnD head ... [else . then-body]}]
+    [(_ head ...) {cOnD head ... [else (assert-unreachable)]}]}}
+
 {require (only-in typed/racket assert)}
 {define-syntax-rule {if-typecheck-on t f} t}
 {define-syntax-rule {define:type . xs} {define . xs}}
@@ -64,7 +72,6 @@
 {define-syntax-rule {list-foreach xs v . c} {for ([v xs]) . c}}
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
-{define (assert-unreachable) (error 'assert-unreachable)}
 {define (WIP) (error 'WIP)}
 {define (id x) x}
 
@@ -160,6 +167,9 @@
 {define/t (elim-value-symbol x)
   (-> value-symbol-t string-t)
   (vector-ref x 1)}
+{define/t (value-symbol-equal? x y)
+  (-> value-symbol-t value-symbol-t boolean-t)
+  (string=? (elim-value-symbol x) (elim-value-symbol y))}
 {define/t (cons-value-pair x y)
   (-> value-t value-t value-pair-t)
   (vector value-pair-t-id x y nothing)}
@@ -312,8 +322,7 @@
                                        x (vector-ref x01 0) (vector-ref x01 1)
                                        y (vector-ref y01 0) (vector-ref y01 1)
                                        inner-equal-and-has-comment)}
-                                    #f}]
-               [else (assert-unreachable)]}})}
+                                    #f}]}})}
 {define/t (value-force+equal?-aux-aux-pair x x0 x1 y y0 y1 inner-has-comment)
   (-> value-t value-t value-t value-t value-t value-t (box-t boolean-t) boolean-t)
   {let/t ([xy-equal-and-has-comment (box-t boolean-t) (box #f)])
@@ -343,6 +352,7 @@
           {:= ast (elim-value-struct x)}
           {<- ast-type--comments (value-undelay-m (vector-ref ast 0) {λ () (vector space x)})}
           {<- ast-list--comments (value-undelay-m (vector-ref ast 1) {λ () (vector space x)})}
-          (WIP)
+          {cond
+            [else (WIP)]}
           }
         (cont-return (WIP))}}}
