@@ -64,14 +64,15 @@
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
 {define (assert-unreachable) (error 'assert-unreachable)}
+{define (WIP) (error 'WIP)}
 {define (id x) x}
 
 {define-syntax do
   {syntax-rules (<- :=)
     [(_ >>= x) x]
-    [(_ >>= #{x := v} . r) {let ([x v]) {do >>= . r}}]
-    [(_ >>= #{x <- v} . r) (>>= v {λ (x) {do >>= . r}})]
-    [(_ >>= v . r) {do >>= #{x <- v} . r}]}}
+    [(_ >>= {:= x v} . r) {let ([x v]) {do >>= . r}}]
+    [(_ >>= {<- x v} . r) (>>= v {λ (x) {do >>= . r}})]
+    [(_ >>= v . r) {do >>= {<- x v} . r}]}}
 
 {define:type t-id-t natural-number/c}
 {define:type value-bone-t (vector-tt t-id-t any-t any-t any-t)}
@@ -331,10 +332,14 @@
   (-> identifierspace-t value-t
       (cont-tt value-t value-t))
   {do cont->>=
-    #{x-comments <- (value-undelay-m x {λ () (vector space x)})}
-    #{x := (vector-ref x-comments 0)}
-    #{comments := (vector-ref x-comments 1)}
-    {cond
-      [(value-pair? x) "WIP"]
-      [else (cont-return (cons-value-comment (identifierspace-ref space x "WIP") comments))]}
-    }}
+    {<- x-comments (value-undelay-m x {λ () (vector space x)})}
+    {:= x (vector-ref x-comments 0)}
+    {:= comments (vector-ref x-comments 1)}
+    {if (value-struct? x)
+        {do cont->>=
+          {:= ast (elim-value-struct x)}
+          {<- ast-type--comments (value-undelay-m (vector-ref ast 0) {λ () (vector space x)})}
+          {<- ast-list--comments (value-undelay-m (vector-ref ast 1) {λ () (vector space x)})}
+          (WIP)
+          }
+        (cont-return (WIP))}}}
