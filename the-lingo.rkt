@@ -62,7 +62,6 @@
 {define:type not-tt not/c}
 {define:type any-t any/c}
 {define:type string-t string?}
-{define:type char-t char?}
 {define:type vector-tt vector/c}
 {define:type void-t void?}
 {define:type boolean-t boolean?}
@@ -105,8 +104,6 @@
 {define/t value-null-t-id value-null-t-id-t 2}
 {define:type value-struct-t-id-t (and-tt t-id-t 3)}
 {define/t value-struct-t-id value-struct-t-id-t 3}
-{define:type value-char-t-id-t (and-tt t-id-t 4)}
-{define/t value-char-t-id value-char-t-id-t 4}
 {define:type value-just-t-id-t (and-tt t-id-t 5)}
 {define/t value-just-t-id value-just-t-id-t 5}
 {define:type value-delay-t-id-t (and-tt t-id-t 6)}
@@ -117,7 +114,6 @@
 {define:type value-pair-t (value-tt (vector-tt value-pair-t-id-t value-t value-t nothing-t))}
 {define:type value-null-t (value-tt (vector-tt value-null-t-id-t nothing-t nothing-t nothing-t))}
 {define:type value-struct-t (value-tt (vector-tt value-struct-t-id-t value-t value-t nothing-t))}
-{define:type value-char-t (value-tt (vector-tt value-char-t-id-t char-t nothing-t nothing-t))}
 {define:type value-just-t (value-tt (vector-tt value-just-t-id-t value-t nothing-t nothing-t))}
 {define:type value-delay-t (value-tt (vector-tt value-delay-t-id-t (-> value-t) (-> (vector-tt identifierspace-t value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
 {define:type value-t
@@ -127,7 +123,6 @@
     value-pair-t
     value-null-t
     value-struct-t
-    value-char-t
     value-just-t
     value-delay-t
     ))}
@@ -144,9 +139,6 @@
 {define/t (value-struct? x)
   (-> value-t boolean-t)
   (= (vector-ref x 0) value-struct-t-id)}
-{define/t (value-char? x)
-  (-> value-t boolean-t)
-  (= (vector-ref x 0) value-char-t-id)}
 {define/t (value-just? x)
   (-> value-t boolean-t)
   (= (vector-ref x 0) value-just-t-id)}
@@ -176,12 +168,6 @@
   (-> value-struct-t (vector-tt value-t value-t))
   (vector (vector-ref x 1) (vector-ref x 2))}
 {define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing)}
-{define/t (cons-value-char x)
-  (-> char-t value-char-t)
-  (vector value-char-t-id x nothing nothing)}
-{define/t (elim-value-char x)
-  (-> value-char-t char-t)
-  (vector-ref x 1)}
 {define/t (cons-value-delay exec display_f)
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
   (vector value-delay-t-id exec display_f nothing)}
@@ -244,6 +230,35 @@
     [(value-delay? x) (cons-value-delay {λ () (value-undelay-m-aux (must-value-force-1 x) display_f f)} display_f)]
     [else (f x)]}}
 
+{define/t (value-equal? x y)
+  (-> value-t value-t boolean-t)
+  (if (eq? x y)
+      #t
+      {let/t ([x value-t (value-unjust-* x)] [y value-t (value-unjust-* y)])
+             {cond
+               [(eq? x y) #t]
+               [(or (value-delay? x) (value-delay? y)) #f]
+               [(value-null? x) {if (value-null? y)
+                                    {begin
+                                      (value-unsafe-set-to-just! x y)
+                                      #t}
+                                    #f}]
+               [(value-symbol? x) {if (and (value-symbol? y) (string=? (elim-value-symbol x) (elim-value-symbol y)))
+                                      {begin
+                                        (value-unsafe-set-to-just! x y)
+                                        #t}
+                                      #f}]
+               [(value-pair? x) {if (value-pair? y)
+                                    {let ([x01 (elim-value-pair x)] [y01 (elim-value-pair y)])
+                                      (and (value-force+equal? (vector-ref x01 0) (vector-ref y01 0))
+                                           (value-force+equal? (vector-ref x01 1) (vector-ref y01 1)))}
+                                    #f}]
+               [(value-struct? x) {if (value-struct? y)
+                                    {let ([x01 (elim-value-struct x)] [y01 (elim-value-struct y)])
+                                      (and (value-force+equal? (vector-ref x01 0) (vector-ref y01 0))
+                                           (value-force+equal? (vector-ref x01 1) (vector-ref y01 1)))}
+                                    #f}]}})}
+
 {define/t (value-force+equal? x y)
   (-> value-t value-t boolean-t)
   (if (eq? x y)
@@ -261,11 +276,6 @@
                                         (value-unsafe-set-to-just! x y)
                                         #t}
                                       #f}]
-               [(value-char? x) {if (and (value-char? y) (char=? (elim-value-char x) (elim-value-char y)))
-                                    {begin
-                                      (value-unsafe-set-to-just! x y)
-                                      #t}
-                                    #f}]
                [(value-pair? x) {if (value-pair? y)
                                     {let ([x01 (elim-value-pair x)] [y01 (elim-value-pair y)])
                                       (and (value-force+equal? (vector-ref x01 0) (vector-ref y01 0))
@@ -294,6 +304,7 @@
           {<- ast-type (value-undelay-m (vector-ref ast 0) {λ () (vector space x)})}
           {<- ast-list (value-undelay-m (vector-ref ast 1) {λ () (vector space x)})}
           {cond
+            [(value-equal? ast-type value-symbol-t) (WIP)]
             [else (WIP)]}
           }
         (cont-return (WIP))}}}
