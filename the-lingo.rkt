@@ -250,15 +250,14 @@
                                       #f}]
                [(value-pair? x) {if (value-pair? y)
                                     {let ([x01 (elim-value-pair x)] [y01 (elim-value-pair y)])
-                                      (and (value-force+equal? (vector-ref x01 0) (vector-ref y01 0))
-                                           (value-force+equal? (vector-ref x01 1) (vector-ref y01 1)))}
+                                      (and (value-equal? (vector-ref x01 0) (vector-ref y01 0))
+                                           (value-equal? (vector-ref x01 1) (vector-ref y01 1)))}
                                     #f}]
                [(value-struct? x) {if (value-struct? y)
                                     {let ([x01 (elim-value-struct x)] [y01 (elim-value-struct y)])
-                                      (and (value-force+equal? (vector-ref x01 0) (vector-ref y01 0))
-                                           (value-force+equal? (vector-ref x01 1) (vector-ref y01 1)))}
+                                      (and (value-equal? (vector-ref x01 0) (vector-ref y01 0))
+                                           (value-equal? (vector-ref x01 1) (vector-ref y01 1)))}
                                     #f}]}})}
-
 {define/t (value-force+equal? x y)
   (-> value-t value-t boolean-t)
   (if (eq? x y)
