@@ -222,12 +222,9 @@
   {λ (c) (x {λ (v) ((f v) c)})}}
 {define/t ((value-undelay-m x display_f) f)
   (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt value-t value-t))
-  (value-undelay-m-aux x display_f (list) f)}
-{define/t (value-undelay-m-aux x display_f f)
-  (-> value-t (-> (vector-tt identifierspace-t value-t)) (-> value-t value-t) value-t)
   {cond
-    [(value-just? x) (value-undelay-m-aux (value-unjust-* x) display_f f)]
-    [(value-delay? x) (cons-value-delay {λ () (value-undelay-m-aux (must-value-force-1 x) display_f f)} display_f)]
+    [(value-just? x) ((value-undelay-m (value-unjust-* x) display_f) f)]
+    [(value-delay? x) (cons-value-delay {λ () ((value-undelay-m (must-value-force-1 x) display_f) f)} display_f)]
     [else (f x)]}}
 
 {define/t (value-equal? x y)
@@ -254,10 +251,10 @@
                                            (value-equal? (vector-ref x01 1) (vector-ref y01 1)))}
                                     #f}]
                [(value-struct? x) {if (value-struct? y)
-                                    {let ([x01 (elim-value-struct x)] [y01 (elim-value-struct y)])
-                                      (and (value-equal? (vector-ref x01 0) (vector-ref y01 0))
-                                           (value-equal? (vector-ref x01 1) (vector-ref y01 1)))}
-                                    #f}]}})}
+                                      {let ([x01 (elim-value-struct x)] [y01 (elim-value-struct y)])
+                                        (and (value-equal? (vector-ref x01 0) (vector-ref y01 0))
+                                             (value-equal? (vector-ref x01 1) (vector-ref y01 1)))}
+                                      #f}]}})}
 {define/t (value-force+equal? x y)
   (-> value-t value-t boolean-t)
   (if (eq? x y)
@@ -281,10 +278,24 @@
                                            (value-force+equal? (vector-ref x01 1) (vector-ref y01 1)))}
                                     #f}]
                [(value-struct? x) {if (value-struct? y)
-                                    {let ([x01 (elim-value-struct x)] [y01 (elim-value-struct y)])
-                                      (and (value-force+equal? (vector-ref x01 0) (vector-ref y01 0))
-                                           (value-force+equal? (vector-ref x01 1) (vector-ref y01 1)))}
-                                    #f}]}})}
+                                      {let ([x01 (elim-value-struct x)] [y01 (elim-value-struct y)])
+                                        (and (value-force+equal? (vector-ref x01 0) (vector-ref y01 0))
+                                             (value-force+equal? (vector-ref x01 1) (vector-ref y01 1)))}
+                                      #f}]}})}
+
+{define/t (value-undelay-list-m xs display_f)
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt #f value-t)) value-t))
+  (value-undelay-list-m-aux xs '() display_f)}
+{define/t (value-undelay-list-m-aux xs history display_f)
+  (-> value-t (list-of-tt value-t) (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt nothing-t value-t)) value-t))
+  {do cont->>=
+    {<- xs (value-undelay-m xs display_f)}
+    {cond
+      [(value-null? xs) (cont-return (vector history nothing))]
+      [(value-pair? xs)
+       {let ([xs-01 (elim-value-pair xs)])
+         (value-undelay-list-m-aux (vector-ref xs-01 1) (append history (list (vector-ref xs-01 0))) display_f)}]
+      [else (cont-return (vector history xs))]}}}
 
 {define/t exp-id-s value-symbol-t (cons-value-symbol "標符")}
 
@@ -295,13 +306,14 @@
   ;; m a = (cont-tt a value-t)
   (-> identifierspace-t value-t
       (cont-tt value-t value-t))
+  {define display_f {λ () (vector space x)}}
   {do cont->>=
-    {<- x (value-undelay-m x {λ () (vector space x)})}
+    {<- x (value-undelay-m x display_f)}
     {if (value-struct? x)
         {do cont->>=
           {:= ast (elim-value-struct x)}
-          {<- ast-type (value-undelay-m (vector-ref ast 0) {λ () (vector space x)})}
-          {<- ast-list (value-undelay-m (vector-ref ast 1) {λ () (vector space x)})}
+          {<- ast-type (value-undelay-m (vector-ref ast 0) display_f)}
+          {<- ast-list--and--tail (value-undelay-list-m-aux (vector-ref ast 1) display_f)}
           {cond
             [(value-equal? ast-type value-symbol-t) (WIP)]
             [else (WIP)]}
