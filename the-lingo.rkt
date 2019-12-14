@@ -71,6 +71,9 @@
 {define-syntax-rule {list-foreach xs v . c} {for ([v xs]) . c}}
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
+{define/t (nothing? x)
+  (-> any-t boolean-t)
+  (equal? x nothing)}
 {define (WIP) (error 'WIP)}
 {define (id x) x}
 
@@ -314,7 +317,9 @@
           {:= ast (elim-value-struct x)}
           {<- ast-type (value-undelay-m (vector-ref ast 0) display_f)}
           {<- ast-list--and--tail (value-undelay-list-m-aux (vector-ref ast 1) display_f)}
+          {:= ast-list (vector-ref ast-list--and--tail 0)}
           {cond
+            [(nothing? (vector-ref ast-list--and--tail 1)) (WIP)]
             [(value-equal? ast-type value-symbol-t) (WIP)]
             [else (WIP)]}
           }
