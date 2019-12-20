@@ -15,6 +15,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 |#
 #lang racket
+
+;; This file is written in a Racket dialect defined and described below
+{define-syntax-rule {if-typecheck-on t f} t}
 #|
   create-    create mutable values
   cons-    constructor
@@ -31,17 +34,27 @@
   _f    function
 |#
 {require racket/contract}
-
 {define (assert-unreachable) (error 'assert-unreachable)}
-{require (rename-in racket [cond cOnD])}
-{define-syntax-rule (let . r) (match-let . r)}
+{require (rename-in racket [cond rkt#%cond] [define rkt#%define] [define/contract rkt#%define/contract])}
+{define-syntax lambda
+  {syntax-rules ()
+    [(_ (arg ...) . body) {match-lambda* [(list arg ...) . body]}]
+    [(_ (arg ... . rest-id) . body) {match-lambda* [(list-rest arg ... rest-id) . body]}]}}
+{define-syntax-rule {λ . r} {lambda . r}}
+{define-syntax-rule {let . r} {match-let . r}}
+{define-syntax define
+  {syntax-rules ()
+    [(_ (head . args) . body) {define head {λ args . body}}]
+    [(_ id expr) {rkt#%define id expr}]}}
+{define-syntax define/contract
+  {syntax-rules ()
+    [(_ (head . args) contract-expr . body) {define/contract head contract-expr {λ args . body}}]
+    [(_ id contract-expr expr) {rkt#%define/contract id contract-expr expr}]}}
 {define-syntax cond
   {syntax-rules (else =>)
-    [(_ head ... [else . then-body]) {cOnD head ... [else . then-body]}]
-    [(_ head ...) {cOnD head ... [else (assert-unreachable)]}]}}
-
+    [(_ head ... [else . then-body]) {rkt#%cond head ... [else . then-body]}]
+    [(_ head ...) {rkt#%cond head ... [else (assert-unreachable)]}]}}
 {require (only-in typed/racket assert)}
-{define-syntax-rule {if-typecheck-on t f} t}
 {define-syntax-rule {define:type . xs} {define . xs}}
 {define-syntax-rule {define-syntax-rule:type . xs} {define-syntax-rule . xs}}
 {if-typecheck-on
@@ -135,46 +148,46 @@
     value-delay-t
     ))}
 
-{define/t (value-symbol? x)
+{define/t (value-symbol? (vector t _ ...))
   (-> value-t boolean-t)
-  (= (vector-ref x 0) value-symbol-t-id)}
-{define/t (value-pair? x)
+  (= t value-symbol-t-id)}
+{define/t (value-pair? (vector t _ ...))
   (-> value-t boolean-t)
-  (= (vector-ref x 0) value-pair-t-id)}
-{define/t (value-null? x)
+  (= t value-pair-t-id)}
+{define/t (value-null? (vector t _ ...))
   (-> value-t boolean-t)
-  (= (vector-ref x 0) value-null-t-id)}
-{define/t (value-struct? x)
+  (= t value-null-t-id)}
+{define/t (value-struct? (vector t _ ...))
   (-> value-t boolean-t)
-  (= (vector-ref x 0) value-struct-t-id)}
-{define/t (value-just? x)
+  (= t value-struct-t-id)}
+{define/t (value-just? (vector t _ ...))
   (-> value-t boolean-t)
-  (= (vector-ref x 0) value-just-t-id)}
-{define/t (value-delay? x)
+  (= t value-just-t-id)}
+{define/t (value-delay? (vector t _ ...))
   (-> value-t boolean-t)
-  (= (vector-ref x 0) value-delay-t-id)}
+  (= t value-delay-t-id)}
 
 {define/t (cons-value-symbol x)
   (-> string-t value-symbol-t)
   (vector value-symbol-t-id x nothing nothing)}
-{define/t (elim-value-symbol x)
+{define/t (elim-value-symbol (vector _ v _ ...))
   (-> value-symbol-t string-t)
-  (vector-ref x 1)}
+  v}
 {define/t (value-symbol-equal? x y)
   (-> value-symbol-t value-symbol-t boolean-t)
   (string=? (elim-value-symbol x) (elim-value-symbol y))}
 {define/t (cons-value-pair x y)
   (-> value-t value-t value-pair-t)
   (vector value-pair-t-id x y nothing)}
-{define/t (elim-value-pair x)
+{define/t (elim-value-pair (vector _ x y _ ...))
   (-> value-pair-t (vector-tt value-t value-t))
-  (vector (vector-ref x 1) (vector-ref x 2))}
+  (vector x y)}
 {define/t (cons-value-struct x y)
   (-> value-t value-t value-struct-t)
   (vector value-struct-t-id x y nothing)}
-{define/t (elim-value-struct x)
+{define/t (elim-value-struct (vector _ x y _ ...))
   (-> value-struct-t (vector-tt value-t value-t))
-  (vector (vector-ref x 1) (vector-ref x 2))}
+  (vector x y)}
 {define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing)}
 {define/t (cons-value-delay exec display_f)
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
@@ -188,9 +201,9 @@
                   1 v
                   2 nothing
                   3 nothing)}}
-{define/t (must-value-unjust-1 x)
+{define/t (must-value-unjust-1 (vector _ v _ ...))
   (-> value-just-t value-t)
-  (vector-ref x 1)}
+  v}
 {define/t (value-unjust-* x)
   (-> value-t value-t)
   (value-unjust-*-aux x (list x))}
@@ -200,24 +213,22 @@
       {begin
         {list-foreach history history_v (value-unsafe-set-to-just! history_v x)}
         x})}
-{define/t (must-nocache-value-force-1 x)
+{define/t (must-nocache-value-force-1 (vector _ exec display_f _ ...))
   (-> value-delay-t value-t)
-  {let/t ([exec (-> value-t) (vector-ref x 1)])
-         {let/t ([v value-t (exec)])
-                v}}}
+  (exec)}
 {define/t (must-value-force-1 x)
   (-> value-delay-t value-t)
   {let/t ([v value-t (must-nocache-value-force-1 x)])
          (value-unsafe-set-to-just! x v)
          v}}
-{define/t (value-force x)
+{define/t (value-force* x)
   (-> value-t value-t)
-  (value-force-aux x (list x))}
-{define/t (value-force-aux x history)
+  (value-force*-aux x (list x))}
+{define/t (value-force*-aux x history)
   (-> value-t (list-of-tt value-t) value-t)
   {cond
-    [(value-just? x) (value-force-aux (must-value-unjust-1 x) (cons history x))]
-    [(value-delay? x) (value-force-aux (must-value-force-1 x) (cons history x))]
+    [(value-just? x) (value-force*-aux (must-value-unjust-1 x) (cons history x))]
+    [(value-delay? x) (value-force*-aux (must-value-force-1 x) (cons history x))]
     [else
      {list-foreach history history_v (value-unsafe-set-to-just! history_v x)}
      x]}}
@@ -235,61 +246,39 @@
     [(value-delay? x) (cons-value-delay {λ () ((value-undelay-m (must-value-force-1 x) display_f) f)} display_f)]
     [else (f x)]}}
 
-{define/t (value-equal? x y)
-  (-> value-t value-t boolean-t)
-  (if (eq? x y)
-      #t
-      {let/t ([x value-t (value-unjust-* x)] [y value-t (value-unjust-* y)])
-             {cond
-               [(eq? x y) #t]
-               [(or (value-delay? x) (value-delay? y)) #f]
-               [(value-null? x) {if (value-null? y)
-                                    {begin
-                                      (value-unsafe-set-to-just! x y)
-                                      #t}
-                                    #f}]
-               [(value-symbol? x) {if (and (value-symbol? y) (string=? (elim-value-symbol x) (elim-value-symbol y)))
+{define/t ((value-equal?-maker forcer) x y)
+  (-> (-> value-t value-t) (-> value-t value-t boolean-t))
+  {define (value-equal?-made x y)
+    (if (eq? x y)
+        #t
+        {let/t ([x value-t (forcer x)] [y value-t (forcer y)])
+               {cond
+                 [(eq? x y) #t]
+                 [(or (value-delay? x) (value-delay? y)) #f]
+                 [(value-null? x) {if (value-null? y)
                                       {begin
                                         (value-unsafe-set-to-just! x y)
                                         #t}
                                       #f}]
-               [(value-pair? x) {if (value-pair? y)
-                                    {let ([x01 (elim-value-pair x)] [y01 (elim-value-pair y)])
-                                      (and (value-equal? (vector-ref x01 0) (vector-ref y01 0))
-                                           (value-equal? (vector-ref x01 1) (vector-ref y01 1)))}
-                                    #f}]
-               [(value-struct? x) {if (value-struct? y)
-                                      {let ([x01 (elim-value-struct x)] [y01 (elim-value-struct y)])
-                                        (and (value-equal? (vector-ref x01 0) (vector-ref y01 0))
-                                             (value-equal? (vector-ref x01 1) (vector-ref y01 1)))}
-                                      #f}]}})}
-{define/t (value-force+equal? x y)
-  (-> value-t value-t boolean-t)
-  (if (eq? x y)
-      #t
-      {let/t ([x value-t (value-force x)] [y value-t (value-force y)])
-             {cond
-               [(eq? x y) #t]
-               [(value-null? x) {if (value-null? y)
-                                    {begin
-                                      (value-unsafe-set-to-just! x y)
-                                      #t}
-                                    #f}]
-               [(value-symbol? x) {if (and (value-symbol? y) (string=? (elim-value-symbol x) (elim-value-symbol y)))
-                                      {begin
-                                        (value-unsafe-set-to-just! x y)
-                                        #t}
+                 [(value-symbol? x) {if (and (value-symbol? y) (string=? (elim-value-symbol x) (elim-value-symbol y)))
+                                        {begin
+                                          (value-unsafe-set-to-just! x y)
+                                          #t}
+                                        #f}]
+                 [(value-pair? x) {if (value-pair? y)
+                                      {let ([(vector x0 x1) (elim-value-pair x)] [(vector y0 y1) (elim-value-pair y)])
+                                        (and (value-equal?-made x0 y0)
+                                             (value-equal?-made x1 y1))}
                                       #f}]
-               [(value-pair? x) {if (value-pair? y)
-                                    {let ([x01 (elim-value-pair x)] [y01 (elim-value-pair y)])
-                                      (and (value-force+equal? (vector-ref x01 0) (vector-ref y01 0))
-                                           (value-force+equal? (vector-ref x01 1) (vector-ref y01 1)))}
-                                    #f}]
-               [(value-struct? x) {if (value-struct? y)
-                                      {let ([x01 (elim-value-struct x)] [y01 (elim-value-struct y)])
-                                        (and (value-force+equal? (vector-ref x01 0) (vector-ref y01 0))
-                                             (value-force+equal? (vector-ref x01 1) (vector-ref y01 1)))}
-                                      #f}]}})}
+                 [(value-struct? x) {if (value-struct? y)
+                                        {let ([(vector x0 x1) (elim-value-struct x)] [(vector y0 y1) (elim-value-struct y)])
+                                          (and (value-equal?-made x0 y0)
+                                               (value-equal?-made x1 y1))}
+                                        #f}]}})}
+  value-equal?-made}
+
+{define/t value-equal? (-> value-t value-t boolean-t) (value-equal?-maker value-unjust-*)}
+{define/t value-force+equal? (-> value-t value-t boolean-t) (value-equal?-maker value-force*)}
 
 {define/t (value-undelay-list-m xs display_f)
   (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt #f value-t)) value-t))
@@ -301,8 +290,8 @@
     {cond
       [(value-null? xs) (cont-return (vector history nothing))]
       [(value-pair? xs)
-       {let ([xs-01 (elim-value-pair xs)])
-         (value-undelay-list-m-aux (vector-ref xs-01 1) (append history (list (vector-ref xs-01 0))) display_f)}]
+       {let ([(vector xs-head xs-tail) (elim-value-pair xs)])
+         (value-undelay-list-m-aux xs-tail (append history (list xs-head)) display_f)}]
       [else (cont-return (vector history xs))]}}}
 
 {define/t exp-id-s value-symbol-t (cons-value-symbol "標符")}
@@ -320,9 +309,9 @@
       #{x <- (value-undelay-m x display_f)}
       {if (value-struct? x)
           {do cont->>=
-            #{ast := (elim-value-struct x)}
-            #{ast-type <- (value-undelay-m (vector-ref ast 0) display_f)}
-            #{(vector ast-list ast-list--tail) <- (value-undelay-list-m-aux (vector-ref ast 1) display_f)}
+            #{(vector ast-type-raw ast-list-raw) := (elim-value-struct x)}
+            #{ast-type <- (value-undelay-m ast-type-raw display_f)}
+            #{(vector ast-list ast-list--tail) <- (value-undelay-list-m-aux ast-list-raw display_f)}
             #{ast-list-len := (length ast-list)}
             {cond
               [(not (nothing? ast-list--tail)) (error-v)]
