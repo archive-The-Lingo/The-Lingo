@@ -19,7 +19,6 @@
 ;; This file is written in a Racket dialect defined and described below
 {define-syntax-rule {if-typecheck-on t f} t}
 #|
-  create-    create mutable values
   cons-    constructor
   elim-    eliminator
   eq    equal
@@ -215,6 +214,12 @@
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
   (vector value-delay-t-id exec-f display-f nothing)}
 
+{define/t list->value
+  (-> (list-of-tt value-t) value-t)
+  {match-lambda
+    ['() value-null]
+    [(cons x y) (cons-value-pair x (list->value y))]}}
+
 {define/t sexp->value
   (-> any-t value-t)
   {match-lambda
@@ -329,12 +334,14 @@
       [else (cont-return (vector history xs))]}}}
 
 ;; Influenced by: zh_CN, zh_TW, ja
-{define/t exp-id-t-s value-symbol-t (cons-value-symbol "式/標符")}
-{define/t exp-apply-t-s value-symbol-t (cons-value-symbol "式/應用")}
-{define/t exp-apply-macro-t-s value-symbol-t (cons-value-symbol "式/構式子")}
-{define/t exp-builtin-t-s value-symbol-t (cons-value-symbol "式/內建")}
-{define/t exp-comment-t-s value-symbol-t (cons-value-symbol "式/注釋")}
-{define/t struct-macro-t-s value-symbol-t (cons-value-symbol "構式子")}
+{define/t exp-s value-symbol-t (cons-value-symbol "式")}
+{define/t id-s value-symbol-t (cons-value-symbol "標符")}
+{define/t apply-s value-symbol-t (cons-value-symbol "應用")}
+{define/t macro-s value-symbol-t (cons-value-symbol "構式子")}
+{define/t comment-s value-symbol-t (cons-value-symbol "注釋")}
+{define/t error-s value-symbol-t (cons-value-symbol "異常")}
+{define/t eval-s value-symbol-t (cons-value-symbol "解算")}
+{define/t builtin-s value-symbol-t (cons-value-symbol "內建")}
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
@@ -343,31 +350,32 @@
   (-> identifierspace-t value-t
       (cont-tt value-t value-t))
   {define (display-f) (vector space x)}
-  {define (->error-v) (WIP)}
+  {define (->error-v) (cons-value-struct error-s (list->value (list builtin-s eval-s space x)))}
   {do cont->>=
     #{x <- (value-undelay-m x display-f)}
     {cont-if-return-m (not (value-struct? x)) (->error-v)}
     #{(vector ast-type ast-list) := (elim-value-struct x)}
     #{ast-type <- (value-undelay-m ast-type display-f)}
+    {cont-if-return-m (not (value-equal? ast-type exp-s)) (->error-v)}
     #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list display-f)}
     {cont-if-return-m (not (nothing? ast-list--tail)) (->error-v)}
-    {match* (ast-type ast-list)
-      [((? (curry value-equal? exp-id-t-s)) `(,x))
+    {match ast-list
+      [(list (? (curry value-equal? id-s)) x)
        (cont-return (identifierspace-ref space x ->error-v))]
-      [((? (curry value-equal? exp-apply-t-s)) `(,f . ,xs))
+      [(list (? (curry value-equal? apply-s)) f xs ...)
        (cont-return (value-apply (evaluate space f) (map (curry evaluate space) xs)))]
-      [((? (curry value-equal? exp-apply-macro-t-s)) `(,f . ,xs))
+      [(list (? (curry value-equal? macro-s)) f xs ...)
        {do cont->>=
          #{f <- (value-undelay-m f display-f)}
          {cont-if-return-m (not (value-struct? x)) (->error-v)}
          #{(vector f-type f-list) := (elim-value-struct f)}
          #{f-type <- (value-undelay-m f-type display-f)}
          (WIP)}]
-      [((? (curry value-equal? exp-builtin-t-s)) `(,f . ,args))
+      [(list (? (curry value-equal? builtin-s)) f xs ...)
        (WIP)]
-      [((? (curry value-equal? exp-comment-t-s)) `(,comment ,x))
+      [(list (? (curry value-equal? comment-s)) comment x)
        (evaluate-aux space x)]
-      [(_ _)
+      [_
        (cont-return (->error-v))]}}}
 {define/t (value-apply f xs)
   (-> value-t (list-of-tt value-t) value-t)
@@ -384,4 +392,4 @@
       identifierspace-null
       (sexp->value 'x)
       (sexp->value 'v))
-     (sexp->value '#(式/標符 x)))))}
+     (sexp->value '#(式 標符 x)))))}
