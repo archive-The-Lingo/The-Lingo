@@ -271,6 +271,8 @@
 {define/t (cont->>= x f)
   (-> (cont-tt any-t any-t) (-> any-t (cont-tt any-t any-t)) (cont-tt any-t any-t))
   {λ (c) (x {λ (v) ((f v) c)})}}
+{define-syntax-rule {cont-if-return-m b v}
+  {λ (c) (if b v (c nothing))}}
 {define/t ((value-undelay-m x display-f) f)
   (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt value-t value-t))
   {cond
@@ -332,6 +334,7 @@
 {define/t exp-apply-macro-t-s value-symbol-t (cons-value-symbol "式/構式子")}
 {define/t exp-builtin-t-s value-symbol-t (cons-value-symbol "式/內建")}
 {define/t exp-comment-t-s value-symbol-t (cons-value-symbol "式/注釋")}
+{define/t struct-macro-t-s value-symbol-t (cons-value-symbol "構式子")}
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
@@ -343,34 +346,29 @@
   {define (->error-v) (WIP)}
   {do cont->>=
     #{x <- (value-undelay-m x display-f)}
-    {if (not (value-struct? x))
-        (cont-return (->error-v))
-        {do cont->>=
-          #{(vector ast-type ast-list) := (elim-value-struct x)}
-          #{ast-type <- (value-undelay-m ast-type display-f)}
-          #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list display-f)}
-          {if (not (nothing? ast-list--tail))
-              (cont-return (->error-v))
-              {match* (ast-type ast-list)
-                [((? (curry value-equal? exp-id-t-s)) `(,x))
-                 (cont-return (identifierspace-ref space x ->error-v))]
-                [((? (curry value-equal? exp-apply-t-s)) `(,f . ,xs))
-                 (cont-return (value-apply (evaluate space f) (map (curry evaluate space) xs)))]
-                [((? (curry value-equal? exp-apply-macro-t-s)) `(,f . ,xs))
-                 {do cont->>=
-                   #{f <- (value-undelay-m f display-f)}
-                   {if (not (value-struct? x))
-                       (cont-return (->error-v))
-                       {do cont->>=
-                         #{(vector f-type f-list) := (elim-value-struct f)}
-                         #{f-type <- (value-undelay-m f-type display-f)}
-                         (WIP)}}}]
-                [((? (curry value-equal? exp-builtin-t-s)) `(,f . ,args))
-                 (WIP)]
-                [((? (curry value-equal? exp-comment-t-s)) `(,comment ,x))
-                 (evaluate-aux space x)]
-                [(_ _)
-                 (cont-return (->error-v))]}}}}}}
+    {cont-if-return-m (not (value-struct? x)) (->error-v)}
+    #{(vector ast-type ast-list) := (elim-value-struct x)}
+    #{ast-type <- (value-undelay-m ast-type display-f)}
+    #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list display-f)}
+    {cont-if-return-m (not (nothing? ast-list--tail)) (->error-v)}
+    {match* (ast-type ast-list)
+      [((? (curry value-equal? exp-id-t-s)) `(,x))
+       (cont-return (identifierspace-ref space x ->error-v))]
+      [((? (curry value-equal? exp-apply-t-s)) `(,f . ,xs))
+       (cont-return (value-apply (evaluate space f) (map (curry evaluate space) xs)))]
+      [((? (curry value-equal? exp-apply-macro-t-s)) `(,f . ,xs))
+       {do cont->>=
+         #{f <- (value-undelay-m f display-f)}
+         {cont-if-return-m (not (value-struct? x)) (->error-v)}
+         #{(vector f-type f-list) := (elim-value-struct f)}
+         #{f-type <- (value-undelay-m f-type display-f)}
+         (WIP)}]
+      [((? (curry value-equal? exp-builtin-t-s)) `(,f . ,args))
+       (WIP)]
+      [((? (curry value-equal? exp-comment-t-s)) `(,comment ,x))
+       (evaluate-aux space x)]
+      [(_ _)
+       (cont-return (->error-v))]}}}
 {define/t (value-apply f xs)
   (-> value-t (list-of-tt value-t) value-t)
   (WIP)}
