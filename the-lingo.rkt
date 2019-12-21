@@ -22,8 +22,11 @@
   create-    create mutable values
   cons-    constructor
   elim-    eliminator
+  eq    equal
+  nat    natural numbers
+  exp    expression
   { .. }    macro/syntax
-  /t -t    type
+  /t -t t    type
   -tt    a function returning types
   -*    all
   !    read/write mutable values
@@ -31,10 +34,16 @@
   -m    monad/async/cps
   -aux    auxiliary
   -s    symbol
-  _f    function
+  -f    function
+  -v    value
 |#
 {require racket/contract}
 {define (assert-unreachable) (error 'assert-unreachable)}
+{define (WIP) (error 'WIP)}
+{define (id x) x}
+{define point-eq? eq?}
+{define nat-eq? =}
+{define string-eq? string=?}
 {require (rename-in racket [cond rkt#%cond] [define rkt#%define] [define/contract rkt#%define/contract])}
 {define-syntax lambda
   {syntax-rules ()
@@ -68,13 +77,12 @@
    {match-let ([id {: val typ}] ...) . r}}
  {define-syntax-rule {let/t ([id typ val] ...) . r}
    {match-let ([id val] ...) . r}}}
-{define-syntax-rule (t->? t)
+{define-syntax-rule (t->? t) ;; type -> predicate
   {let ([t-lazy (delay t)])
     {λ (x)
       {with-handlers ([exn:fail:contract? {λ (e) #f}])
         {define/contract _ (force t-lazy) x}
         #t}}}}
-{define-syntax-rule (rec-type x) (recursive-contract x #:chaperone)}
 {define:type and-tt and/c}
 {define:type or-tt or/c}
 {define:type not-tt not/c}
@@ -92,14 +100,12 @@
 {define/t (nothing? x)
   (-> any-t boolean-t)
   (equal? x nothing)}
-{define (WIP) (error 'WIP)}
-{define (id x) x}
 
 {define-syntax do
   {syntax-rules (<- :=)
     [(_ >>= x) x]
-    [(_ >>= #{x := v} . r) {match-let ([x v]) {do >>= . r}}]
-    [(_ >>= #{x <- v} . r) (>>= v {λ (arg) {match-let ([x arg]) {do >>= . r}}})]
+    [(_ >>= #{x := v} . r) {let ([x v]) {do >>= . r}}]
+    [(_ >>= #{x <- v} . r) (>>= v {λ (arg) {let ([x arg]) {do >>= . r}}})]
     [(_ >>= v . r) {do >>= #{x <- v} . r}]}}
 
 {define:type t-id-t natural-number/c}
@@ -150,22 +156,22 @@
 
 {define/t (value-symbol? (vector t _ ...))
   (-> value-t boolean-t)
-  (= t value-symbol-t-id)}
+  (nat-eq? t value-symbol-t-id)}
 {define/t (value-pair? (vector t _ ...))
   (-> value-t boolean-t)
-  (= t value-pair-t-id)}
+  (nat-eq? t value-pair-t-id)}
 {define/t (value-null? (vector t _ ...))
   (-> value-t boolean-t)
-  (= t value-null-t-id)}
+  (nat-eq? t value-null-t-id)}
 {define/t (value-struct? (vector t _ ...))
   (-> value-t boolean-t)
-  (= t value-struct-t-id)}
+  (nat-eq? t value-struct-t-id)}
 {define/t (value-just? (vector t _ ...))
   (-> value-t boolean-t)
-  (= t value-just-t-id)}
+  (nat-eq? t value-just-t-id)}
 {define/t (value-delay? (vector t _ ...))
   (-> value-t boolean-t)
-  (= t value-delay-t-id)}
+  (nat-eq? t value-delay-t-id)}
 
 {define/t (cons-value-symbol x)
   (-> string-t value-symbol-t)
@@ -175,7 +181,7 @@
   v}
 {define/t (value-symbol-equal? x y)
   (-> value-symbol-t value-symbol-t boolean-t)
-  (string=? (elim-value-symbol x) (elim-value-symbol y))}
+  (string-eq? (elim-value-symbol x) (elim-value-symbol y))}
 {define/t (cons-value-pair x y)
   (-> value-t value-t value-pair-t)
   (vector value-pair-t-id x y nothing)}
@@ -189,13 +195,13 @@
   (-> value-struct-t (vector-tt value-t value-t))
   (vector x y)}
 {define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing)}
-{define/t (cons-value-delay exec display_f)
+{define/t (cons-value-delay exec display-f)
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
-  (vector value-delay-t-id exec display_f nothing)}
+  (vector value-delay-t-id exec display-f nothing)}
 
 {define/t (value-unsafe-set-to-just! x v)
   (-> value-t value-t void-t)
-  {when (not (eq? x v))
+  {when (not (point-eq? x v))
     (vector-set*! x
                   0 value-just-t-id
                   1 v
@@ -213,7 +219,7 @@
       {begin
         {list-foreach history history_v (value-unsafe-set-to-just! history_v x)}
         x})}
-{define/t (must-nocache-value-force-1 (vector _ exec display_f _ ...))
+{define/t (must-nocache-value-force-1 (vector _ exec display-f _ ...))
   (-> value-delay-t value-t)
   (exec)}
 {define/t (must-value-force-1 x)
@@ -239,28 +245,28 @@
 {define/t (cont->>= x f)
   (-> (cont-tt any-t any-t) (-> any-t (cont-tt any-t any-t)) (cont-tt any-t any-t))
   {λ (c) (x {λ (v) ((f v) c)})}}
-{define/t ((value-undelay-m x display_f) f)
+{define/t ((value-undelay-m x display-f) f)
   (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt value-t value-t))
   {cond
-    [(value-just? x) ((value-undelay-m (value-unjust-* x) display_f) f)]
-    [(value-delay? x) (cons-value-delay {λ () ((value-undelay-m (must-value-force-1 x) display_f) f)} display_f)]
+    [(value-just? x) ((value-undelay-m (value-unjust-* x) display-f) f)]
+    [(value-delay? x) (cons-value-delay {λ () ((value-undelay-m (must-value-force-1 x) display-f) f)} display-f)]
     [else (f x)]}}
 
 {define/t ((value-equal?-maker forcer) x y)
   (-> (-> value-t value-t) (-> value-t value-t boolean-t))
   {define (value-equal?-made x y)
-    (if (eq? x y)
+    (if (point-eq? x y)
         #t
         {let/t ([x value-t (forcer x)] [y value-t (forcer y)])
                {cond
-                 [(eq? x y) #t]
+                 [(point-eq? x y) #t]
                  [(or (value-delay? x) (value-delay? y)) #f]
                  [(value-null? x) {if (value-null? y)
                                       {begin
                                         (value-unsafe-set-to-just! x y)
                                         #t}
                                       #f}]
-                 [(value-symbol? x) {if (and (value-symbol? y) (string=? (elim-value-symbol x) (elim-value-symbol y)))
+                 [(value-symbol? x) {if (and (value-symbol? y) (string-eq? (elim-value-symbol x) (elim-value-symbol y)))
                                         {begin
                                           (value-unsafe-set-to-just! x y)
                                           #t}
@@ -280,18 +286,18 @@
 {define/t value-equal? (-> value-t value-t boolean-t) (value-equal?-maker value-unjust-*)}
 {define/t value-force+equal? (-> value-t value-t boolean-t) (value-equal?-maker value-force*)}
 
-{define/t (value-undelay-list-m xs display_f)
+{define/t (value-undelay-list-m xs display-f)
   (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt #f value-t)) value-t))
-  (value-undelay-list-m-aux xs '() display_f)}
-{define/t (value-undelay-list-m-aux xs history display_f)
+  (value-undelay-list-m-aux xs '() display-f)}
+{define/t (value-undelay-list-m-aux xs history display-f)
   (-> value-t (list-of-tt value-t) (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt nothing-t value-t)) value-t))
   {do cont->>=
-    #{xs <- (value-undelay-m xs display_f)}
+    #{xs <- (value-undelay-m xs display-f)}
     {cond
       [(value-null? xs) (cont-return (vector history nothing))]
       [(value-pair? xs)
        {let ([(vector xs-head xs-tail) (elim-value-pair xs)])
-         (value-undelay-list-m-aux xs-tail (append history (list xs-head)) display_f)}]
+         (value-undelay-list-m-aux xs-tail (append history (list xs-head)) display-f)}]
       [else (cont-return (vector history xs))]}}}
 
 {define/t exp-id-s value-symbol-t (cons-value-symbol "標符")}
@@ -304,18 +310,18 @@
   ;; m a = (cont-tt a value-t)
   (-> identifierspace-t value-t
       (cont-tt value-t value-t))
-  {let ([display_f {λ () (vector space x)}] [error-v (WIP)])
+  {let ([display-f {λ () (vector space x)}] [error-v (WIP)])
     {do cont->>=
-      #{x <- (value-undelay-m x display_f)}
+      #{x <- (value-undelay-m x display-f)}
       {if (value-struct? x)
           {do cont->>=
             #{(vector ast-type-raw ast-list-raw) := (elim-value-struct x)}
-            #{ast-type <- (value-undelay-m ast-type-raw display_f)}
-            #{(vector ast-list ast-list--tail) <- (value-undelay-list-m-aux ast-list-raw display_f)}
+            #{ast-type <- (value-undelay-m ast-type-raw display-f)}
+            #{(vector ast-list ast-list--tail) <- (value-undelay-list-m-aux ast-list-raw display-f)}
             #{ast-list-len := (length ast-list)}
             {cond
               [(not (nothing? ast-list--tail)) (error-v)]
-              [(and (= ast-list-len 1) (value-equal? ast-type exp-id-s)) (WIP)]
+              [(and (nat-eq? ast-list-len 1) (value-equal? ast-type exp-id-s)) (WIP)]
               [(and (>= ast-list-len 1) (value-equal? ast-type exp-apply-s)) (WIP)]
               [else (WIP)]}
             }
