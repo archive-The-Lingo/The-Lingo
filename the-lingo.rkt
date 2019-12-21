@@ -346,9 +346,9 @@
     {if (not (value-struct? x))
         (cont-return (->error-v))
         {do cont->>=
-          #{(vector ast-type-raw ast-list-raw) := (elim-value-struct x)}
-          #{ast-type <- (value-undelay-m ast-type-raw display-f)}
-          #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list-raw display-f)}
+          #{(vector ast-type ast-list) := (elim-value-struct x)}
+          #{ast-type <- (value-undelay-m ast-type display-f)}
+          #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list display-f)}
           {if (not (nothing? ast-list--tail))
               (cont-return (->error-v))
               {match* (ast-type ast-list)
@@ -357,16 +357,20 @@
                 [((? (curry value-equal? exp-apply-t-s)) `(,f . ,xs))
                  (cont-return (value-apply (evaluate space f) (map (curry evaluate space) xs)))]
                 [((? (curry value-equal? exp-apply-macro-t-s)) `(,f . ,xs))
-                 (evaluate-aux-macro space (evaluate space f) xs)]
+                 {do cont->>=
+                   #{f <- (value-undelay-m f display-f)}
+                   {if (not (value-struct? x))
+                       (cont-return (->error-v))
+                       {do cont->>=
+                         #{(vector f-type f-list) := (elim-value-struct f)}
+                         #{f-type <- (value-undelay-m f-type display-f)}
+                         (WIP)}}}]
                 [((? (curry value-equal? exp-builtin-t-s)) `(,f . ,args))
                  (WIP)]
                 [((? (curry value-equal? exp-comment-t-s)) `(,comment ,x))
                  (evaluate-aux space x)]
                 [(_ _)
                  (cont-return (->error-v))]}}}}}}
-{define/t (evaluate-aux-macro space f xs)
-  (-> identifierspace-t value-t (list-of-tt value-t) (cont-tt value-t value-t))
-  (WIP)}
 {define/t (value-apply f xs)
   (-> value-t (list-of-tt value-t) value-t)
   (WIP)}
