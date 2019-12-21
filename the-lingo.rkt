@@ -310,19 +310,19 @@
   ;; m a = (cont-tt a value-t)
   (-> identifierspace-t value-t
       (cont-tt value-t value-t))
-  {let ([display-f {λ () (vector space x)}] [error-v (WIP)])
-    {do cont->>=
-      #{x <- (value-undelay-m x display-f)}
-      {if (value-struct? x)
-          {do cont->>=
-            #{(vector ast-type-raw ast-list-raw) := (elim-value-struct x)}
-            #{ast-type <- (value-undelay-m ast-type-raw display-f)}
-            #{(vector ast-list ast-list--tail) <- (value-undelay-list-m-aux ast-list-raw display-f)}
-            #{ast-list-len := (length ast-list)}
-            {cond
-              [(not (nothing? ast-list--tail)) (error-v)]
-              [(and (nat-eq? ast-list-len 1) (value-equal? ast-type exp-id-s)) (WIP)]
-              [(and (>= ast-list-len 1) (value-equal? ast-type exp-apply-s)) (WIP)]
-              [else (WIP)]}
-            }
-          (cont-return (WIP))}}}}
+  {define (display-f) (vector space x)}
+  {define (error-v) (WIP)}
+  {do cont->>=
+    #{x <- (value-undelay-m x display-f)}
+    {if (not (value-struct? x))
+        (cont-return (error-v))
+        {do cont->>=
+          #{(vector ast-type-raw ast-list-raw) := (elim-value-struct x)}
+          #{ast-type <- (value-undelay-m ast-type-raw display-f)}
+          #{(vector ast-list ast-list--tail) <- (value-undelay-list-m-aux ast-list-raw display-f)}
+          {if (not (nothing? ast-list--tail))
+              (cont-return (error-v))
+              {match* (ast-type ast-list)
+                [((? (curry value-equal? exp-id-s)) `(,x)) (WIP)]
+                [((? (curry value-equal? exp-apply-s)) `(,f . ,args)) (WIP)]
+                [(_ _) (cont-return (error-v))]}}}}}}
