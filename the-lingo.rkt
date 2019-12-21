@@ -102,6 +102,11 @@
   (-> any-t boolean-t)
   (equal? x nothing)}
 
+{define (memorize1 f)
+  {let ([cache (make-weak-hasheq)])
+    {λ (x)
+      (force (hash-ref! cache x {λ () (delay (f x))}))}}}
+
 {define-syntax do
   {syntax-rules (<- :=)
     [(_ >>= x) x]
@@ -138,23 +143,32 @@
 {define:type value-delay-t-id-t (and-tt t-id-t 'delay)}
 {define/t value-delay-t-id value-delay-t-id-t 'delay}
 
-{define-syntax-rule:type (value-tt x) (t->? (and-tt value-bone-t x))} ;; without t->?, it will make the same value different and disallow changing the type of value
+;; without t->?, it will make the same value different and disallow changing the type of value
+{define-syntax-rule:type (value-tt x) (t->? (and-tt value-bone-t x))}
 {define:type value-symbol-t (value-tt (vector-tt value-symbol-t-id-t string-t nothing-t nothing-t))}
 {define:type value-pair-t (value-tt (vector-tt value-pair-t-id-t value-t value-t nothing-t))}
 {define:type value-null-t (value-tt (vector-tt value-null-t-id-t nothing-t nothing-t nothing-t))}
 {define:type value-struct-t (value-tt (vector-tt value-struct-t-id-t value-t value-t nothing-t))}
 {define:type value-just-t (value-tt (vector-tt value-just-t-id-t value-t nothing-t nothing-t))}
-{define:type value-delay-t (value-tt (vector-tt value-delay-t-id-t (-> value-t) (-> (vector-tt identifierspace-t value-t)) nothing-t))} ;; exec:`(-> value-t)`/display:`(-> (vector-t identifierspace-t value-t))`
+{define:type value-delay-t
+  (value-tt
+   (vector-tt
+    value-delay-t-id-t
+    (-> value-t) ;; exec-f
+    (-> (vector-tt identifierspace-t value-t)) ;; display-f
+    nothing-t))}
+;; value-t type values may change, but often it is always a value-t type value, so it is memorized
 {define:type value-t
-  (t->?
-   (or-tt
-    value-symbol-t
-    value-pair-t
-    value-null-t
-    value-struct-t
-    value-just-t
-    value-delay-t
-    ))}
+  (memorize1
+   (t->?
+    (or-tt
+     value-symbol-t
+     value-pair-t
+     value-null-t
+     value-struct-t
+     value-just-t
+     value-delay-t
+     )))}
 
 {define/t (value-symbol? (vector t _ ...))
   (-> value-t boolean-t)
@@ -197,9 +211,9 @@
   (-> value-struct-t (vector-tt value-t value-t))
   (vector x y)}
 {define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing)}
-{define/t (cons-value-delay exec display-f)
+{define/t (cons-value-delay exec-f display-f)
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
-  (vector value-delay-t-id exec display-f nothing)}
+  (vector value-delay-t-id exec-f display-f nothing)}
 
 {define/t sexp->value
   (-> any-t value-t)
@@ -210,7 +224,7 @@
     [(vector #f rest-part ...)
      {match rest-part
        [(list 'struct t v) (cons-value-struct (sexp->value t) (sexp->value v))]
-       [(list 'delay exec display-f) (cons-value-delay exec display-f)]}]
+       [(list 'delay exec-f display-f) (cons-value-delay exec-f display-f)]}]
     [(vector t xs ...) (cons-value-struct (sexp->value t) (sexp->value xs))]}}
 
 {define/t (unsafe--value-set-to-just! x v)
@@ -233,12 +247,10 @@
       {begin
         {list-foreach history history_v (unsafe--value-set-to-just! history_v x)}
         x})}
-{define/t (must-nocache-value-force-1 (vector _ exec display-f _ ...))
+{define/t (must-value-force-1 (and x (vector _ exec-f display-f _ ...)))
   (-> value-delay-t value-t)
-  (exec)}
-{define/t (must-value-force-1 x)
-  (-> value-delay-t value-t)
-  {let/t ([v value-t (must-nocache-value-force-1 x)])
+  (vector-set! x 1 assert-unreachable)
+  {let/t ([v value-t (exec-f)])
          (unsafe--value-set-to-just! x v)
          v}}
 {define/t (value-force* x)
@@ -342,18 +354,20 @@
               {match* (ast-type ast-list)
                 [((? (curry value-equal? exp-id-t-s)) `(,x))
                  (cont-return (identifierspace-ref space x ->error-v))]
-                [((? (curry value-equal? exp-apply-t-s)) `(,f . ,args))
-                 (cont-return (evaluate/apply (evaluate space f) (map (curry evaluate space) args)))]
-                [((? (curry value-equal? exp-apply-macro-t-s)) `(,f . ,args))
-                 (WIP)]
+                [((? (curry value-equal? exp-apply-t-s)) `(,f . ,xs))
+                 (cont-return (value-apply (evaluate space f) (map (curry evaluate space) xs)))]
+                [((? (curry value-equal? exp-apply-macro-t-s)) `(,f . ,xs))
+                 (evaluate-aux-macro space (evaluate space f) xs)]
                 [((? (curry value-equal? exp-builtin-t-s)) `(,f . ,args))
                  (WIP)]
                 [((? (curry value-equal? exp-comment-t-s)) `(,comment ,x))
                  (evaluate-aux space x)]
                 [(_ _)
                  (cont-return (->error-v))]}}}}}}
-
-{define/t (evaluate/apply f xs)
+{define/t (evaluate-aux-macro space f xs)
+  (-> identifierspace-t value-t (list-of-tt value-t) (cont-tt value-t value-t))
+  (WIP)}
+{define/t (value-apply f xs)
   (-> value-t (list-of-tt value-t) value-t)
   (WIP)}
 
