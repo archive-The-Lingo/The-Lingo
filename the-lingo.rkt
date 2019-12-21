@@ -94,6 +94,7 @@
 {define:type box-t box/c}
 {define:type list-of-tt listof}
 {define:type null-t null?}
+{define:type symbol-t symbol?}
 {define-syntax-rule {list-foreach xs v . c} {for ([v xs]) . c}}
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
@@ -108,9 +109,6 @@
     [(_ >>= #{x <- v} . r) (>>= v {λ (arg) {let ([x arg]) {do >>= . r}}})]
     [(_ >>= v . r) {do >>= #{x <- v} . r}]}}
 
-{define:type t-id-t natural-number/c}
-{define:type value-bone-t (vector-tt t-id-t any-t any-t any-t)}
-
 {define-values (identifierspace? identifierspace-null identifierspace-ref identifierspace-set)
   ({λ ()
      {define (val-eq? x y) (value-force+equal? x y)} ;; because "cannot reference an identifier before its definition"
@@ -123,18 +121,22 @@
      (values immutable-identifierspace? identifierspace-null identifierspace-ref identifierspace-set)})}
 {define:type identifierspace-t identifierspace?}
 
-{define:type value-symbol-t-id-t (and-tt t-id-t 0)}
-{define/t value-symbol-t-id value-symbol-t-id-t 0}
-{define:type value-pair-t-id-t (and-tt t-id-t 1)}
-{define/t value-pair-t-id value-pair-t-id-t 1}
-{define:type value-null-t-id-t (and-tt t-id-t 2)}
-{define/t value-null-t-id value-null-t-id-t 2}
-{define:type value-struct-t-id-t (and-tt t-id-t 3)}
-{define/t value-struct-t-id value-struct-t-id-t 3}
-{define:type value-just-t-id-t (and-tt t-id-t 5)}
-{define/t value-just-t-id value-just-t-id-t 5}
-{define:type value-delay-t-id-t (and-tt t-id-t 6)}
-{define/t value-delay-t-id value-delay-t-id-t 6}
+{define:type t-id-t symbol-t}
+{define t-id-eq? eq?}
+{define:type value-bone-t (vector-tt t-id-t any-t any-t any-t)}
+
+{define:type value-symbol-t-id-t (and-tt t-id-t 'symbol)}
+{define/t value-symbol-t-id value-symbol-t-id-t 'symbol}
+{define:type value-pair-t-id-t (and-tt t-id-t 'pair)}
+{define/t value-pair-t-id value-pair-t-id-t 'pair}
+{define:type value-null-t-id-t (and-tt t-id-t 'null)}
+{define/t value-null-t-id value-null-t-id-t 'null}
+{define:type value-struct-t-id-t (and-tt t-id-t 'struct)}
+{define/t value-struct-t-id value-struct-t-id-t 'struct}
+{define:type value-just-t-id-t (and-tt t-id-t 'just)}
+{define/t value-just-t-id value-just-t-id-t 'just}
+{define:type value-delay-t-id-t (and-tt t-id-t 'delay)}
+{define/t value-delay-t-id value-delay-t-id-t 'delay}
 
 {define-syntax-rule:type (value-tt x) (t->? (and-tt value-bone-t x))} ;; without t->?, it will make the same value different and disallow changing the type of value
 {define:type value-symbol-t (value-tt (vector-tt value-symbol-t-id-t string-t nothing-t nothing-t))}
@@ -156,22 +158,22 @@
 
 {define/t (value-symbol? (vector t _ ...))
   (-> value-t boolean-t)
-  (nat-eq? t value-symbol-t-id)}
+  (t-id-eq? t value-symbol-t-id)}
 {define/t (value-pair? (vector t _ ...))
   (-> value-t boolean-t)
-  (nat-eq? t value-pair-t-id)}
+  (t-id-eq? t value-pair-t-id)}
 {define/t (value-null? (vector t _ ...))
   (-> value-t boolean-t)
-  (nat-eq? t value-null-t-id)}
+  (t-id-eq? t value-null-t-id)}
 {define/t (value-struct? (vector t _ ...))
   (-> value-t boolean-t)
-  (nat-eq? t value-struct-t-id)}
+  (t-id-eq? t value-struct-t-id)}
 {define/t (value-just? (vector t _ ...))
   (-> value-t boolean-t)
-  (nat-eq? t value-just-t-id)}
+  (t-id-eq? t value-just-t-id)}
 {define/t (value-delay? (vector t _ ...))
   (-> value-t boolean-t)
-  (nat-eq? t value-delay-t-id)}
+  (t-id-eq? t value-delay-t-id)}
 
 {define/t (cons-value-symbol x)
   (-> string-t value-symbol-t)
@@ -199,6 +201,18 @@
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
   (vector value-delay-t-id exec display-f nothing)}
 
+{define/t sexp->value
+  (-> any-t value-t)
+  {match-lambda
+    ['() value-null]
+    [(? symbol? s) (cons-value-symbol (symbol->string s))]
+    [(cons x y) (cons-value-pair (sexp->value x) (sexp->value y))]
+    [(vector #f rest-part ...)
+     {match rest-part
+       [(list 'struct t v) (cons-value-struct (sexp->value t) (sexp->value v))]
+       [(list 'delay exec display-f) (cons-value-delay exec display-f)]}]
+    [(vector t xs ...) (cons-value-struct (sexp->value t) (sexp->value xs))]}}
+
 {define/t (unsafe--value-set-to-just! x v)
   (-> value-t value-t void-t)
   {when (not (point-eq? x v))
@@ -215,7 +229,7 @@
   (value-unjust-*-aux x (list x))}
 {define/t (value-unjust-*-aux x history)
   (-> value-t (list-of-tt value-t) value-t)
-  (if (value-just? x) (value-unjust-*-aux (must-value-unjust-1 x) (cons history x))
+  (if (value-just? x) (value-unjust-*-aux (must-value-unjust-1 x) (cons x history))
       {begin
         {list-foreach history history_v (unsafe--value-set-to-just! history_v x)}
         x})}
@@ -233,8 +247,8 @@
 {define/t (value-force*-aux x history)
   (-> value-t (list-of-tt value-t) value-t)
   {cond
-    [(value-just? x) (value-force*-aux (must-value-unjust-1 x) (cons history x))]
-    [(value-delay? x) (value-force*-aux (must-value-force-1 x) (cons history x))]
+    [(value-just? x) (value-force*-aux (must-value-unjust-1 x) (cons x history))]
+    [(value-delay? x) (value-force*-aux (must-value-force-1 x) (cons x history))]
     [else
      {list-foreach history history_v (unsafe--value-set-to-just! history_v x)}
      x]}}
@@ -252,7 +266,7 @@
     [(value-delay? x) (cons-value-delay {λ () ((value-undelay-m (must-value-force-1 x) display-f) f)} display-f)]
     [else (f x)]}}
 
-{define/t ((value-equal?-maker forcer) x y)
+{define/t (value-equal?-maker forcer)
   (-> (-> value-t value-t) (-> value-t value-t boolean-t))
   {define (value-equal?-made x y)
     (if (point-eq? x y)
@@ -287,7 +301,7 @@
 {define/t value-force+equal? (-> value-t value-t boolean-t) (value-equal?-maker value-force*)}
 
 {define/t (value-undelay-list-m xs display-f)
-  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt #f value-t)) value-t))
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt nothing-t value-t)) value-t))
   (value-undelay-list-m-aux xs '() display-f)}
 {define/t (value-undelay-list-m-aux xs history display-f)
   (-> value-t (list-of-tt value-t) (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt nothing-t value-t)) value-t))
@@ -307,7 +321,6 @@
   (-> identifierspace-t value-t value-t)
   (cons-value-delay {λ () ((evaluate-aux space x) id)} {λ () (vector space x)})}
 {define/t (evaluate-aux space x)
-  ;; m a = (cont-tt a value-t)
   (-> identifierspace-t value-t
       (cont-tt value-t value-t))
   {define (display-f) (vector space x)}
@@ -319,7 +332,7 @@
         {do cont->>=
           #{(vector ast-type-raw ast-list-raw) := (elim-value-struct x)}
           #{ast-type <- (value-undelay-m ast-type-raw display-f)}
-          #{(vector ast-list ast-list--tail) <- (value-undelay-list-m-aux ast-list-raw display-f)}
+          #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list-raw display-f)}
           {if (not (nothing? ast-list--tail))
               (cont-return (->error-v))
               {match* (ast-type ast-list)
