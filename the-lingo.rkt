@@ -199,7 +199,7 @@
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
   (vector value-delay-t-id exec display-f nothing)}
 
-{define/t (value-unsafe-set-to-just! x v)
+{define/t (unsafe--value-set-to-just! x v)
   (-> value-t value-t void-t)
   {when (not (point-eq? x v))
     (vector-set*! x
@@ -217,7 +217,7 @@
   (-> value-t (list-of-tt value-t) value-t)
   (if (value-just? x) (value-unjust-*-aux (must-value-unjust-1 x) (cons history x))
       {begin
-        {list-foreach history history_v (value-unsafe-set-to-just! history_v x)}
+        {list-foreach history history_v (unsafe--value-set-to-just! history_v x)}
         x})}
 {define/t (must-nocache-value-force-1 (vector _ exec display-f _ ...))
   (-> value-delay-t value-t)
@@ -225,7 +225,7 @@
 {define/t (must-value-force-1 x)
   (-> value-delay-t value-t)
   {let/t ([v value-t (must-nocache-value-force-1 x)])
-         (value-unsafe-set-to-just! x v)
+         (unsafe--value-set-to-just! x v)
          v}}
 {define/t (value-force* x)
   (-> value-t value-t)
@@ -236,7 +236,7 @@
     [(value-just? x) (value-force*-aux (must-value-unjust-1 x) (cons history x))]
     [(value-delay? x) (value-force*-aux (must-value-force-1 x) (cons history x))]
     [else
-     {list-foreach history history_v (value-unsafe-set-to-just! history_v x)}
+     {list-foreach history history_v (unsafe--value-set-to-just! history_v x)}
      x]}}
 {define:type (cont-tt a r) (-> (-> a r) r)}
 {define/t (cont-return x)
@@ -263,12 +263,12 @@
                  [(or (value-delay? x) (value-delay? y)) #f]
                  [(value-null? x) {if (value-null? y)
                                       {begin
-                                        (value-unsafe-set-to-just! x y)
+                                        (unsafe--value-set-to-just! x y)
                                         #t}
                                       #f}]
                  [(value-symbol? x) {if (and (value-symbol? y) (string-eq? (elim-value-symbol x) (elim-value-symbol y)))
                                         {begin
-                                          (value-unsafe-set-to-just! x y)
+                                          (unsafe--value-set-to-just! x y)
                                           #t}
                                         #f}]
                  [(value-pair? x) {if (value-pair? y)
@@ -305,24 +305,24 @@
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
-  ((evaluate-aux space x) id)}
+  (cons-value-delay {λ () ((evaluate-aux space x) id)} {λ () (vector space x)})}
 {define/t (evaluate-aux space x)
   ;; m a = (cont-tt a value-t)
   (-> identifierspace-t value-t
       (cont-tt value-t value-t))
   {define (display-f) (vector space x)}
-  {define (error-v) (WIP)}
+  {define (->error-v) (WIP)}
   {do cont->>=
     #{x <- (value-undelay-m x display-f)}
     {if (not (value-struct? x))
-        (cont-return (error-v))
+        (cont-return (->error-v))
         {do cont->>=
           #{(vector ast-type-raw ast-list-raw) := (elim-value-struct x)}
           #{ast-type <- (value-undelay-m ast-type-raw display-f)}
           #{(vector ast-list ast-list--tail) <- (value-undelay-list-m-aux ast-list-raw display-f)}
           {if (not (nothing? ast-list--tail))
-              (cont-return (error-v))
+              (cont-return (->error-v))
               {match* (ast-type ast-list)
-                [((? (curry value-equal? exp-id-s)) `(,x)) (WIP)]
+                [((? (curry value-equal? exp-id-s)) `(,x)) (cont-return (identifierspace-ref space x ->error-v))]
                 [((? (curry value-equal? exp-apply-s)) `(,f . ,args)) (WIP)]
-                [(_ _) (cont-return (error-v))]}}}}}}
+                [(_ _) (cont-return (->error-v))]}}}}}}
