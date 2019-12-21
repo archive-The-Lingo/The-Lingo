@@ -319,6 +319,7 @@
 {define/t exp-apply-t-s value-symbol-t (cons-value-symbol "式/應用")}
 {define/t exp-apply-macro-t-s value-symbol-t (cons-value-symbol "式/構式子")}
 {define/t exp-builtin-t-s value-symbol-t (cons-value-symbol "式/內建")}
+{define/t exp-comment-t-s value-symbol-t (cons-value-symbol "式/注釋")}
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
@@ -339,11 +340,22 @@
           {if (not (nothing? ast-list--tail))
               (cont-return (->error-v))
               {match* (ast-type ast-list)
-                [((? (curry value-equal? exp-id-t-s)) `(,x)) (cont-return (identifierspace-ref space x ->error-v))]
-                [((? (curry value-equal? exp-apply-t-s)) `(,f . ,args)) (WIP)]
-                [((? (curry value-equal? exp-apply-macro-t-s)) `(,f . ,args)) (WIP)]
-                [((? (curry value-equal? exp-builtin-t-s)) `(,f . ,args)) (WIP)]
-                [(_ _) (cont-return (->error-v))]}}}}}}
+                [((? (curry value-equal? exp-id-t-s)) `(,x))
+                 (cont-return (identifierspace-ref space x ->error-v))]
+                [((? (curry value-equal? exp-apply-t-s)) `(,f . ,args))
+                 (cont-return (evaluate/apply (evaluate space f) (map (curry evaluate space) args)))]
+                [((? (curry value-equal? exp-apply-macro-t-s)) `(,f . ,args))
+                 (WIP)]
+                [((? (curry value-equal? exp-builtin-t-s)) `(,f . ,args))
+                 (WIP)]
+                [((? (curry value-equal? exp-comment-t-s)) `(,comment ,x))
+                 (evaluate-aux space x)]
+                [(_ _)
+                 (cont-return (->error-v))]}}}}}}
+
+{define/t (evaluate/apply f xs)
+  (-> value-t (list-of-tt value-t) value-t)
+  (WIP)}
 
 {define (unittest)
   {local-require rackunit}
