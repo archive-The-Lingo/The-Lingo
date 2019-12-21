@@ -339,3 +339,16 @@
                 [((? (curry value-equal? exp-id-s)) `(,x)) (cont-return (identifierspace-ref space x ->error-v))]
                 [((? (curry value-equal? exp-apply-s)) `(,f . ,args)) (WIP)]
                 [(_ _) (cont-return (->error-v))]}}}}}}
+
+{define (unittest)
+  {local-require rackunit}
+  (check
+   value-equal?
+   (sexp->value 'v)
+   (value-force*
+    (evaluate
+     (identifierspace-set
+      identifierspace-null
+      (sexp->value 'x)
+      (sexp->value 'v))
+     (sexp->value '#(標符 x)))))}
