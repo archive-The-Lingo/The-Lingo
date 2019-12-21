@@ -314,9 +314,11 @@
          (value-undelay-list-m-aux xs-tail (append history (list xs-head)) display-f)}]
       [else (cont-return (vector history xs))]}}}
 
-{define/t exp-id-s value-symbol-t (cons-value-symbol "式/標符")}
-{define/t exp-apply-s value-symbol-t (cons-value-symbol "式/應用")}
-{define/t exp-apply-macro-s value-symbol-t (cons-value-symbol "式/構式子")}
+;; Influenced by: zh_CN, zh_TW, ja
+{define/t exp-id-t-s value-symbol-t (cons-value-symbol "式/標符")}
+{define/t exp-apply-t-s value-symbol-t (cons-value-symbol "式/應用")}
+{define/t exp-apply-macro-t-s value-symbol-t (cons-value-symbol "式/構式子")}
+{define/t exp-builtin-t-s value-symbol-t (cons-value-symbol "式/內建")}
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
@@ -337,9 +339,10 @@
           {if (not (nothing? ast-list--tail))
               (cont-return (->error-v))
               {match* (ast-type ast-list)
-                [((? (curry value-equal? exp-id-s)) `(,x)) (cont-return (identifierspace-ref space x ->error-v))]
-                [((? (curry value-equal? exp-apply-s)) `(,f . ,args)) (WIP)]
-                [((? (curry value-equal? exp-apply-macro-s)) `(,f . ,args)) (WIP)]
+                [((? (curry value-equal? exp-id-t-s)) `(,x)) (cont-return (identifierspace-ref space x ->error-v))]
+                [((? (curry value-equal? exp-apply-t-s)) `(,f . ,args)) (WIP)]
+                [((? (curry value-equal? exp-apply-macro-t-s)) `(,f . ,args)) (WIP)]
+                [((? (curry value-equal? exp-builtin-t-s)) `(,f . ,args)) (WIP)]
                 [(_ _) (cont-return (->error-v))]}}}}}}
 
 {define (unittest)
