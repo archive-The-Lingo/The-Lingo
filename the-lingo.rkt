@@ -482,8 +482,12 @@
          #{f <- (value-undelay-m f display-f)}
          {match* (f xs)
            [((value/ quote-s) (list v)) v]
-           [((value/ function-s) (list arg-id expr))
-            {let ([upvals
+           [((value/ function-s) (list arg-id-raw expr))
+            #{do cont->>=
+               #{arg-id-raw <- (value-undelay-m arg-id-raw display-f)}
+               {cont-if-return-m (not (value-struct? arg-id-raw)) (->error-v)}
+               (WIP)}
+            #|{let ([upvals
                    (filter
                     {λ ((vector _ d)) (not (nothing? d))}
                     (identifierspace->list (identifierspace-set space arg-id nothing)))])
@@ -497,7 +501,7 @@
                    function-s
                    (cons-value-list
                     arg-id
-                    ((WIP) expr))))}]
+                    ((WIP) expr))))}|#]
            [(_ _) (WIP)]}}]
       [((value/ comment-s) (list comment x))
        (evaluate-aux space x)]
