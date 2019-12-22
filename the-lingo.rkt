@@ -434,6 +434,15 @@
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
   (cons-value-delay {λ () ((evaluate-aux space x) id)} {λ () (vector space x)})}
+{define/t (make-quote x)
+  (-> value-t value-t)
+  (cons-value-struct
+   exp-s
+   (cons-value-list
+    builtin-s
+    (cons-value-list
+     quote-s
+     x)))}
 {define/t (evaluate-aux space x)
   (-> identifierspace-t value-t (cont-tt value-t value-t))
   {define (display-f) (vector space x)}
@@ -473,7 +482,22 @@
          #{f <- (value-undelay-m f display-f)}
          {match* (f xs)
            [((value/ quote-s) (list v)) v]
-           [((value/ function-s) (list xs v)) (WIP)]
+           [((value/ function-s) (list arg-id expr))
+            {let ([upvals
+                   (filter
+                    {λ ((vector _ d)) (not (nothing? d))}
+                    (identifierspace->list (identifierspace-set space arg-id nothing)))])
+              (if (null? upvals)
+                  (cons-value-struct
+                   function-s
+                   (cons-value-list
+                    arg-id
+                    expr))
+                  (cons-value-struct
+                   function-s
+                   (cons-value-list
+                    arg-id
+                    ((WIP) expr))))}]
            [(_ _) (WIP)]}}]
       [((value/ comment-s) (list comment x))
        (evaluate-aux space x)]
