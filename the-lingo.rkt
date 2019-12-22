@@ -110,20 +110,8 @@
   {syntax-rules (<- :=)
     [(_ >>= x) x]
     [(_ >>= #{x := v} . r) {let ([x v]) {do >>= . r}}]
-    [(_ >>= #{x <- v} . r) (>>= v {λ (arg) {let ([x arg]) {do >>= . r}}})]
+    [(_ >>= #{x <- v} . r) (>>= v {λ (x) {do >>= . r}})]
     [(_ >>= v . r) {do >>= #{x <- v} . r}]}}
-
-{define-values (identifierspace? identifierspace-null identifierspace-ref identifierspace-set)
-  ({λ ()
-     {define (val-eq? x y) (value-force+equal? x y)} ;; because "cannot reference an identifier before its definition"
-     {define-custom-hash-types identifierspace
-       #:key? (t->? value-t)
-       val-eq?}
-     {define identifierspace-null (make-immutable-identifierspace '())}
-     {define identifierspace-ref dict-ref}
-     {define identifierspace-set dict-set}
-     (values immutable-identifierspace? identifierspace-null identifierspace-ref identifierspace-set)})}
-{define:type identifierspace-t identifierspace?}
 
 {define:type t-id-t symbol-t}
 {define t-id-eq? eq?}
@@ -168,6 +156,26 @@
      value-just-t
      value-delay-t
      )))}
+
+{define-values (identifierspace-t identifierspace? identifierspace-null identifierspace-ref identifierspace-set identifierspace->list)
+  ({λ ()
+     {define (val-eq? x y) (value-force+equal? x y)} ;; because "cannot reference an identifier before its definition"
+     {define-custom-hash-types identifierspace
+       #:key? (t->? value-t)
+       val-eq?}
+     {define is? ({λ () {define (identifierspace? x) (immutable-identifierspace? x)} identifierspace?})}
+     {define:type identifierspace-t identifierspace?}
+     {define identifierspace-null (make-immutable-identifierspace '())}
+     {define/t (identifierspace-ref dict key failure-result)
+       (-> identifierspace-t value-t (-> any-t) any-t)
+       (dict-ref dict key failure-result)}
+     {define/t (identifierspace-set dict key v)
+       (-> identifierspace-t value-t any-t identifierspace-t)
+       (dict-set dict key v)}
+     {define/t (identifierspace->list x)
+       (-> identifierspace-t (list-of-tt (vector-tt value-t any-t)))
+       (map {λ (v) (vector (car v) (cdr v))} (dict->list x))}
+     (values identifierspace-t is? identifierspace-null identifierspace-ref identifierspace-set identifierspace->list)})}
 
 {define/t (value-symbol? (vector t _ ...))
   (-> value-t boolean-t)
@@ -219,6 +227,7 @@
   {match-lambda
     ['() value-null]
     [(cons x y) (cons-value-pair x (list->value y))]}}
+{define (value-list . xs) (list->value xs)}
 
 {define/t sexp->value
   (-> any-t value-t)
@@ -338,10 +347,16 @@
 {define/t id-s value-symbol-t (cons-value-symbol "標符")}
 {define/t apply-s value-symbol-t (cons-value-symbol "應用")}
 {define/t macro-s value-symbol-t (cons-value-symbol "構式子")}
+{define/t apply-macro-s value-symbol-t (cons-value-symbol "應用-構式子")}
 {define/t comment-s value-symbol-t (cons-value-symbol "注釋")}
 {define/t error-s value-symbol-t (cons-value-symbol "異常")}
 {define/t eval-s value-symbol-t (cons-value-symbol "解算")}
+{define/t mapping-s value-symbol-t (cons-value-symbol "映射")}
 {define/t builtin-s value-symbol-t (cons-value-symbol "內建")}
+
+{define/t (identifierspace->value space)
+  (-> identifierspace-t value-t)
+  (cons-value-struct mapping-s (value-list (list->value (map {λ ((vector k v)) (value-list k v)} (identifierspace->list space)))))}
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
@@ -350,32 +365,43 @@
   (-> identifierspace-t value-t
       (cont-tt value-t value-t))
   {define (display-f) (vector space x)}
-  {define (->error-v) (cons-value-struct error-s (list->value (list builtin-s eval-s space x)))}
+  {define (->error-v)
+    (cons-value-struct
+     error-s
+     (value-list
+      (value-list builtin-s eval-s)
+      (value-list
+       (identifierspace->value space)
+       x)))}
   {do cont->>=
     #{x <- (value-undelay-m x display-f)}
     {cont-if-return-m (not (value-struct? x)) (->error-v)}
-    #{(vector ast-type ast-list) := (elim-value-struct x)}
+    #{(vector x-type x-list) := (elim-value-struct x)}
+    #{x-type <- (value-undelay-m x-type display-f)}
+    {cont-if-return-m (not (value-equal? x-type exp-s)) (->error-v)}
+    #{(vector x-list x-list--tail) <- (value-undelay-list-m x-list display-f)}
+    {cont-if-return-m (not (and (nat-eq? (length x-list) 2) (nothing? x-list--tail))) (->error-v)}
+    #{(list ast-type ast-list) := x-list}
     #{ast-type <- (value-undelay-m ast-type display-f)}
-    {cont-if-return-m (not (value-equal? ast-type exp-s)) (->error-v)}
     #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list display-f)}
     {cont-if-return-m (not (nothing? ast-list--tail)) (->error-v)}
-    {match ast-list
-      [(list (? (curry value-equal? id-s)) x)
+    {match* (ast-type ast-list)
+      [((? (curry value-equal? id-s)) (list x))
        (cont-return (identifierspace-ref space x ->error-v))]
-      [(list (? (curry value-equal? apply-s)) f xs ...)
+      [((? (curry value-equal? apply-s)) (list f xs ...))
        (cont-return (value-apply (evaluate space f) (map (curry evaluate space) xs)))]
-      [(list (? (curry value-equal? macro-s)) f xs ...)
+      [((? (curry value-equal? apply-macro-s)) (list f xs ...))
        {do cont->>=
          #{f <- (value-undelay-m f display-f)}
          {cont-if-return-m (not (value-struct? x)) (->error-v)}
          #{(vector f-type f-list) := (elim-value-struct f)}
          #{f-type <- (value-undelay-m f-type display-f)}
          (WIP)}]
-      [(list (? (curry value-equal? builtin-s)) f xs ...)
+      [((? (curry value-equal? builtin-s)) (list f xs ...))
        (WIP)]
-      [(list (? (curry value-equal? comment-s)) comment x)
+      [((? (curry value-equal? comment-s)) (list comment x))
        (evaluate-aux space x)]
-      [_
+      [(_ _)
        (cont-return (->error-v))]}}}
 {define/t (value-apply f xs)
   (-> value-t (list-of-tt value-t) value-t)
@@ -392,4 +418,4 @@
       identifierspace-null
       (sexp->value 'x)
       (sexp->value 'v))
-     (sexp->value '#(式 標符 x)))))}
+     (sexp->value '#(式 標符 (x))))))}
