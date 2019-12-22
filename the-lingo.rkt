@@ -512,8 +512,18 @@
   ((value-apply-aux f xs) id)}
 {define/t (value-apply-aux f xs)
   (-> value-t (list-of-tt value-t) (cont-tt value-t value-t))
+  {define (display-f) (WIP)}
+  {define (->error-v) (WIP)}
   {do cont->>=
-    (WIP)}}
+    #{f <- (value-undelay-m f display-f)}
+    {cont-if-return-m (not (value-struct? f)) (->error-v)}
+    #{(vector f-type f-list) <- (elim-value-struct f)}
+    #{f-type <- (value-undelay-m f-type display-f)}
+    {cont-if-return-m (not (value-equal? f-type function-s)) (->error-v)}
+    #{f-list <- (value-undelay-list-or-return-m f-list ->error-v display-f)}
+    {cont-if-return-m (not (nat-eq? (length f-list) 2)) (->error-v)}
+    #{(list arg-id expr) := f-list}
+    (cont-return (evaluate (identifierspace-set identifierspace-null arg-id (list->value xs)) expr))}}
 
 {define (unittest)
   {local-require rackunit}
