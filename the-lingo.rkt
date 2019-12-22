@@ -221,13 +221,16 @@
 {define/t (cons-value-delay exec-f display-f)
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t)) value-delay-t)
   (vector value-delay-t-id exec-f display-f nothing)}
+{define/t (elim-value-delay (vector _ exec-f display-f _ ...))
+  (-> value-delay-t (vector-tt (-> value-t) (-> (vector-tt identifierspace-t value-t))))
+  (vector exec-f display-f)}
 
 {define/t list->value
   (-> (list-of-tt value-t) value-t)
   {match-lambda
     ['() value-null]
     [(cons x y) (cons-value-pair x (list->value y))]}}
-{define (value-list . xs) (list->value xs)}
+{define (cons-value-list . xs) (list->value xs)}
 
 {define/t sexp->value
   (-> any-t value-t)
@@ -240,6 +243,35 @@
        [(list 'struct t v) (cons-value-struct (sexp->value t) (sexp->value v))]
        [(list 'delay exec-f display-f) (cons-value-delay exec-f display-f)]}]
     [(vector t xs ...) (cons-value-struct (sexp->value t) (sexp->value xs))]}}
+{define/t (value-list-unjust-* x)
+  (-> value-t (vector-tt (list-of-tt value-t) (or-tt nothing-t value-t)))
+  {let ([x (value-unjust-* x)])
+    {cond
+      [(value-pair? x)
+       {let ([(vector a b) (elim-value-pair x)])
+         {let ([(vector head tail) (value-list-unjust-* b)])
+           (vector (cons a head) tail)}}]
+      [(value-null? x)
+       (vector '() nothing)]
+      [else (vector '() x)]}}}
+{define/t (value->sexp x)
+  (-> value-t any-t)
+  {let ([x (value-unjust-* x)])
+    {cond
+      [(value-null? x) '()]
+      [(value-symbol? x) (string->symbol (elim-value-symbol x))]
+      [(value-pair? x)
+       {let ([(vector a b) (elim-value-pair x)])
+         (cons (value->sexp a) (value->sexp b))}]
+      [(value-struct? x)
+       {let ([(vector t xs) (elim-value-struct x)])
+         {let ([(vector head tail) (value-list-unjust-* xs)])
+           (if (nothing? tail)
+               (list->vector (cons (value->sexp t) (map value->sexp head)))
+               (vector #f 'struct t xs))}}]
+      [(value-delay? x)
+       {let ([(vector exec-f display-f) (elim-value-delay x)])
+         (vector #f 'delay exec-f display-f)}]}}}
 
 {define/t (unsafe--value-set-to-just! x v)
   (-> value-t value-t void-t)
@@ -356,7 +388,7 @@
 
 {define/t (identifierspace->value space)
   (-> identifierspace-t value-t)
-  (cons-value-struct mapping-s (value-list (list->value (map {λ ((vector k v)) (value-list k v)} (identifierspace->list space)))))}
+  (cons-value-struct mapping-s (cons-value-list (list->value (map {λ ((vector k v)) (cons-value-list k v)} (identifierspace->list space)))))}
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
@@ -368,9 +400,9 @@
   {define (->error-v)
     (cons-value-struct
      error-s
-     (value-list
-      (value-list builtin-s eval-s)
-      (value-list
+     (cons-value-list
+      (cons-value-list builtin-s eval-s)
+      (cons-value-list
        (identifierspace->value space)
        x)))}
   {do cont->>=
