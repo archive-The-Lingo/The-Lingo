@@ -370,8 +370,21 @@
        {do cont->>=
          #{(vector xs-head xs-tail) := (elim-value-pair xs)}
          #{tail-r <- (value-undelay-list-or-return-m xs-tail fail-v display-f)}
-         {cont-return (cons xs-head tail-r)}}]
+         (cont-return (cons xs-head tail-r))}]
       [else {cont-if-return-m #t (fail-v)}]}}}
+
+{define/t (value-undelay-list-m xs display-f)
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt nothing-t value-t)) value-t))
+  {do cont->>=
+    #{xs <- (value-undelay-m xs display-f)}
+    {cond
+      [(value-null? xs) (cont-return (vector '() nothing))]
+      [(value-pair? xs)
+       {do cont->>=
+         #{(vector xs-head xs-tail) := (elim-value-pair xs)}
+         #{(vector tail-r tail-r--tail) <- (value-undelay-list-m xs-tail display-f)}
+         (cont-return (vector (cons xs-head tail-r) tail-r--tail))}]
+      [else (cont-return (vector '() xs))]}}}
 
 ;; Influenced by: zh_CN, zh_TW, ja
 {define/t exp-s value-symbol-t (cons-value-symbol "式")}
@@ -379,6 +392,7 @@
 {define/t apply-s value-symbol-t (cons-value-symbol "應用")}
 {define/t macro-s value-symbol-t (cons-value-symbol "構式子")}
 {define/t quote-s value-symbol-t (cons-value-symbol "引用")}
+{define/t function-s value-symbol-t (cons-value-symbol "函式")}
 {define/t apply-macro-s value-symbol-t (cons-value-symbol "應用-構式子")}
 {define/t comment-s value-symbol-t (cons-value-symbol "注釋")}
 {define/t error-s value-symbol-t (cons-value-symbol "異常")}
@@ -459,6 +473,7 @@
          #{f <- (value-undelay-m f display-f)}
          {match* (f xs)
            [((value/ quote-s) (list v)) v]
+           [((value/ function-s) (list xs v)) (WIP)]
            [(_ _) (WIP)]}}]
       [((value/ comment-s) (list comment x))
        (evaluate-aux space x)]
