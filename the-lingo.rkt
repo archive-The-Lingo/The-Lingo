@@ -360,19 +360,18 @@
 {define/t value-equal? (-> value-t value-t boolean-t) (value-equal?-maker value-unjust-*)}
 {define/t value-force+equal? (-> value-t value-t boolean-t) (value-equal?-maker value-force*)}
 
-{define/t (value-undelay-list-m xs display-f)
-  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt nothing-t value-t)) value-t))
-  (value-undelay-list-m-aux xs '() display-f)}
-{define/t (value-undelay-list-m-aux xs history display-f)
-  (-> value-t (list-of-tt value-t) (-> (vector-tt identifierspace-t value-t)) (cont-tt (vector-tt (list-of-tt value-t) (or-tt nothing-t value-t)) value-t))
+{define/t (value-undelay-list-or-return-m xs fail-v display-f)
+  (-> value-t (-> value-t) (-> (vector-tt identifierspace-t value-t)) (cont-tt (list-of-tt value-t) value-t))
   {do cont->>=
     #{xs <- (value-undelay-m xs display-f)}
     {cond
-      [(value-null? xs) (cont-return (vector history nothing))]
+      [(value-null? xs) (cont-return '())]
       [(value-pair? xs)
-       {let ([(vector xs-head xs-tail) (elim-value-pair xs)])
-         (value-undelay-list-m-aux xs-tail (append history (list xs-head)) display-f)}]
-      [else (cont-return (vector history xs))]}}}
+       {do cont->>=
+         #{(vector xs-head xs-tail) := (elim-value-pair xs)}
+         #{tail-r <- (value-undelay-list-or-return-m xs-tail fail-v display-f)}
+         {cont-return (cons xs-head tail-r)}}]
+      [else {cont-if-return-m #t (fail-v)}]}}}
 
 ;; Influenced by: zh_CN, zh_TW, ja
 {define/t exp-s value-symbol-t (cons-value-symbol "式")}
@@ -390,30 +389,29 @@
 {define/t (identifierspace->value space)
   (-> identifierspace-t value-t)
   (cons-value-struct mapping-s (cons-value-list (list->value (map {λ ((vector k v)) (cons-value-list k v)} (identifierspace->list space)))))}
-{define/t (value->identifierspace-m x display-f)
-  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (or-tt nothing-t identifierspace-t) value-t))
+{define/t (value->identifierspace-or-return-m x fail-v display-f)
+  (-> value-t (-> value-t) (-> (vector-tt identifierspace-t value-t)) (cont-tt identifierspace-t value-t))
   {do cont->>=
     #{x <- (value-undelay-m x display-f)}
-    {cont-if-return-m (not (value-struct? x)) nothing}
+    {cont-if-return-m (not (value-struct? x)) fail-v}
     #{(vector x-type x-list) := (elim-value-struct x)}
     #{x-type <- (value-undelay-m x-type display-f)}
-    {cont-if-return-m (not (value-equal? x-type mapping-s)) nothing}
-    #{(vector x-list x-list--tail) <- (value-undelay-list-m x-list display-f)}
-    {cont-if-return-m (not (and (nat-eq? (length x-list) 1) (nothing? x-list--tail))) nothing}
+    {cont-if-return-m (not (value-equal? x-type mapping-s)) fail-v}
+    #{x-list <- (value-undelay-list-or-return-m x-list fail-v display-f)}
+    {cont-if-return-m (not (nat-eq? (length x-list) 1)) fail-v}
     #{(list t) := x-list}
-    #{(vector xs t--tail) <- (value-undelay-list-m t display-f)}
-    {cont-if-return-m (not (nothing? t--tail)) nothing}
-    (value->identifierspace-m-aux identifierspace-null xs display-f)}}
-{define/t (value->identifierspace-m-aux r xs display-f)
-  (-> identifierspace-t (list-of-tt value-t) (-> (vector-tt identifierspace-t value-t)) (cont-tt (or-tt nothing-t identifierspace-t) value-t))
+    #{xs <- (value-undelay-list-or-return-m t fail-v display-f)}
+    (value->identifierspace-or-return-m-aux identifierspace-null xs fail-v display-f)}}
+{define/t (value->identifierspace-or-return-m-aux r xs fail-v display-f)
+  (-> identifierspace-t (list-of-tt value-t) (-> value-t) (-> (vector-tt identifierspace-t value-t)) (cont-tt identifierspace-t value-t))
   {if (null? xs)
       (cont-return r)
       {do cont->>=
         #{(cons head tail) := xs}
-        #{(vector head head--tail) <- (value-undelay-list-m head display-f)}
-        {cont-if-return-m (not (and (nat-eq? (length head) 2) (nothing? head--tail))) nothing}
+        #{head <- (value-undelay-list-or-return-m head fail-v display-f)}
+        {cont-if-return-m (not (nat-eq? (length head) 2)) fail-v}
         #{(list k v) := head}
-        (value->identifierspace-m-aux (identifierspace-set r k v) tail display-f)}}}
+        (value->identifierspace-or-return-m-aux (identifierspace-set r k v) tail fail-v display-f)}}}
 
 {define-match-expander value/
   {syntax-rules ()
@@ -439,12 +437,11 @@
     #{(vector x-type x-list) := (elim-value-struct x)}
     #{x-type <- (value-undelay-m x-type display-f)}
     {cont-if-return-m (not (value-equal? x-type exp-s)) (->error-v)}
-    #{(vector x-list x-list--tail) <- (value-undelay-list-m x-list display-f)}
-    {cont-if-return-m (not (and (nat-eq? (length x-list) 2) (nothing? x-list--tail))) (->error-v)}
+    #{x-list <- (value-undelay-list-or-return-m x-list ->error-v display-f)}
+    {cont-if-return-m (not (nat-eq? (length x-list) 2)) (->error-v)}
     #{(list ast-type ast-list) := x-list}
     #{ast-type <- (value-undelay-m ast-type display-f)}
-    #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list display-f)}
-    {cont-if-return-m (not (nothing? ast-list--tail)) (->error-v)}
+    #{ast-list <- (value-undelay-list-or-return-m ast-list ->error-v display-f)}
     {match* (ast-type ast-list)
       [((value/ id-s) (list x))
        (cont-return (identifierspace-ref space x ->error-v))]
