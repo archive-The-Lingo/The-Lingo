@@ -390,6 +390,30 @@
 {define/t (identifierspace->value space)
   (-> identifierspace-t value-t)
   (cons-value-struct mapping-s (cons-value-list (list->value (map {λ ((vector k v)) (cons-value-list k v)} (identifierspace->list space)))))}
+{define/t (value->identifierspace-m x display-f)
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt (or-tt nothing-t identifierspace-t) value-t))
+  {do cont->>=
+    #{x <- (value-undelay-m x display-f)}
+    {cont-if-return-m (not (value-struct? x)) nothing}
+    #{(vector x-type x-list) := (elim-value-struct x)}
+    #{x-type <- (value-undelay-m x-type display-f)}
+    {cont-if-return-m (not (value-equal? x-type mapping-s)) nothing}
+    #{(vector x-list x-list--tail) <- (value-undelay-list-m x-list display-f)}
+    {cont-if-return-m (not (and (nat-eq? (length x-list) 1) (nothing? x-list--tail))) nothing}
+    #{(list t) := x-list}
+    #{(vector xs t--tail) <- (value-undelay-list-m t display-f)}
+    {cont-if-return-m (not (nothing? t--tail)) nothing}
+    (value->identifierspace-m-aux identifierspace-null xs display-f)}}
+{define/t (value->identifierspace-m-aux r xs display-f)
+  (-> identifierspace-t (list-of-tt value-t) (-> (vector-tt identifierspace-t value-t)) (cont-tt (or-tt nothing-t identifierspace-t) value-t))
+  {if (null? xs)
+      (cont-return r)
+      {do cont->>=
+        #{(cons head tail) := xs}
+        #{(vector head head--tail) <- (value-undelay-list-m head display-f)}
+        {cont-if-return-m (not (and (nat-eq? (length head) 2) (nothing? head--tail))) nothing}
+        #{(list k v) := head}
+        (value->identifierspace-m-aux (identifierspace-set r k v) tail display-f)}}}
 
 {define-match-expander value/
   {syntax-rules ()
@@ -399,8 +423,7 @@
   (-> identifierspace-t value-t value-t)
   (cons-value-delay {λ () ((evaluate-aux space x) id)} {λ () (vector space x)})}
 {define/t (evaluate-aux space x)
-  (-> identifierspace-t value-t
-      (cont-tt value-t value-t))
+  (-> identifierspace-t value-t (cont-tt value-t value-t))
   {define (display-f) (vector space x)}
   {define (->error-v)
     (cons-value-struct
@@ -446,7 +469,11 @@
        (cont-return (->error-v))]}}}
 {define/t (value-apply f xs)
   (-> value-t (list-of-tt value-t) value-t)
-  (WIP)}
+  ((value-apply-aux f xs) id)}
+{define/t (value-apply-aux f xs)
+  (-> value-t (list-of-tt value-t) (cont-tt value-t value-t))
+  {do cont->>=
+    (WIP)}}
 
 {define (unittest)
   {local-require rackunit}
