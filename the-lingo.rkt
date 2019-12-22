@@ -379,6 +379,7 @@
 {define/t id-s value-symbol-t (cons-value-symbol "標符")}
 {define/t apply-s value-symbol-t (cons-value-symbol "應用")}
 {define/t macro-s value-symbol-t (cons-value-symbol "構式子")}
+{define/t quote-s value-symbol-t (cons-value-symbol "引用")}
 {define/t apply-macro-s value-symbol-t (cons-value-symbol "應用-構式子")}
 {define/t comment-s value-symbol-t (cons-value-symbol "注釋")}
 {define/t error-s value-symbol-t (cons-value-symbol "異常")}
@@ -389,6 +390,10 @@
 {define/t (identifierspace->value space)
   (-> identifierspace-t value-t)
   (cons-value-struct mapping-s (cons-value-list (list->value (map {λ ((vector k v)) (cons-value-list k v)} (identifierspace->list space)))))}
+
+{define-match-expander value/
+  {syntax-rules ()
+    [(_ x) (? (curry value-equal? x))]}}
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
@@ -418,20 +423,24 @@
     #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list display-f)}
     {cont-if-return-m (not (nothing? ast-list--tail)) (->error-v)}
     {match* (ast-type ast-list)
-      [((? (curry value-equal? id-s)) (list x))
+      [((value/ id-s) (list x))
        (cont-return (identifierspace-ref space x ->error-v))]
-      [((? (curry value-equal? apply-s)) (list f xs ...))
+      [((value/ apply-s) (list f xs ...))
        (cont-return (value-apply (evaluate space f) (map (curry evaluate space) xs)))]
-      [((? (curry value-equal? apply-macro-s)) (list f xs ...))
+      [((value/ apply-macro-s) (list f xs ...))
        {do cont->>=
-         #{f <- (value-undelay-m f display-f)}
+         #{f <- (value-undelay-m (evaluate space f) display-f)}
          {cont-if-return-m (not (value-struct? x)) (->error-v)}
          #{(vector f-type f-list) := (elim-value-struct f)}
          #{f-type <- (value-undelay-m f-type display-f)}
          (WIP)}]
-      [((? (curry value-equal? builtin-s)) (list f xs ...))
-       (WIP)]
-      [((? (curry value-equal? comment-s)) (list comment x))
+      [((value/ builtin-s) (list f xs ...))
+       {do cont->>=
+         #{f <- (value-undelay-m f display-f)}
+         {match* (f xs)
+           [((value/ quote-s) (list v)) v]
+           [(_ _) (WIP)]}}]
+      [((value/ comment-s) (list comment x))
        (evaluate-aux space x)]
       [(_ _)
        (cont-return (->error-v))]}}}
