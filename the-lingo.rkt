@@ -574,4 +574,4 @@
       identifierspace-null
       (sexp->value 'x)
       (sexp->value 'v))
-     (sexp->value '#(式 標符 (x))))))}
+     (sexp->value '#(式 標識符 (x))))))}
