@@ -373,7 +373,7 @@
 
 ;; Influenced by: zh_CN, zh_TW, ja
 {define/t exp-s value-symbol-t (cons-value-symbol "式")}
-{define/t id-s value-symbol-t (cons-value-symbol "標符")}
+{define/t id-s value-symbol-t (cons-value-symbol "標識符")}
 {define/t apply-function-s value-symbol-t (cons-value-symbol "用-函式")}
 {define/t macro-s value-symbol-t (cons-value-symbol "構式子")}
 {define/t quote-s value-symbol-t (cons-value-symbol "引用")}
@@ -514,6 +514,7 @@
               #{arg-id <- (elim-exp-comment-m arg-id display-f)}
               #{arg-id <- (value-undelay-m arg-id display-f)}
               {cont-if-return-m (not (value-struct? arg-id)) (->error-v)}
+              ;; remove `arg-id` (if exist) from `space`
               #{upvals := (filter
                            {λ ((vector _ d)) (not (nothing? d))}
                            (identifierspace->list (identifierspace-set space arg-id nothing)))}
