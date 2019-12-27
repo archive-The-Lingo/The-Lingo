@@ -37,12 +37,6 @@
   -v    value
 |#
 {require racket/contract}
-{define (assert-unreachable) (error 'assert-unreachable)}
-{define (WIP) (error 'WIP)}
-{define (id x) x}
-{define point-eq? eq?}
-{define nat-eq? =}
-{define string-eq? string=?}
 {require (rename-in racket [cond rkt#%cond] [define rkt#%define] [define/contract rkt#%define/contract])}
 {define-syntax lambda
   {syntax-rules ()
@@ -100,12 +94,16 @@
 {define/t (nothing? x)
   (-> any-t boolean-t)
   (equal? x nothing)}
-
+{define (assert-unreachable) (error 'assert-unreachable)}
+{define (TODO) (error 'WIP)}
+{define (id x) x}
+{define point-eq? eq?}
+{define nat-eq? =}
+{define string-eq? string=?}
 {define (memorize1 f)
   {let ([cache (make-weak-hasheq)])
     {λ (x)
       (force (hash-ref! cache x {λ () (delay (f x))}))}}}
-
 {define-syntax do
   {syntax-rules (<- :=)
     [(_ >>= x) x]
@@ -389,11 +387,11 @@
 ;; Influenced by: zh_CN, zh_TW, ja
 {define/t exp-s value-symbol-t (cons-value-symbol "式")}
 {define/t id-s value-symbol-t (cons-value-symbol "標符")}
-{define/t apply-s value-symbol-t (cons-value-symbol "應用")}
+{define/t apply-function-s value-symbol-t (cons-value-symbol "用-函式")}
 {define/t macro-s value-symbol-t (cons-value-symbol "構式子")}
 {define/t quote-s value-symbol-t (cons-value-symbol "引用")}
 {define/t function-s value-symbol-t (cons-value-symbol "函式")}
-{define/t apply-macro-s value-symbol-t (cons-value-symbol "應用-構式子")}
+{define/t apply-macro-s value-symbol-t (cons-value-symbol "用-構式子")}
 {define/t comment-s value-symbol-t (cons-value-symbol "注釋")}
 {define/t error-s value-symbol-t (cons-value-symbol "異常")}
 {define/t eval-s value-symbol-t (cons-value-symbol "解算")}
@@ -430,6 +428,33 @@
 {define-match-expander value/
   {syntax-rules ()
     [(_ x) (? (curry value-equal? x))]}}
+
+{define/t (elim-exp-comment-m x display-f)
+  (-> value-t (-> (vector-tt identifierspace-t value-t)) (cont-tt value-t value-t))
+  {do cont->>=
+    #{x <- (value-undelay-m x display-f)}
+    (if (not (value-struct? x))
+        (cont-return x)
+        {do cont->>=
+          #{(vector x-type x-list) := (elim-value-struct x)}
+          #{x-type <- (value-undelay-m x-type display-f)}
+          (if (not (value-equal? x-type exp-s))
+              (cont-return x)
+              {do cont->>=
+                #{(vector x-list x-list--tail) <- (value-undelay-list-m x-list display-f)}
+                (if (not (and (nothing? x-list--tail) (nat-eq? (length x-list) 2)))
+                    (cont-return x)
+                    {do cont->>=
+                      #{(list ast-type ast-list) := x-list}
+                      #{ast-type <- (value-undelay-m ast-type display-f)}
+                      (if (not (value-equal? ast-type comment-s))
+                          (cont-return x)
+                          {do cont->>=
+                            #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list display-f)}
+                            (if (not (and (nat-eq? (length ast-list 2)) (nothing? ast-list--tail)))
+                                (cont-return x)
+                                {let ([(list _ new-v) ast-list])
+                                  (elim-exp-comment-m new-v display-f)})})})})})}}
 
 {define/t (evaluate space x)
   (-> identifierspace-t value-t value-t)
@@ -468,7 +493,7 @@
     {match* (ast-type ast-list)
       [((value/ id-s) (list x))
        (cont-return (identifierspace-ref space x ->error-v))]
-      [((value/ apply-s) (list f xs ...))
+      [((value/ apply-function-s) (list f xs ...))
        (cont-return (value-apply (evaluate space f) (map (curry evaluate space) xs)))]
       [((value/ apply-macro-s) (list f xs ...))
        {do cont->>=
@@ -476,34 +501,42 @@
          {cont-if-return-m (not (value-struct? x)) (->error-v)}
          #{(vector f-type f-list) := (elim-value-struct f)}
          #{f-type <- (value-undelay-m f-type display-f)}
-         (WIP)}]
+         (TODO)}]
       [((value/ builtin-s) (list f xs ...))
        {do cont->>=
          #{f <- (value-undelay-m f display-f)}
          {match* (f xs)
            [((value/ quote-s) (list v)) v]
-           [((value/ function-s) (list arg-id-raw expr))
-            #{do cont->>=
-               #{arg-id-raw <- (value-undelay-m arg-id-raw display-f)}
-               {cont-if-return-m (not (value-struct? arg-id-raw)) (->error-v)}
-               (WIP)}
-            #|{let ([upvals
-                   (filter
-                    {λ ((vector _ d)) (not (nothing? d))}
-                    (identifierspace->list (identifierspace-set space arg-id nothing)))])
-              (if (null? upvals)
-                  (cons-value-struct
-                   function-s
-                   (cons-value-list
-                    arg-id
-                    expr))
-                  (cons-value-struct
-                   function-s
-                   (cons-value-list
-                    arg-id
-                    ((WIP) expr))))}|#]
-           [(_ _) (WIP)]}}]
+           [((value/ eval-s) (list space x))
+            {do cont->>=
+               #{s <- (value->identifierspace-or-return-m space TODO #|->error-v for builtin|# display-f)}
+               (cont-return (evaluate s x))}]
+           [((value/ apply-function-s) (list f xs))
+            {do cont->>=
+               #{xs <- (value-undelay-list-or-return-m xs TODO #|->error-v for builtin|# display-f)}
+               (cont-return (value-apply f xs))}]
+           [((value/ function-s) (list arg-id expr))
+            {do cont->>=
+               #{arg-id <- (elim-exp-comment-m arg-id display-f)}
+               #{arg-id <- (value-undelay-m arg-id display-f)}
+               {cont-if-return-m (not (value-struct? arg-id)) (->error-v)}
+               #{upvals := (filter
+                            {λ ((vector _ d)) (not (nothing? d))}
+                            (identifierspace->list (identifierspace-set space arg-id nothing)))}
+               (if (null? upvals)
+                   (cons-value-struct
+                    function-s
+                    (cons-value-list
+                     arg-id
+                     expr))
+                   (cons-value-struct
+                    function-s
+                    (cons-value-list
+                     arg-id
+                     ((TODO #| cons a identifierspace and evaluate expr |#) expr))))}]
+           [(_ _) (cont-return (->error-v))]}}]
       [((value/ comment-s) (list comment x))
+       ;; todo: store comment for better error handling
        (evaluate-aux space x)]
       [(_ _)
        (cont-return (->error-v))]}}}
@@ -512,8 +545,24 @@
   ((value-apply-aux f xs) id)}
 {define/t (value-apply-aux f xs)
   (-> value-t (list-of-tt value-t) (cont-tt value-t value-t))
-  {define (display-f) (WIP)}
-  {define (->error-v) (WIP)}
+  {define (display-f)
+    (vector
+     identifierspace-null
+     (cons-value-struct
+      exp-s
+      (cons-value-list
+       apply-function-s
+       (cons-value-pair
+        (make-quote f)
+        (list->value (map make-quote xs))))))}
+  {define (->error-v)
+    (cons-value-struct
+     error-s
+     (cons-value-list
+      (cons-value-list builtin-s apply-function-s)
+      (cons-value-list
+       f
+       (list->value xs))))}
   {do cont->>=
     #{f <- (value-undelay-m f display-f)}
     {cont-if-return-m (not (value-struct? f)) (->error-v)}
