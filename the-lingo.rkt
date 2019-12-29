@@ -490,15 +490,20 @@
        (cont-return (value-apply (evaluate space f) (map (curry evaluate space) xs)))]
       [((value/ apply-macro-s) (list f xs ...))
        {do cont->>=
+         #{local-->error-v := {λ () (cons-value-builtin-error apply-macro-s (cons (identifierspace->value space) (cons f xs)))}}
          #{f <- (value-undelay-m (evaluate space f) display-f)}
-         {cont-if-return-m (not (value-struct? x)) (->error-v)}
+         {cont-if-return-m (not (value-struct? x)) (local-->error-v)}
          #{(vector f-type f-list) := (elim-value-struct f)}
          #{f-type <- (value-undelay-m f-type display-f)}
-         (TODO)}]
+         {cont-if-return-m (not (value-equal? f-type macro-s)) (local-->error-v)}
+         #{f-list <- (value-undelay-list-or-return-m f-list local-->error-v display-f)}
+         {cont-if-return-m (not (nat-eq? (length f-list) 1)) (local-->error-v)}
+         #{(list f-inner) := f-list}
+         (cont-return (value-apply f-inner (cons (identifierspace->value space) xs)))}]
       [((value/ builtin-s) (list f raw-xs ...))
        {do cont->>=
          #{f <- (value-undelay-m f display-f)}
-         #{local-->error-v := {λ () (cons-value-builtin-error f raw-xs)}}
+         #{local-->error-v := {λ () (cons-value-builtin-error f (cons (identifierspace->value space) raw-xs))}}
          {match* (f raw-xs)
            [((value/ quote-s) (list v)) v]
            [((value/ eval-s) (list space x))
