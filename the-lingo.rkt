@@ -1,4 +1,5 @@
-#| This Source Code Form is subject to the terms of the Mozilla Public
+#| Copyright (C) 2017-2020  ㄗㄠˋ ㄑㄧˊ <tsao-chi@the-lingo.org>
+ | This Source Code Form is subject to the terms of the Mozilla Public
  | License, v. 2.0. If a copy of the MPL was not distributed with this
  | file, You can obtain one at http://mozilla.org/MPL/2.0/. |#
 #lang racket
@@ -540,22 +541,72 @@
   {define (display-f) (vector space f xs)}
   {define (->error-v) {match (display-f) [(vector s f xs) (cons-value-builtin-error s f xs)]}} ;; normal ->error-v
   {do cont->>=
-    (TODO)}}
+    #{f <- (value-undelay-m f display-f)}
+    {match* (f xs)
+      [((value/ quote-s) (list v)) v]
+      [((value/ evaluate-s) (list space x))
+       (cont-return (aux-evaluate ->error-v display-f space x))]
+      [((value/ apply-function-s) (list f xs))
+       (aux-apply-m
+        ->error-v
+        display-f
+        (evaluate-with-outter-level-information
+         space
+         space
+         f)
+        (map
+         {λ (arg)
+           (evaluate-with-outter-level-information
+            space
+            space
+            arg)}
+         xs))]
+      [((value/ apply-macro-s) (list f xs))
+       (aux-apply-m
+        ->error-v
+        display-f
+        (evaluate-with-outter-level-information
+         space
+         space
+         f)
+        (cons-value-pair
+         (identifierspace->value space)
+         xs))]
+      [(_ _) (TODO)]}}}
 
-{define/t (evaluate space x)
-  (-> identifierspace-t value-t value-t)
+{define/t (aux-evaluate ->error-v display-f space x)
+  (->
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   identifierspace-t
+   value-t
+   value-t)
+  (cons-value-delay {λ () ((aux-evaluate-m ->error-v display-f space x) id)} display-f)}
+{define/t (evaluate-with-outter-level-information outter-space space x)
+  (-> identifierspace-t identifierspace-t value-t value-t)
   {define (display-f)
     (vector
-     identifierspace-null
+     outter-space
      evaluate-s
      (list
       (make-quote (identifierspace->value space))
       (make-quote x)))}
   {define (->error-v) {match (display-f) [(vector s f xs) (cons-value-builtin-error s f xs)]}}
-  (cons-value-delay {λ () ((aux-evaluate-m ->error-v display-f space x) id)} display-f)}
+  (aux-evaluate ->error-v display-f space x)}
+{define/t (evaluate space x)
+  (-> identifierspace-t value-t value-t)
+  (evaluate-with-outter-level-information identifierspace-null space x)}
 {define/t (eval-builtin space f xs)
   (-> identifierspace-t value-t (list-of-tt value-t))
   (cons-value-delay {λ () ((aux-builtin-m space f xs) id)} {λ () (vector space f xs)})}
+{define/t (aux-eval-apply ->error-v display-f f xs)
+  (->
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   value-t
+   (list-of-tt value-t)
+   value-t)
+  (cons-value-delay {λ () ((aux-apply-m ->error-v display-f f xs) id)} display-f)}
 {define/t (eval-apply f xs)
   (-> value-t (list-of-tt value-t) value-t)
   {define (display-f)
@@ -566,7 +617,7 @@
       (make-quote f)
       (make-quote (list->value xs))))}
   {define (->error-v) {match (display-f) [(vector s f xs) (cons-value-builtin-error s f xs)]}}
-  (cons-value-delay {λ () ((aux-apply-m ->error-v display-f f xs) id)} display-f)}
+  (aux-eval-apply ->error-v display-f f xs)}
 
 {define (unittest)
   {local-require rackunit}
