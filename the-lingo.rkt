@@ -385,8 +385,14 @@
 {define/t evaluate-s value-symbol-t (cons-value-symbol "解算")}
 {define/t mapping-s value-symbol-t (cons-value-symbol "映射")}
 {define/t builtin-s value-symbol-t (cons-value-symbol "內建")}
+{define/t false-s value-symbol-t (cons-value-symbol "陰")}
+{define/t true-s value-symbol-t (cons-value-symbol "陽")}
 
-{define/t cons-value-pair-s value-symbol-t (cons-value-symbol "建-序對")}
+{define/t false-v value-t (cons-value-struct false-s value-null)}
+{define/t true-v value-t (cons-value-struct true-s value-null)}
+{define/t (cons-value-boolean x)
+  (-> boolean-t value-t)
+  (if x true-v false-v)}
 
 {define/t (identifierspace->value space)
   (-> identifierspace-t value-t)
@@ -539,7 +545,9 @@
    (list-of-tt value-t)
    (cont-tt value-t value-t))
   {define (display-f) (vector space f xs)}
-  {define (->error-v) {match (display-f) [(vector s f xs) (cons-value-builtin-error s f xs)]}} ;; normal ->error-v
+  {define (->error-v) {match (display-f) [(vector s f xs) (cons-value-builtin-error s f xs)]}}
+  [define (local-eval x)
+    (evaluate space x)]
   {do cont->>=
     #{f <- (value-undelay-m f display-f)}
     {match* (f xs)
@@ -550,29 +558,36 @@
        (aux-apply-m
         ->error-v
         display-f
-        (evaluate-with-outter-level-information
-         space
-         space
-         f)
+        (local-eval f)
         (map
-         {λ (arg)
-           (evaluate-with-outter-level-information
-            space
-            space
-            arg)}
+         local-eval
          xs))]
       [((value/ apply-macro-s) (list f xs))
        (aux-apply-m
         ->error-v
         display-f
-        (evaluate-with-outter-level-information
-         space
-         space
-         f)
+        (local-eval f)
         (cons-value-pair
          (identifierspace->value space)
          xs))]
-      [(_ _) (TODO)]}}}
+      [((value/ cons-value-pair-s) (list x y)) (cont-return (cons-value-pair (local-eval x) (local-eval y)))]
+      [((value/ elim-value-pair-s) (list x id-a id-b r))
+       {do cont->>=
+         #{id-a <- (elim-exp-comment-m id-a display-f)}
+         #{id-b <- (elim-exp-comment-m id-b display-f)}
+         #{x <- (value-undelay-m x display-f)}
+         {cont-if-return-m (not (value-pair? x)) (->error-v)}
+         #{(vector a b) := (elim-value-pair x)}
+         (cont-return (evaluate (identifierspace-set (identifierspace-set space id-a a) id-b b) r))}]
+      [((value/ value-pair?-s) (list x))
+       {do cont->>=
+         #{x <- (value-undelay-m x display-f)}
+         (cont-return (cons-value-boolean (value-pair? x)))}]
+      [(_ _) (cont-return (TODO))]}}}
+
+{define/t cons-value-pair-s value-symbol-t (cons-value-symbol "構造-序對")}
+{define/t elim-value-pair-s value-symbol-t (cons-value-symbol "解構-序對")}
+{define/t value-pair?-s value-symbol-t (cons-value-symbol "序對？")}
 
 {define/t (aux-evaluate ->error-v display-f space x)
   (->
@@ -582,20 +597,17 @@
    value-t
    value-t)
   (cons-value-delay {λ () ((aux-evaluate-m ->error-v display-f space x) id)} display-f)}
-{define/t (evaluate-with-outter-level-information outter-space space x)
-  (-> identifierspace-t identifierspace-t value-t value-t)
+{define/t (evaluate space x)
+  (-> identifierspace-t value-t value-t)
   {define (display-f)
     (vector
-     outter-space
+     identifierspace-null
      evaluate-s
      (list
       (make-quote (identifierspace->value space))
       (make-quote x)))}
   {define (->error-v) {match (display-f) [(vector s f xs) (cons-value-builtin-error s f xs)]}}
   (aux-evaluate ->error-v display-f space x)}
-{define/t (evaluate space x)
-  (-> identifierspace-t value-t value-t)
-  (evaluate-with-outter-level-information identifierspace-null space x)}
 {define/t (eval-builtin space f xs)
   (-> identifierspace-t value-t (list-of-tt value-t))
   (cons-value-delay {λ () ((aux-builtin-m space f xs) id)} {λ () (vector space f xs)})}
