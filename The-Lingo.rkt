@@ -12,17 +12,23 @@
   eq    equal
   nat    natural numbers
   exp    expression
+  val    value
+  pred    predicate
+  op    optimized
   { .. }    macro/syntax
   /t -t t    type
-  -tt    a function returning types
+  r -r    result/return
+  -tt    a function returning a type
   -*    all
-  !    read/write mutable values
+  !    read/write mutable value(s)
   :    type annotation
-  -m    monad/async/cps
+  -m    monad
   -aux    auxiliary
   -s    symbol
   -f    function
   -v    value
+  x y v    A variable (named like math)
+  s  (plural)  list
 |#
 {require racket/contract}
 {require (rename-in racket [cond rkt#%cond] [define rkt#%define] [define/contract rkt#%define/contract])}
@@ -74,20 +80,27 @@
 {define:type boolean-t boolean?}
 {define:type box-t box/c}
 {define:type list-of-tt listof}
+{define:type set-of-tt set/c}
 {define:type null-t null?}
 {define:type symbol-t symbol?}
-{define-syntax-rule {list-foreach xs v . c} {for ([v xs]) . c}}
+{define:type char-t char?}
+{define:type nat-t exact-nonnegative-integer?}
 {define:type nothing-t void-t}
 {define/t nothing nothing-t (void)}
 {define/t (nothing? x)
   (-> any-t boolean-t)
   (equal? x nothing)}
 {define (assert-unreachable) (error 'assert-unreachable)}
-{define (TODO) (error 'WIP)}
+{define-syntax-rule (TODO . _) (error 'WIP)}
 {define (id x) x}
 {define point-eq? eq?}
-{define nat-eq? =}
+{define/t (nat-eq? x y)
+  (-> nat-t nat-t boolean-t)
+  (= x y)}
 {define string-eq? string=?}
+{define/t (symbol-eq? x y)
+  (-> symbol-t symbol-t boolean-t)
+  (eq? x y)}
 {define (memorize1 f)
   {let ([cache (make-weak-hasheq)])
     {λ (x)
@@ -98,6 +111,23 @@
     [(_ >>= #{x := v} . r) {let ([x v]) {do >>= . r}}]
     [(_ >>= #{x <- v} . r) (>>= v {λ (x) {do >>= . r}})]
     [(_ >>= v . r) {do >>= #{x <- v} . r}]}}
+
+{define:type (cont-tt a r) (-> (-> a r) r)}
+{define/t (cont-return x)
+  (-> any-t (cont-tt any-t any-t))
+  {λ (c) (c x)}}
+{define/t (cont->>= x f)
+  (-> (cont-tt any-t any-t) (-> any-t (cont-tt any-t any-t)) (cont-tt any-t any-t))
+  {λ (c) (x {λ (v) ((f v) c)})}}
+{define-syntax-rule {cont-if-return-m b v}
+  {λ (c) (if b v (c nothing))}}
+{define (map-m f xs)
+  (if (null? xs)
+      (cont-return '())
+      {do cont->>=
+        #{head <- (f (car xs))}
+        #{tail <- (map-m f (cdr xs))}
+        (cont-return (cons head tail))})}
 
 {define:type t-id-t symbol-t}
 {define t-id-eq? eq?}
@@ -115,6 +145,8 @@
 {define/t value-just-t-id value-just-t-id-t 'just}
 {define:type value-delay-t-id-t (and-tt t-id-t 'delay)}
 {define/t value-delay-t-id value-delay-t-id-t 'delay}
+{define:type value-optimized-t-id-t (and-tt t-id-t 'optimized)}
+{define/t value-optimized-t-id value-optimized-t-id-t 'optimized}
 
 ;; without t->?, it will make the same value different and disallow changing the type of value
 {define-syntax-rule:type (value-tt x) (t->? (and-tt value-bone-t x))}
@@ -130,6 +162,14 @@
     (-> value-t) ;; exec-f
     (-> (vector-tt identifierspace-t value-t (list-of-tt value-t))) ;; display-f
     nothing-t))}
+{define:type value-optimized-t
+  (value-tt
+   (vector-tt
+    value-optimized-t-id-t
+    (-> any-t value-t) ;; Returns the equivalent value without this layer of optimization (optimizations can have many layers)
+    symbol-t ;; tag
+    any-t ;; value
+))}
 ;; value-t type values may change, but often it is always a value-t type value, so it is memorized
 {define:type value-t
   (memorize1
@@ -141,6 +181,7 @@
      value-struct-t
      value-just-t
      value-delay-t
+     value-optimized-t
      )))}
 
 {define-values (identifierspace-t identifierspace? identifierspace-null identifierspace-ref identifierspace-set identifierspace->list)
@@ -163,53 +204,189 @@
        (map {λ (v) (vector (car v) (cdr v))} (dict->list x))}
      (values identifierspace-t is? identifierspace-null identifierspace-ref identifierspace-set identifierspace->list)})}
 
-{define/t (value-symbol? (vector t _ ...))
+{define/t (op? (vector t _ ...))
   (-> value-t boolean-t)
-  (t-id-eq? t value-symbol-t-id)}
-{define/t (value-pair? (vector t _ ...))
+  (t-id-eq? t value-optimized-t-id)}
+{define/t (cons-op un-op-f tag value)
+  (-> (-> any-t value-t) symbol-t any-t value-optimized-t)
+  (vector value-optimized-t-id un-op-f tag value)}
+{define/t (un-op (vector _  un-op tag value _ ...))
+  (-> value-optimized-t value-t)
+  (un-op value)}
+{define/t (un-op* x)
+  (-> value-t value-t)
+  (if (op? x)
+      (un-op* (un-op x))
+      x)}
+{define/t (op-tag (vector _ un-op-f tag value _ ...))
+  (-> value-optimized-t symbol-t)
+  tag}
+{define/t (op-value (vector _ un-op-f tag value _ ...))
+  (-> value-optimized-t any-t)
+  value}
+{define/t (->op/_? s x)
+  (-> symbol-t value-t boolean-t)
+  {and (op? x)
+      (symbol-eq? s (op-tag x))}}
+
+{define (value-_? s v)
+  (-> t-id-t value-t boolean-t)
+  (if (op? v)
+      (value-_? s (un-op v))
+      {let ([(vector t _ ...) v])
+        (t-id-eq? t s)})}
+
+{define/t (value-symbol? x)
   (-> value-t boolean-t)
-  (t-id-eq? t value-pair-t-id)}
-{define/t (value-null? (vector t _ ...))
+  (value-_? value-symbol-t-id x)}
+{define/t (value-pair? x)
   (-> value-t boolean-t)
-  (t-id-eq? t value-null-t-id)}
-{define/t (value-struct? (vector t _ ...))
+  (value-_? value-pair-t-id x)}
+{define/t (value-null? x)
   (-> value-t boolean-t)
-  (t-id-eq? t value-struct-t-id)}
-{define/t (value-just? (vector t _ ...))
+  (value-_? value-null-t-id x)}
+{define/t (value-struct? x)
   (-> value-t boolean-t)
-  (t-id-eq? t value-just-t-id)}
-{define/t (value-delay? (vector t _ ...))
+  (value-_? value-struct-t-id x)}
+{define/t (value-just? x)
   (-> value-t boolean-t)
-  (t-id-eq? t value-delay-t-id)}
+  (value-_? value-just-t-id x)}
+{define/t (value-delay? x)
+  (-> value-t boolean-t)
+  (value-_? value-delay-t-id x)}
 
 {define/t (cons-value-symbol x)
   (-> string-t value-symbol-t)
   (vector value-symbol-t-id x nothing nothing)}
-{define/t (elim-value-symbol (vector _ v _ ...))
+{define/t (aux-elim-value-symbol (vector _ v _ ...))
   (-> value-symbol-t string-t)
   v}
+{define (elim-value-symbol x) (aux-elim-value-symbol (un-op* x))}
 {define/t (value-symbol-equal? x y)
   (-> value-symbol-t value-symbol-t boolean-t)
   (string-eq? (elim-value-symbol x) (elim-value-symbol y))}
 {define/t (cons-value-pair x y)
   (-> value-t value-t value-pair-t)
   (vector value-pair-t-id x y nothing)}
-{define/t (elim-value-pair (vector _ x y _ ...))
+{define/t (aux-elim-value-pair (vector _ x y _ ...))
   (-> value-pair-t (vector-tt value-t value-t))
   (vector x y)}
+{define (elim-value-pair x) (aux-elim-value-pair (un-op* x))}
 {define/t (cons-value-struct x y)
   (-> value-t value-t value-struct-t)
   (vector value-struct-t-id x y nothing)}
-{define/t (elim-value-struct (vector _ x y _ ...))
+{define/t (aux-elim-value-struct (vector _ x y _ ...))
   (-> value-struct-t (vector-tt value-t value-t))
   (vector x y)}
+{define (elim-value-struct x) (aux-elim-value-struct (un-op* x))}
 {define/t value-null value-null-t (vector value-null-t-id nothing nothing nothing)}
 {define/t (cons-value-delay exec-f display-f)
   (-> (-> value-t) (-> (vector-tt identifierspace-t value-t (list-of-tt value-t))) value-delay-t)
   (vector value-delay-t-id exec-f display-f nothing)}
-{define/t (elim-value-delay (vector _ exec-f display-f _ ...))
+{define/t (aux-elim-value-delay (vector _ exec-f display-f _ ...))
   (-> value-delay-t (vector-tt (-> value-t) (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))))
   (vector exec-f display-f)}
+{define (elim-value-delay x) (aux-elim-value-delay (un-op* x))}
+{define/t (aux-must-value-unjust-1 (vector _ v _ ...))
+  (-> value-just-t value-t)
+  v}
+{define (must-value-unjust-1 x) (aux-must-value-unjust-1 (un-op* x))}
+
+{define:type op/nat-data-t nat-t}
+{define op/nat-type-s 'nat}
+{define/t (op/nat-data->value n)
+  (-> nat-t value-t)
+  (if (nat-eq? n 0)
+      (cons-value-struct nat-zero-s value-null)
+      (cons-value-struct nat-succ-s (cons-op/nat (- n 1))))}
+{define/t (cons-op/nat n)
+  (-> nat-t value-t)
+  (cons-op op/nat-data->value op/nat-type-s n)}
+{define/t (op/nat? x)
+  (-> value-t boolean-t)
+  (->op/_? op/nat-type-s x)}
+
+{define/t (elim-value-struct-fixed-type-and-length-or-return-m type len x ->error-v display-f)
+  (->
+   value-symbol-t
+   nat-t
+   value-t
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   (cont-tt (list-of-tt value-t) value-t))
+  {do cont->>=
+    #{x <- (value-undelay-m x display-f)}
+    (cont-if-return-m (not (value-struct? x)) (->error-v))
+    #{(vector x-type x-list) := (elim-value-struct x)}
+    (cont-if-return-m (not (value-equal? x-type type)) (->error-v))
+    #{x-list <- (value-undelay-list-or-return-m x-list ->error-v display-f)}
+    (cont-if-return-m (not (nat-eq? (length x-list) len)) (->error-v))
+    (cont-return x-list)}}
+
+{define/t (value->nat-or-return-m x ->error-v display-f)
+  (->
+   value-t
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   (cont-tt nat-t value-t))
+  {do cont->>=
+    #{x <- (value-undelay-m x display-f)}
+    {cond
+      [(op/nat? x) (cont-return (op-value x))]
+      [(not (value-struct? x)) (cont-return (->error-v))]
+      [else
+       {do cont->>=
+         #{(vector x-type x-list) := (elim-value-struct x)}
+         #{x-type <- (value-undelay-m x-type display-f)}
+         {cond
+           [(value-equal? x-type nat-zero-s)
+            {do cont->>=
+              #{x-list <- (value-undelay-list-or-return-m x-list ->error-v display-f)}
+              (cont-if-return-m (not (null? x-list)) (->error-v))
+              (cont-return 0)}]
+           [(value-equal? x-type nat-succ-s)
+            {do cont->>=
+              #{x-list <- (value-undelay-list-or-return-m x-list ->error-v display-f)}
+              (cont-if-return-m (not (nat-eq? (length x-list) 1)) (->error-v))
+              #{(list x-v) := x-list}
+              #{x-v-r <- (value->nat-or-return-m x-v ->error-v display-f)}
+              (cont-return (+ x-v-r 1))}]
+           [else (cont-return (->error-v))]}}]}}}
+
+{define/t (char->value c)
+  (-> char-t value-t)
+  (cons-value-struct
+   char-s
+   (cons-value-list
+    (cons-op/nat (char->integer c))))}
+{define/t (string->value s)
+  (-> string-t value-t)
+  (cons-value-struct
+   string-s
+   (cons-value-list
+    (list->value (map char->value (string->list s)))))}
+
+{define/t (value->char-or-return-m x ->error-v display-f)
+  (->
+   value-t
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   (cont-tt char-t value-t))
+  {do cont->>=
+    #{(list x-v) <- (elim-value-struct-fixed-type-and-length-or-return-m char-s 1 x ->error-v display-f)}
+    #{x-v-nat <- (value->nat-or-return-m x-v ->error-v display-f)}
+    (cont-return (integer->char x-v-nat))}} ;; TODO: handle chars not in the range (or/c (integer-in 0 55295) (integer-in 57344 1114111))
+{define/t (value->string-or-return-m x ->error-v display-f)
+  (->
+   value-t
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   (cont-tt string-t value-t))
+  {do cont->>=
+    #{(list x-v) <- (elim-value-struct-fixed-type-and-length-or-return-m string-s 1 x ->error-v display-f)}
+    #{x-v <- (value-undelay-list-or-return-m x-v ->error-v display-f)}
+    #{x-v-char <- (map-m {λ (x) (value->char-or-return-m x ->error-v display-f)} x-v)}
+    (cont-return (list->string x-v-char))}}
 
 {define/t list->value
   (-> (list-of-tt value-t) value-t)
@@ -259,52 +436,44 @@
        {let ([(vector exec-f display-f) (elim-value-delay x)])
          (vector #f 'delay exec-f display-f)}]}}}
 
-{define/t (unsafe--value-set-to-just! x v)
+{define/t (unsafe-value-set-to-just! x v) ;; TODO: keep op
   (-> value-t value-t void-t)
-  {when (not (point-eq? x v))
-    (vector-set*! x
+  {when (not (or (point-eq? x v) (op/nat? x)))
+    (vector-set*!
+     x
                   0 value-just-t-id
                   1 v
                   2 nothing
                   3 nothing)}}
-{define/t (must-value-unjust-1 (vector _ v _ ...))
-  (-> value-just-t value-t)
-  v}
 {define/t (value-unjust-* x)
   (-> value-t value-t)
-  (value-unjust-*-aux x (list x))}
+  (value-unjust-*-aux x (set))}
 {define/t (value-unjust-*-aux x history)
-  (-> value-t (list-of-tt value-t) value-t)
-  (if (value-just? x) (value-unjust-*-aux (must-value-unjust-1 x) (cons x history))
-      {begin
-        {list-foreach history history_v (unsafe--value-set-to-just! history_v x)}
-        x})}
+  (-> value-t (set-of-tt value-t) value-t)
+  {cond
+    [(set-member? history x) (TODO)]
+    [(value-just? x) (value-unjust-*-aux (must-value-unjust-1 x) (set-add history x))]
+    [else
+     {for ([history_v history]) (unsafe-value-set-to-just! history_v x)}
+     x]}}
 {define/t (must-value-force-1 (and x (vector _ exec-f display-f _ ...)))
   (-> value-delay-t value-t)
   (vector-set! x 1 assert-unreachable)
   {let/t ([v value-t (exec-f)])
-         (unsafe--value-set-to-just! x v)
+         (unsafe-value-set-to-just! x v)
          v}}
 {define/t (value-force* x)
   (-> value-t value-t)
-  (value-force*-aux x (list x))}
+  (value-force*-aux x (set))}
 {define/t (value-force*-aux x history)
-  (-> value-t (list-of-tt value-t) value-t)
+  (-> value-t (set-of-tt value-t) value-t)
   {cond
-    [(value-just? x) (value-force*-aux (must-value-unjust-1 x) (cons x history))]
-    [(value-delay? x) (value-force*-aux (must-value-force-1 x) (cons x history))]
+    [(set-member? history x) (TODO)]
+    [(value-just? x) (value-force*-aux (must-value-unjust-1 x) (set-add history x))]
+    [(value-delay? x) (value-force*-aux (must-value-force-1 x) (set-add history x))]
     [else
-     {list-foreach history history_v (unsafe--value-set-to-just! history_v x)}
+     {for ([history_v history]) (unsafe-value-set-to-just! history_v x)}
      x]}}
-{define:type (cont-tt a r) (-> (-> a r) r)}
-{define/t (cont-return x)
-  (-> any-t (cont-tt any-t any-t))
-  {λ (c) (c x)}}
-{define/t (cont->>= x f)
-  (-> (cont-tt any-t any-t) (-> any-t (cont-tt any-t any-t)) (cont-tt any-t any-t))
-  {λ (c) (x {λ (v) ((f v) c)})}}
-{define-syntax-rule {cont-if-return-m b v}
-  {λ (c) (if b v (c nothing))}}
 {define/t ((value-undelay-m x display-f) f)
   (-> value-t (-> (vector-tt identifierspace-t value-t (list-of-tt value-t))) (cont-tt value-t value-t))
   {cond
@@ -323,12 +492,12 @@
                  [(or (value-delay? x) (value-delay? y)) #f]
                  [(value-null? x) {if (value-null? y)
                                       {begin
-                                        (unsafe--value-set-to-just! x y)
+                                        (unsafe-value-set-to-just! x y)
                                         #t}
                                       #f}]
                  [(value-symbol? x) {if (and (value-symbol? y) (string-eq? (elim-value-symbol x) (elim-value-symbol y)))
                                         {begin
-                                          (unsafe--value-set-to-just! x y)
+                                          (unsafe-value-set-to-just! x y)
                                           #t}
                                         #f}]
                  [(value-pair? x) {if (value-pair? y)
@@ -368,8 +537,8 @@
       [(value-pair? xs)
        {do cont->>=
          #{(vector xs-head xs-tail) := (elim-value-pair xs)}
-         #{(vector tail-r tail-r--tail) <- (value-undelay-list-m xs-tail display-f)}
-         (cont-return (vector (cons xs-head tail-r) tail-r--tail))}]
+         #{(vector tail-r tail-r-tail) <- (value-undelay-list-m xs-tail display-f)}
+         (cont-return (vector (cons xs-head tail-r) tail-r-tail))}]
       [else (cont-return (vector '() xs))]}}}
 
 ;; Influenced by: zh_CN, zh_TW, ja
@@ -387,6 +556,21 @@
 {define/t builtin-s value-symbol-t (cons-value-symbol "內建")}
 {define/t false-s value-symbol-t (cons-value-symbol "陰")}
 {define/t true-s value-symbol-t (cons-value-symbol "陽")}
+{define/t char-s value-symbol-t (cons-value-symbol "字符")}
+{define/t string-s value-symbol-t (cons-value-symbol "字串")}
+{define/t nat-zero-s value-symbol-t (cons-value-symbol "自然數/零")}
+{define/t nat-succ-s value-symbol-t (cons-value-symbol "自然數/加一")}
+{define/t symbol-to-string-s value-symbol-t (cons-value-symbol "符號→字串")}
+{define/t string-to-symbol-s value-symbol-t (cons-value-symbol "字串→符號")}
+{define/t cons-value-pair-s value-symbol-t (cons-value-symbol "構造-列表/序對")}
+{define/t cons-value-struct-s value-symbol-t (cons-value-symbol "構造-結構體")}
+{define/t elim-value-pair-s value-symbol-t (cons-value-symbol "解構-列表/序對")}
+{define/t elim-value-struct-s value-symbol-t (cons-value-symbol "解構-結構體")}
+{define/t value-pair?-s value-symbol-t (cons-value-symbol "列表/序對？")}
+{define/t value-struct?-s value-symbol-t (cons-value-symbol "結構體？")}
+{define/t value-null?-s value-symbol-t (cons-value-symbol "列表/空？")}
+{define/t value-symbol?-s value-symbol-t (cons-value-symbol "符號？")}
+{define/t rec-s value-symbol-t (cons-value-symbol "遞歸")}
 
 {define/t false-v value-t (cons-value-struct false-s value-null)}
 {define/t true-v value-t (cons-value-struct true-s value-null)}
@@ -397,19 +581,12 @@
 {define/t (identifierspace->value space)
   (-> identifierspace-t value-t)
   (cons-value-struct mapping-s (cons-value-list (list->value (map {λ ((vector k v)) (cons-value-list k v)} (identifierspace->list space)))))}
-{define/t (value->identifierspace-or-return-m x fail-v display-f)
+{define/t (value->identifierspace-or-return-m x ->error-v display-f)
   (-> value-t (-> value-t) (-> (vector-tt identifierspace-t value-t (list-of-tt value-t))) (cont-tt identifierspace-t value-t))
   {do cont->>=
-    #{x <- (value-undelay-m x display-f)}
-    {cont-if-return-m (not (value-struct? x)) fail-v}
-    #{(vector x-type x-list) := (elim-value-struct x)}
-    #{x-type <- (value-undelay-m x-type display-f)}
-    {cont-if-return-m (not (value-equal? x-type mapping-s)) fail-v}
-    #{x-list <- (value-undelay-list-or-return-m x-list fail-v display-f)}
-    {cont-if-return-m (not (nat-eq? (length x-list) 1)) fail-v}
-    #{(list t) := x-list}
-    #{xs <- (value-undelay-list-or-return-m t fail-v display-f)}
-    (value->identifierspace-or-return-m-aux identifierspace-null xs fail-v display-f)}}
+    #{(list t) <- (elim-value-struct-fixed-type-and-length-or-return-m mapping-s 1 x ->error-v display-f)}
+    #{xs <- (value-undelay-list-or-return-m t ->error-v display-f)}
+    (value->identifierspace-or-return-m-aux identifierspace-null xs ->error-v display-f)}}
 {define/t (value->identifierspace-or-return-m-aux r xs fail-v display-f)
   (-> identifierspace-t (list-of-tt value-t) (-> value-t) (-> (vector-tt identifierspace-t value-t (list-of-tt value-t))) (cont-tt identifierspace-t value-t))
   {if (null? xs)
@@ -425,7 +602,7 @@
   {syntax-rules ()
     [(_ x) (? (curry value-equal? x))]}}
 
-{define/t (elim-exp-comment-m x display-f)
+{define/t (elim-exp-comment-and-undelay-m x display-f)
   (-> value-t (-> (vector-tt identifierspace-t value-t (list-of-tt value-t))) (cont-tt value-t value-t))
   {do cont->>=
     #{x <- (value-undelay-m x display-f)}
@@ -437,8 +614,8 @@
           (if (not (value-equal? x-type exp-s))
               (cont-return x)
               {do cont->>=
-                #{(vector x-list x-list--tail) <- (value-undelay-list-m x-list display-f)}
-                (if (not (and (nothing? x-list--tail) (nat-eq? (length x-list) 2)))
+                #{(vector x-list x-list-tail) <- (value-undelay-list-m x-list display-f)}
+                (if (not (and (nothing? x-list-tail) (nat-eq? (length x-list) 2)))
                     (cont-return x)
                     {do cont->>=
                       #{(list ast-type ast-list) := x-list}
@@ -446,11 +623,11 @@
                       (if (not (value-equal? ast-type comment-s))
                           (cont-return x)
                           {do cont->>=
-                            #{(vector ast-list ast-list--tail) <- (value-undelay-list-m ast-list display-f)}
-                            (if (not (and (nat-eq? (length ast-list 2)) (nothing? ast-list--tail)))
+                            #{(vector ast-list ast-list-tail) <- (value-undelay-list-m ast-list display-f)}
+                            (if (not (and (nat-eq? (length ast-list 2)) (nothing? ast-list-tail)))
                                 (cont-return x)
                                 {let ([(list _ new-v) ast-list])
-                                  (elim-exp-comment-m new-v display-f)})})})})})}}
+                                  (elim-exp-comment-and-undelay-m new-v display-f)})})})})})}}
 
 
 {define/t (make-quote x)
@@ -486,6 +663,28 @@
          cons-value-pair-s
          (car xs)
          (list->exp (cdr xs))))))}
+{define/t (elim-exp-or-return-m x ->error-v display-f)
+  (->
+   value-t
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   (cont-tt (vector-tt value-t #|type|# (list-of-tt value-t) #|list|#) value-t))
+  {do cont->>=
+    #{(list ast-type ast-list) <- (elim-value-struct-fixed-type-and-length-or-return-m exp-s 2 x ->error-v display-f)}
+    #{ast-list <- (value-undelay-list-or-return-m ast-list ->error-v display-f)}
+    (cont-return (vector ast-type ast-list))}}
+{define/t (elim-exp-id-or-return-m id ->error-v display-f)
+  (->
+   value-t
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   (cont-tt value-t value-t))
+  {do cont->>=
+    #{(vector ast-type ast-list) <- (elim-exp-or-return-m id ->error-v display-f)}
+    #{ast-type <- (elim-exp-comment-and-undelay-m ast-type display-f)}
+    {match* (ast-type ast-list)
+      [((value/ id-s) (list x)) (cont-return x)]
+      [(_ _) (cont-return (->error-v))]}}}
 
 {define/t (aux-evaluate-m ->error-v display-f space x)
   (->
@@ -495,16 +694,10 @@
    value-t
    (cont-tt value-t value-t))
   {do cont->>=
-    #{x <- (value-undelay-m x display-f)}
-    {cont-if-return-m (not (value-struct? x)) (->error-v)}
-    #{(vector x-type x-list) := (elim-value-struct x)}
-    #{x-type <- (value-undelay-m x-type display-f)}
-    {cont-if-return-m (not (value-equal? x-type exp-s)) (->error-v)}
-    #{x-list <- (value-undelay-list-or-return-m x-list ->error-v display-f)}
-    {cont-if-return-m (not (nat-eq? (length x-list) 2)) (->error-v)}
-    #{(list ast-type ast-list) := x-list}
-    #{ast-type <- (value-undelay-m ast-type display-f)}
-    #{ast-list <- (value-undelay-list-or-return-m ast-list ->error-v display-f)}
+    #{x <- (elim-exp-comment-and-undelay-m x display-f)}
+    #{(vector ast-type ast-list) <- (elim-exp-or-return-m x ->error-v display-f)}
+    #{ast-type <- (elim-exp-comment-and-undelay-m ast-type display-f)}
+    #{ast-list <- (map-m {λ (v) (elim-exp-comment-and-undelay-m v display-f)} ast-list)}
     {match* (ast-type ast-list)
       [((value/ id-s) (list x))
        (cont-return (identifierspace-ref space x ->error-v))]
@@ -515,10 +708,47 @@
       [((value/ builtin-s) (list f xs ...))
        (cont-return (eval-builtin space f xs))]
       [((value/ comment-s) (list comment x))
-       ;; todo: store comment for better error handling
+       ;; TODO: store comment for better error handling
        (aux-evaluate-m ->error-v display-f space x)]
       [(_ _)
        (cont-return (->error-v))]}}}
+{define/t (function-arg-pat-match-or-return-m init-space pat vals ->error-v display-f)
+  (->
+   identifierspace-t
+   value-t
+   (list-of-tt value-t)
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   (cont-tt identifierspace-t value-t))
+  {do cont->>=
+         #{(vector pat-head pat-tail) <- (value-undelay-list-m pat display-f)}
+         #{pat-head <- (map-m {λ (v) (elim-exp-id-or-return-m v ->error-v display-f)} pat-head)}
+         #{pat-tail <- (if (value-null? pat-tail)
+        (cont-return nothing)
+        (elim-exp-id-or-return-m pat-tail ->error-v display-f))}
+    (function-arg-pat-match-or-return-m-aux init-space pat-head pat-tail vals ->error-v display-f)}}
+{define/t (function-arg-pat-match-or-return-m-aux space ids id-tail vals ->error-v display-f)
+  (->
+   identifierspace-t
+   (list-of-tt value-t)
+   (or-tt value-t nothing-t)
+   (list-of-tt value-t)
+   (-> value-t)
+   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
+   (cont-tt identifierspace-t value-t))
+  {match* (vals ids id-tail)
+    [('() '() (? nothing?)) (cont-return space)]
+    [(vals '() (? {λ (x) (not (nothing? x))} id-tail)) (cont-return (identifierspace-set space id-tail (list->value vals)))]
+    [((cons v vals-tail) (cons ids-head ids-tail) id-tail)
+     (function-arg-pat-match-or-return-m-aux
+      (identifierspace-set space ids-head v)
+      ids-tail
+      id-tail
+      vals-tail
+      ->error-v
+      display-f)]
+    [(_ _ _) (cont-return (->error-v))]}}
+
 {define/t (aux-apply-m ->error-v display-f f xs)
   (->
    (-> value-t)
@@ -527,16 +757,16 @@
    (list-of-tt value-t)
    (cont-tt value-t value-t))
   {do cont->>=
-    #{f <- (value-undelay-m f display-f)}
-    {cont-if-return-m (not (value-struct? f)) (->error-v)}
-    #{(vector f-type f-list) <- (elim-value-struct f)}
-    #{f-type <- (value-undelay-m f-type display-f)}
-    {cont-if-return-m (not (value-equal? f-type function-s)) (->error-v)}
-    #{f-list <- (value-undelay-list-or-return-m f-list ->error-v display-f)}
-    {cont-if-return-m (not (nat-eq? (length f-list) 2)) (->error-v)}
-    #{(list arg-id expr) := f-list}
-    (cont-return (evaluate (identifierspace-set identifierspace-null arg-id (list->value xs)) expr))}}
-{define/t (aux-builtin-m space f xs)
+    #{(list env arg-pat expr) <- (elim-value-struct-fixed-type-and-length-or-return-m function-s 3 f ->error-v display-f)}
+    #{space <- (value->identifierspace-or-return-m env ->error-v display-f)}
+    #{new-space <- (function-arg-pat-match-or-return-m space arg-pat xs ->error-v display-f)}
+    (cont-return (evaluate new-space expr))}}
+{define/t (list-append-value xs ys)
+         (-> (list-of-tt value-t) value-t)
+         (if (null? xs)
+             ys
+             (cons-value-pair (car xs) (list-append-value (cdr xs) ys)))}
+{define/t (aux-builtin-m space f raw-args)
   (->
    (-> value-t)
    (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
@@ -544,51 +774,103 @@
    value-t
    (list-of-tt value-t)
    (cont-tt value-t value-t))
-  {define (display-f) (vector space f xs)}
+  {define (display-f) (vector space f raw-args)}
   {define (->error-v) {match (display-f) [(vector s f xs) (cons-value-builtin-error s f xs)]}}
-  [define (local-eval x)
-    (evaluate space x)]
+  {define (local-eval x)
+    (evaluate space x)}
+  {define/t (aux-cons-2 conser x-exp y-exp)
+    (-> (-> value-t value-t value-t) value-t value-t (cont-tt value-t value-t))
+    (cont-return (conser (local-eval x-exp) (local-eval y-exp)))}
+  {define/t (aux-pred pred x-exp)
+    (-> (-> value-t boolean-t) value-t (cont-tt value-t value-t))
+    {do cont->>=
+         #{x-val <- (value-undelay-m (local-eval x-exp) display-f)}
+         (cont-return (cons-value-boolean (pred x-val)))}}
+  {define (aux-elim-2 pred elimer x-exp id-a id-b r)
+    (-> (-> value-t boolean-t) (-> value-t (vector-tt value-t value-t)) value-t value-t value-t (cont-tt value-t value-t))
+    {do cont->>=
+         #{id-a <- (elim-exp-comment-and-undelay-m id-a display-f)}
+         #{id-b <- (elim-exp-comment-and-undelay-m id-b display-f)}
+      #{id-a <- (elim-exp-id-or-return-m id-a ->error-v display-f)}
+      #{id-b <- (elim-exp-id-or-return-m id-b ->error-v display-f)}
+         #{x-val <- (value-undelay-m (local-eval x-exp) display-f)}
+         {cont-if-return-m (not (pred x-val)) (->error-v)}
+         #{(vector a b) := (elimer x-val)}
+         (cont-return (evaluate (identifierspace-set (identifierspace-set space id-a a) id-b b) r))}}
   {do cont->>=
     #{f <- (value-undelay-m f display-f)}
-    {match* (f xs)
+    {match* (f raw-args)
       [((value/ quote-s) (list v)) v]
-      [((value/ evaluate-s) (list space x))
-       (cont-return (aux-evaluate ->error-v display-f space x))]
+      [((value/ evaluate-s) (list inner-space-exp x-exp))
+       {do cont->>=
+         #{x <- (local-eval x-exp)}
+         #{inner-space-v <- (local-eval inner-space-exp)}
+         #{inner-space <- (value->identifierspace-or-return-m inner-space-v ->error-v display-f)}
+       (cont-return (aux-evaluate ->error-v display-f inner-space x))}]
+      [((value/ function-s) (list args exp))
+       {do cont->>=
+         #{(vector args-head args-tail) <- (value-undelay-list-m args display-f)}
+         #{args-head <- (map-m {λ (v) (elim-exp-comment-and-undelay-m v display-f)} args-head)}
+         #{args-tail <- (elim-exp-comment-and-undelay-m args-tail display-f)}
+         (map-m {λ (v) (elim-exp-id-or-return-m v ->error-v display-f)} args-head) ;; check if it is exp/id
+         (if (value-null? args-tail)
+             (cont-return '())
+             (elim-exp-id-or-return-m args-tail ->error-v display-f)) ;; check if it is exp/id
+         (cont-return
+          (cons-value-struct
+           function-s
+           (cons-value-list
+            (identifierspace->value space)
+            (list-append-value args-head args-tail)
+            exp)))}]
       [((value/ apply-function-s) (list f xs))
-       (aux-apply-m
+       {do cont->>=
+         #{xs <- (value-undelay-list-or-return-m (local-eval xs) ->error-v display-f)}
+         (aux-apply-m
         ->error-v
         display-f
         (local-eval f)
-        (map
-         local-eval
-         xs))]
+        xs)}]
       [((value/ apply-macro-s) (list f xs))
+       {do cont->>=
+         #{xs <- (value-undelay-list-or-return-m (local-eval xs) ->error-v display-f)}
        (aux-apply-m
         ->error-v
         display-f
         (local-eval f)
         (cons-value-pair
          (identifierspace->value space)
-         xs))]
-      [((value/ cons-value-pair-s) (list x y)) (cont-return (cons-value-pair (local-eval x) (local-eval y)))]
-      [((value/ elim-value-pair-s) (list x id-a id-b r))
+         xs))}]
+      [((value/ cons-value-struct-s) (list x y)) (aux-cons-2 cons-value-struct x y)]
+      [((value/ cons-value-pair-s) (list x y)) (aux-cons-2 cons-value-pair x y)]
+      [((value/ elim-value-struct-s) (list x id-a id-b r)) (aux-elim-2 value-struct? elim-value-struct x id-a id-b r)]
+      [((value/ elim-value-pair-s) (list x id-a id-b r)) (aux-elim-2 value-pair? elim-value-pair x id-a id-b r)]
+      [((value/ value-struct?-s) (list x)) (aux-pred value-struct? x)]
+      [((value/ value-pair?-s) (list x)) (aux-pred value-pair? x)]
+      [((value/ value-null?-s) (list x)) (aux-pred value-null? x)]
+      [((value/ value-symbol?-s) (list x)) (aux-pred value-symbol? x)]
+      [((value/ symbol-to-string-s) (list x))
        {do cont->>=
-         #{id-a <- (elim-exp-comment-m id-a display-f)}
-         #{id-b <- (elim-exp-comment-m id-b display-f)}
-         #{x <- (value-undelay-m x display-f)}
-         {cont-if-return-m (not (value-pair? x)) (->error-v)}
-         #{(vector a b) := (elim-value-pair x)}
-         (cont-return (evaluate (identifierspace-set (identifierspace-set space id-a a) id-b b) r))}]
-      [((value/ value-pair?-s) (list x))
+         #{x <- (value-undelay-m (local-eval x) ->error-v display-f)}
+         {cont-if-return-m (not (value-symbol? x)) (->error-v)}
+         {cont-return (string->value (elim-value-symbol x))}}]
+      [((value/ string-to-symbol-s) (list x))
        {do cont->>=
-         #{x <- (value-undelay-m x display-f)}
-         (cont-return (cons-value-boolean (value-pair? x)))}]
-      [(_ _) (cont-return (TODO))]}}}
+         #{str <- (value->string-or-return-m (local-eval x) ->error-v display-f)}
+         (cont-return (cons-value-symbol str))}]
+      [((value/ rec-s) (list id expr))
+       {do cont->>=
+         #{id <- (elim-exp-comment-and-undelay-m id display-f)}
+         #{id <- (elim-exp-id-or-return-m id ->error-v display-f)}
+         (cont-return
+          {letrec
+           ([val (evaluate:syntax inner-space expr)]
+            [inner-space (identifierspace-set space id val)])
+           val})}]
+      [(_ _) (cont-return (->error-v))]}}}
 
-{define/t cons-value-pair-s value-symbol-t (cons-value-symbol "構造-序對")}
-{define/t elim-value-pair-s value-symbol-t (cons-value-symbol "解構-序對")}
-{define/t value-pair?-s value-symbol-t (cons-value-symbol "序對？")}
-
+{define-syntax-rule (aux-evaluate:syntax ->error-v display-f space x)
+  (cons-value-delay {λ () ((aux-evaluate-m ->error-v display-f space x) id)} display-f)}
 {define/t (aux-evaluate ->error-v display-f space x)
   (->
    (-> value-t)
@@ -596,18 +878,21 @@
    identifierspace-t
    value-t
    value-t)
-  (cons-value-delay {λ () ((aux-evaluate-m ->error-v display-f space x) id)} display-f)}
-{define/t (evaluate space x)
-  (-> identifierspace-t value-t value-t)
-  {define (display-f)
+  (aux-evaluate:syntax ->error-v display-f space x)}
+{define-syntax-rule (evaluate:syntax space x)
+  ({λ ()
+   {define (display-f)
     (vector
      identifierspace-null
      evaluate-s
      (list
       (make-quote (identifierspace->value space))
       (make-quote x)))}
-  {define (->error-v) {match (display-f) [(vector s f xs) (cons-value-builtin-error s f xs)]}}
-  (aux-evaluate ->error-v display-f space x)}
+     {define (->error-v) {match (display-f) [(vector s f xs) (cons-value-builtin-error s f xs)]}}
+     (aux-evaluate ->error-v display-f space x)})}
+{define/t (evaluate space x)
+  (-> identifierspace-t value-t value-t)
+  (evaluate:syntax space x)}
 {define/t (eval-builtin space f xs)
   (-> identifierspace-t value-t (list-of-tt value-t))
   (cons-value-delay {λ () ((aux-builtin-m space f xs) id)} {λ () (vector space f xs)})}
