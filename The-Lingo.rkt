@@ -1,7 +1,4 @@
-#| Copyright (C) 2017-2020  ㄗㄠˋ ㄑㄧˊ <tsao-chi@the-lingo.org>
- | This Source Code Form is subject to the terms of the Mozilla Public
- | License, v. 2.0. If a copy of the MPL was not distributed with this
- | file, You can obtain one at http://mozilla.org/MPL/2.0/. |#
+#| Copyright (C) 2017-2020  ㄗㄠˋ ㄑㄧˊ <tsao-chi@the-lingo.org> |#
 #lang racket
 
 ;; This file is written in a Racket dialect defined and described below
