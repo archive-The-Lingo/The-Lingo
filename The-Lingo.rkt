@@ -543,7 +543,7 @@
 {define/t id-s value-symbol-t (cons-value-symbol "標識符")}
 {define/t apply-function-s value-symbol-t (cons-value-symbol "用-函式")}
 {define/t macro-s value-symbol-t (cons-value-symbol "構式子")}
-{define/t quote-s value-symbol-t (cons-value-symbol "引用")}
+{define/t quote-s value-symbol-t (cons-value-symbol "常量")}
 {define/t function-s value-symbol-t (cons-value-symbol "函式")}
 {define/t apply-macro-s value-symbol-t (cons-value-symbol "用-構式子")}
 {define/t comment-s value-symbol-t (cons-value-symbol "注釋")}
@@ -765,8 +765,6 @@
       (cons-value-pair (car xs) (list-append-value (cdr xs) ys)))}
 {define/t (aux-builtin-m space f raw-args)
   (->
-   (-> value-t)
-   (-> (vector-tt identifierspace-t value-t (list-of-tt value-t)))
    identifierspace-t
    value-t
    (list-of-tt value-t)
@@ -797,7 +795,7 @@
   {do cont->>=
     #{f <- (value-undelay-m f display-f)}
     {match* (f raw-args)
-      [((value/ quote-s) (list v)) v]
+      [((value/ quote-s) (list v)) (cont-return v)]
       [((value/ evaluate-s) (list inner-space-exp x-exp))
        {do cont->>=
          #{x <- (local-eval x-exp)}
@@ -891,7 +889,7 @@
   (-> identifierspace-t value-t value-t)
   (evaluate:syntax space x)}
 {define/t (eval-builtin space f xs)
-  (-> identifierspace-t value-t (list-of-tt value-t))
+  (-> identifierspace-t value-t (list-of-tt value-t) value-t)
   (cons-value-delay {λ () ((aux-builtin-m space f xs) id)} {λ () (vector space f xs)})}
 {define/t (aux-eval-apply ->error-v display-f f xs)
   (->
@@ -920,7 +918,9 @@
         `((,(identifierspace-set
              identifierspace-null
              (sexp->value 'x)
-             (sexp->value 'v)) #(式 標識符 (x)) v))])
+             (sexp->value 'v)) #(式 標識符 (x)) v)
+          (,identifierspace-null #(式 內建 (常量 x)) x)
+          )])
     {for
         ([test tests])
       {let ([(list space exp val) test])
