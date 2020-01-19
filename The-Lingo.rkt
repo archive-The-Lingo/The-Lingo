@@ -252,6 +252,8 @@
   (-> value-t boolean-t)
   (value-_? value-delay-t-id x)}
 
+{define (DEBUG m ... v) (displayln m) v} ;; TODO: Implement a complete error handling system
+
 {define/t (cons-value-symbol x)
   (-> string-t value-symbol-t)
   (vector value-symbol-t-id x nothing nothing)}
@@ -313,11 +315,11 @@
    (cont-tt (list-of-tt value-t) value-t))
   {do cont->>=
     #{x <- (value-undelay-m x display-f)}
-    (cont-if-return-m (not (value-struct? x)) (->error-v))
+    (cont-if-return-m (not (value-struct? x)) (DEBUG "not struct, require"type", get"x (->error-v)))
     #{(vector x-type x-list) := (elim-value-struct x)}
-    (cont-if-return-m (not (value-equal? x-type type)) (->error-v))
+    (cont-if-return-m (not (value-equal? x-type type)) (DEBUG "struct type error" (->error-v)))
     #{x-list <- (value-undelay-list-or-return-m x-list ->error-v display-f)}
-    (cont-if-return-m (not (nat-eq? (length x-list) len)) (->error-v))
+    (cont-if-return-m (not (nat-eq? (length x-list) len)) (DEBUG type": struct length error, require"len", get"(length x-list)". x="x (->error-v)))
     (cont-return x-list)}}
 
 {define/t (value->nat-or-return-m x ->error-v display-f)
@@ -330,7 +332,7 @@
     #{x <- (value-undelay-m x display-f)}
     {cond
       [(op/nat? x) (cont-return (op-value x))]
-      [(not (value-struct? x)) (cont-return (->error-v))]
+      [(not (value-struct? x)) (cont-return (DEBUG "not struct" (->error-v)))]
       [else
        {do cont->>=
          #{(vector x-type x-list) := (elim-value-struct x)}
@@ -339,7 +341,7 @@
            [(value-equal? x-type nat-zero-s)
             {do cont->>=
               #{x-list <- (value-undelay-list-or-return-m x-list ->error-v display-f)}
-              (cont-if-return-m (not (null? x-list)) (->error-v))
+              (cont-if-return-m (not (null? x-list)) (DEBUG "struct length error" (->error-v)))
               (cont-return 0)}]
            [(value-equal? x-type nat-succ-s)
             {do cont->>=
@@ -348,7 +350,7 @@
               #{(list x-v) := x-list}
               #{x-v-r <- (value->nat-or-return-m x-v ->error-v display-f)}
               (cont-return (+ x-v-r 1))}]
-           [else (cont-return (->error-v))]}}]}}}
+           [else (cont-return (DEBUG "struct type error" (->error-v)))]}}]}}}
 
 {define/t (char->value c)
   (-> char-t value-t)
@@ -681,7 +683,7 @@
     #{ast-type <- (elim-exp-comment-and-undelay-m ast-type display-f)}
     {match* (ast-type ast-list)
       [((value/ id-s) (list x)) (cont-return x)]
-      [(_ _) (cont-return (->error-v))]}}}
+      [(_ _) (cont-return (DEBUG "elim-exp-id: not exp-id" (->error-v)))]}}}
 
 {define/t (aux-evaluate-m ->error-v display-f space x)
   (->
@@ -708,7 +710,7 @@
        ;; TODO: store comment for better error handling
        (aux-evaluate-m ->error-v display-f space x)]
       [(_ _)
-       (cont-return (->error-v))]}}}
+       (cont-return (DEBUG "unknown exp"ast-type (->error-v)))]}}}
 {define/t (function-arg-pat-match-or-return-m init-space pat vals ->error-v display-f)
   (->
    identifierspace-t
@@ -720,7 +722,7 @@
   {do cont->>=
     #{(vector pat-head pat-tail) <- (value-undelay-list-m pat display-f)}
     #{pat-head <- (map-m {λ (v) (elim-exp-id-or-return-m v ->error-v display-f)} pat-head)}
-    #{pat-tail <- (if (value-null? pat-tail)
+    #{pat-tail <- (if (nothing? pat-tail)
                       (cont-return nothing)
                       (elim-exp-id-or-return-m pat-tail ->error-v display-f))}
     (function-arg-pat-match-or-return-m-aux init-space pat-head pat-tail vals ->error-v display-f)}}
@@ -744,7 +746,7 @@
       vals-tail
       ->error-v
       display-f)]
-    [(_ _ _) (cont-return (->error-v))]}}
+    [(_ _ _) (cont-return (DEBUG "illegal arg pattern" (->error-v)))]}}
 
 {define/t (aux-apply-m ->error-v display-f f xs)
   (->
@@ -759,7 +761,7 @@
     #{new-space <- (function-arg-pat-match-or-return-m space arg-pat xs ->error-v display-f)}
     (cont-return (evaluate new-space expr))}}
 {define/t (list-append-value xs ys)
-  (-> (list-of-tt value-t) value-t)
+  (-> (list-of-tt value-t) value-t value-t)
   (if (null? xs)
       ys
       (cons-value-pair (car xs) (list-append-value (cdr xs) ys)))}
@@ -789,7 +791,7 @@
       #{id-a <- (elim-exp-id-or-return-m id-a ->error-v display-f)}
       #{id-b <- (elim-exp-id-or-return-m id-b ->error-v display-f)}
       #{x-val <- (value-undelay-m (local-eval x-exp) display-f)}
-      {cont-if-return-m (not (pred x-val)) (->error-v)}
+      {cont-if-return-m (not (pred x-val)) (DEBUG "elim: type error" (->error-v))}
       #{(vector a b) := (elimer x-val)}
       (cont-return (evaluate (identifierspace-set (identifierspace-set space id-a a) id-b b) r))}}
   {do cont->>=
@@ -806,7 +808,7 @@
        {do cont->>=
          #{(vector args-head args-tail) <- (value-undelay-list-m args display-f)}
          #{args-head <- (map-m {λ (v) (elim-exp-comment-and-undelay-m v display-f)} args-head)}
-         #{args-tail <- (elim-exp-comment-and-undelay-m args-tail display-f)}
+         #{args-tail <- (if (nothing? args-tail) (cont-return value-null) (elim-exp-comment-and-undelay-m args-tail display-f))}
          (map-m {λ (v) (elim-exp-id-or-return-m v ->error-v display-f)} args-head) ;; check if it is exp/id
          (if (value-null? args-tail)
              (cont-return '())
@@ -847,7 +849,7 @@
       [((value/ symbol-to-string-s) (list x))
        {do cont->>=
          #{x <- (value-undelay-m (local-eval x) ->error-v display-f)}
-         {cont-if-return-m (not (value-symbol? x)) (->error-v)}
+         {cont-if-return-m (not (value-symbol? x)) (DEBUG "symbol-to-string: type error" (->error-v))}
          {cont-return (string->value (elim-value-symbol x))}}]
       [((value/ string-to-symbol-s) (list x))
        {do cont->>=
@@ -862,7 +864,7 @@
               ([val (evaluate:syntax inner-space expr)]
                [inner-space (identifierspace-set space id val)])
             val})}]
-      [(_ _) (cont-return (->error-v))]}}}
+      [(_ _) (cont-return (DEBUG "unknown builtin" (->error-v)))]}}}
 
 {define-syntax-rule (aux-evaluate:syntax ->error-v display-f space x)
   (cons-value-delay {λ () ((aux-evaluate-m ->error-v display-f space x) id)} display-f)}
@@ -920,6 +922,7 @@
              (sexp->value 'x)
              (sexp->value 'v)) #(式 標識符 (x)) v)
           (,identifierspace-null #(式 內建 (常量 x)) x)
+          (,identifierspace-null #(式 用-函式 (#(式 內建 (函式 (#(式 標識符 (x))) #(式 標識符 (x)))) #(式 內建 (常量 v)))) v)
           )])
     {for
         ([test tests])
