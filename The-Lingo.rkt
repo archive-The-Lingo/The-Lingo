@@ -915,13 +915,13 @@
 
 {define (unittest)
   {local-require rackunit}
-  (check
-   value-equal?
-   (sexp->value 'v)
-   (value-force*
-    (evaluate
-     (identifierspace-set
+  {let
+      ([tests
+        `((,(identifierspace-set
       identifierspace-null
       (sexp->value 'x)
-      (sexp->value 'v))
-     (sexp->value '#(式 標識符 (x))))))}
+      (sexp->value 'v)) #(式 標識符 (x)) v))])
+  {for
+      ([test tests])
+    {let ([(list space exp val) test])
+      (check value-equal? (sexp->value val) (value-force* (evaluate space (sexp->value exp))))}}}}
