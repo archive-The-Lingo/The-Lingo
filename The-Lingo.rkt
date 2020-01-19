@@ -473,6 +473,18 @@
     [else
      {for ([history_v history]) (unsafe-value-set-to-just! history_v x)}
      x]}}
+{define (value-rec-force*-aux x (vector x0 x1) conser)
+   {let ([x0 (value-force* x0)] [x1 (value-force* x1)])
+     {let ([result (conser x0 x1)])
+       (unsafe-value-set-to-just! x result)
+       result}}}
+{define/t (value-rec-force* x)
+  (-> value-t value-t)
+  {let ([x (value-force* x)])
+    {cond
+      [(or (value-null? x) (value-symbol? x)) x]
+      [(value-pair? x) (value-rec-force*-aux x (elim-value-pair x) cons-value-pair)]
+      [(value-struct? x) (value-rec-force*-aux x (elim-value-struct x) cons-value-struct)]}}}
 {define/t ((value-undelay-m x display-f) f)
   (-> value-t (-> (vector-tt identifierspace-t value-t (list-of-tt value-t))) (cont-tt value-t value-t))
   {cond
@@ -923,8 +935,9 @@
              (sexp->value 'v)) #(式 標識符 (x)) v)
           (,identifierspace-null #(式 內建 (常量 x)) x)
           (,identifierspace-null #(式 用-函式 (#(式 內建 (函式 (#(式 標識符 (x))) #(式 標識符 (x)))) #(式 內建 (常量 v)))) v)
+          (,identifierspace-null #(式 用-函式 (#(式 內建 (函式 #(式 標識符 (x)) #(式 標識符 (x)))) #(式 內建 (常量 v)))) (v))
           )])
     {for
         ([test tests])
       {let ([(list space exp val) test])
-        (check value-equal? (sexp->value val) (value-force* (evaluate space (sexp->value exp))))}}}}
+        (check value-equal? (sexp->value val) (value-rec-force* (evaluate space (sexp->value exp))))}}}}
