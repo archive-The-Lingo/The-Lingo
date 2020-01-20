@@ -936,6 +936,7 @@
           (,identifierspace-null #(式 內建 (常量 x)) x)
           (,identifierspace-null #(式 用-函式 (#(式 內建 (函式 (#(式 標識符 (x))) #(式 標識符 (x)))) #(式 內建 (常量 v)))) v)
           (,identifierspace-null #(式 用-函式 (#(式 內建 (函式 #(式 標識符 (x)) #(式 標識符 (x)))) #(式 內建 (常量 v)))) (v))
+          (,identifierspace-null #(式 用-函式 (#(式 內建 (函式 (#(式 標識符 (x)) . #(式 標識符 (y))) #(式 標識符 (y)))) #(式 內建 (常量 v)))) ())
           )])
     {for
         ([test tests])
