@@ -145,7 +145,7 @@
 {define:type value-optimized-t-id-t (and-tt t-id-t 'optimized)}
 {define/t value-optimized-t-id value-optimized-t-id-t 'optimized}
 
-;; without t->?, it will make the same value different and disallow changing the type of value
+;; t->? is used to avoid `impersonator`
 {define-syntax-rule:type (value-tt x) (t->? (and-tt value-bone-t x))}
 {define:type value-symbol-t (value-tt (vector-tt value-symbol-t-id-t string-t nothing-t nothing-t))}
 {define:type value-pair-t (value-tt (vector-tt value-pair-t-id-t value-t value-t nothing-t))}
@@ -180,6 +180,10 @@
      value-delay-t
      value-optimized-t
      )))}
+
+{provide
+ (rename-out
+  [value-t value?])}
 
 {define-values (identifierspace-t identifierspace? identifierspace-null identifierspace-ref identifierspace-set identifierspace->list)
   ({λ ()
@@ -252,6 +256,16 @@
   (-> value-t boolean-t)
   (value-_? value-delay-t-id x)}
 
+{provide
+ value-symbol?
+ value-pair?
+ value-null?
+ value-struct?
+ value-just?
+ value-delay?
+ (rename-out
+  [op? value-optimized?])}
+
 {define (DEBUG m ... v) (displayln m) v} ;; TODO: Implement a complete error handling system
 
 {define/t (cons-value-symbol x)
@@ -290,6 +304,15 @@
   (-> value-just-t value-t)
   v}
 {define (must-value-unjust-1 x) (aux-must-value-unjust-1 (un-op* x))}
+
+{provide
+ cons-value-symbol
+ elim-value-symbol
+ cons-value-pair
+ elim-value-pair
+ cons-value-struct
+ elim-value-struct
+ value-null}
 
 {define:type op/nat-data-t nat-t}
 {define op/nat-type-s 'nat}
