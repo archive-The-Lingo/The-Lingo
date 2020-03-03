@@ -12,6 +12,7 @@
      {class editor-canvas%
        {define/override (on-char event)
          (on-key-event event)}
+       {define/override (on-subwindow-event event) (void)}
        {super-new}}
      [parent the-frame]}}
   {define the-text {new text%}}
@@ -48,7 +49,9 @@
                 result
                 (char-stack-pop!)}}}}}
 
-  {define screen (box "")}
+  {struct State (exp position)}
+  {struct string-editor-state (#|TODO|#)}
+  {define state value-null}
 
   {define/contract (on-key-event the-key)
     (-> (is-a?/c key-event%) void?)
@@ -78,5 +81,11 @@
   {define/contract (on-key)
     (-> void?)
     (writeln (unbox key-stack))}
+
+  {define/contract (draw state)
+    (-> State? string-editor-state?)
+    "TODO"}
+    
+  
   {send the-frame show #t}
   }
