@@ -1,0 +1,12 @@
+[package]
+name = "the-lingo"
+version = "0.1.0"
+authors = ["ㄗㄠˋ ㄑㄧˊ <tsao-chi@the-lingo.org>"]
+edition = "2018"
+license = "MPL-2.0"
+description = "An experimental symbolic language"
+repository = "https://gitlab.com/The-Lingo/The-Lingo"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
