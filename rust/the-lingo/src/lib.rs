@@ -2,7 +2,7 @@ use async_recursion::async_recursion;
 use async_std::sync::{Arc, Mutex, RwLock};
 use async_trait::async_trait;
 use futures::prelude::Future;
-use std::{fmt, ops::Deref};
+use std::{fmt, pin::Pin};
 extern crate num_bigint;
 extern crate num_traits;
 type Nat = num_bigint::BigUint;
@@ -186,6 +186,15 @@ impl Value {
             (_, _) => false,
         }
     }
+    pub fn evaluate(&self, env: &Mapping) -> Self {
+        Value::from(ValueUnpacked::from(ValueUnpackedDelay {
+            countinue: Mutex::new(Box::pin(self.clone().do_evaluate(env.clone()))),
+            stop: Mutex::new(Box::pin(async { panic!("TODO") })),
+        }))
+    }
+    async fn do_evaluate(self, env: Mapping) -> Self {
+        panic!("TODO")
+    }
 }
 impl From<&str> for Value {
     fn from(x: &str) -> Self {
@@ -260,14 +269,19 @@ enum ValueUnpacked {
     Delay(ValueUnpackedDelay),
     OptimizedWeakHeadNormalForm(OptimizedWeakHeadNormalForm),
 }
+impl From<ValueUnpackedDelay> for ValueUnpacked {
+    fn from(x: ValueUnpackedDelay) -> Self {
+        ValueUnpacked::Delay(x)
+    }
+}
 impl From<OptimizedWeakHeadNormalForm> for ValueUnpacked {
     fn from(x: OptimizedWeakHeadNormalForm) -> Self {
         ValueUnpacked::OptimizedWeakHeadNormalForm(x)
     }
 }
 struct ValueUnpackedDelay {
-    countinue: Box<Mutex<dyn Future<Output = Value> + Unpin + Send + Sync>>,
-    stop: Box<Mutex<dyn Future<Output = Value> + Unpin + Send + Sync>>,
+    countinue: Mutex<Pin<Box<dyn Future<Output = Value> + Send + Sync>>>,
+    stop: Mutex<Pin<Box<dyn Future<Output = Value> + Send + Sync>>>,
 }
 impl fmt::Debug for ValueUnpackedDelay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
