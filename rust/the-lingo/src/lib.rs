@@ -224,6 +224,25 @@ impl Value {
     async fn do_builtin(self, env: Mapping, xs: Vec<Self>) -> Self {
         panic!("TODO")
     }
+    async fn into_vec(&self) -> Option<Vec<Self>> {
+        let mut state = self.clone();
+        let mut result = vec![];
+        loop {
+            match &*state.get_weak_head_normal_form().await.0.read().await {
+                ValueUnpacked::Null => {
+                    break;
+                }
+                ValueUnpacked::Pair(x, xs) => {
+                    result.push(x.clone());
+                    state = xs.clone();
+                }
+                _ => {
+                    return Option::None;
+                }
+            }
+        }
+        Option::Some(result)
+    }
 }
 impl From<&str> for Value {
     fn from(x: &str) -> Self {
