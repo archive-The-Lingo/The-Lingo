@@ -12,13 +12,35 @@ impl PartialEq for Value {
 }
 impl Eq for Value {}
 impl Value {
+    async fn not_weak_head_normal_form(&self) -> bool {
+        match &*self.0.read().await {
+            ValueUnpacked::Just(_) | ValueUnpacked::Delay(_) => true,
+            _ => false
+        }
+    }
+    async fn is_weak_head_normal_form(&self) -> bool {
+        match &*self.0.read().await {
+            ValueUnpacked::Just(_) | ValueUnpacked::Delay(_) => false,
+            _ => true
+        }
+    }
     #[async_recursion]
-    async fn force(self) -> Value {
+    async fn get_weak_head_normal_form(self) -> Value {
         let locked = self.0.read().await;
         match &*locked {
-            ValueUnpacked::Just(x) => x.clone().force().await,
+            ValueUnpacked::Just(x) => {
+                if x.is_weak_head_normal_form().await {
+                    let result: Value = x.clone().get_weak_head_normal_form().await;
+                    drop(locked);
+                    *self.0.write().await = ValueUnpacked::Just(result.clone());
+                    result
+                } else {
+                    x.clone()
+                }
+            },
             ValueUnpacked::Delay(x) => {
-                let result: Value = (&mut *x.countinue.lock().await).await.force().await;
+                let result: Value = (&mut *x.countinue.lock().await).await
+                    .get_weak_head_normal_form().await;
                 drop(locked);
                 *self.0.write().await = ValueUnpacked::Just(result.clone());
                 result
