@@ -314,13 +314,32 @@ impl ValueDeoptimize for Nat {
     }
 }
 
-#[derive(Debug)]
-struct Mapping(Box<Vec<(Value, Value)>>);
+#[derive(Debug, Clone)]
+pub struct Mapping(Box<Vec<(Value, Value)>>);
+lazy_static! {
+    pub static ref NULL_MAPPING: Mapping = Mapping(Box::new(vec![]));
+}
 impl Mapping {
-    pub async fn set(&self, k: Value, v: Value) -> Self {
-        let mut result = self.0.clone();
-        result.push((k, v));
-        Mapping(result)
+    pub async fn new(xs: &Vec<(Value, Value)>) -> Self {
+        let mut result = NULL_MAPPING.clone();
+        for (k, v) in xs.iter().rev() {
+            result = result.set(k, v).await;
+        }
+        result
+    }
+    pub async fn set(&self, to_set: &Value, to_set_value: &Value) -> Self {
+        let mut result = vec![];
+        let mut found = false;
+        for (k, v) in self.0.iter() {
+            if !to_set.forced_equal(k).await {
+                result.push((k.clone(), v.clone()));
+            } else {
+                assert!(!found);
+                found = true;
+            }
+        }
+        result.push((to_set.clone(), to_set_value.clone()));
+        Mapping(Box::new(result))
     }
     pub async fn get(&self, to_find: &Value) -> Option<&Value> {
         for (k, v) in self.0.iter() {
@@ -329,6 +348,11 @@ impl Mapping {
             }
         }
         Option::None
+    }
+}
+impl From<Mapping> for Vec<(Value, Value)> {
+    fn from(x: Mapping) -> Self {
+        (*x.0).clone()
     }
 }
 #[async_trait]
