@@ -100,7 +100,7 @@ impl Value {
     async fn moved_forced_equal(self, other: Self) -> bool {
         if self == other { return true; }
         match (&*self.get_weak_head_normal_form().await.0.read().await,
-                &*other.get_weak_head_normal_form().await.0.read().await) {
+          &*other.get_weak_head_normal_form().await.0.read().await) {
             (ValueUnpacked::Null, ValueUnpacked::Null) => true,
             (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
                 if x == y {
@@ -130,6 +130,46 @@ impl Value {
               (_, ValueUnpacked::Delay(_)) | (ValueUnpacked::Delay(_), _) => panic!("assert failed"),
             (ValueUnpacked::OptimizedWeakHeadNormalForm(x), _) => x.forced_equal(&other).await,
             (_, ValueUnpacked::OptimizedWeakHeadNormalForm(y)) => y.forced_equal(&self).await,
+            (_, _) => false,
+        }
+    }
+    async fn same_form(&self, other: &Self) -> bool {
+        self.clone().moved_same_form(other.clone()).await
+    }
+    #[async_recursion]
+    async fn moved_same_form(self, other: Self) -> bool {
+        if self == other { return true; }
+        match (&*self.remove_justs().await.0.read().await,
+          &*other.remove_justs().await.0.read().await) {
+            (ValueUnpacked::Null, ValueUnpacked::Null) => true,
+            (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
+                if x == y {
+                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                    true
+                } else {
+                    false
+                }
+            },
+            (ValueUnpacked::Pair(x0, x1), ValueUnpacked::Pair(y0, y1)) => {
+                if x0.same_form(y0).await && x1.same_form(y1).await {
+                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                    true
+                } else {
+                    false
+                }
+            },
+            (ValueUnpacked::Struct(x0, x1), ValueUnpacked::Struct(y0, y1)) => {
+                if x0.same_form(y0).await && x1.same_form(y1).await {
+                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                    true
+                } else {
+                    false
+                }
+            },
+            (ValueUnpacked::Just(_), _) | (_, ValueUnpacked::Just(_)) => panic!("assert failed"),
+            (_, ValueUnpacked::Delay(_)) | (ValueUnpacked::Delay(_), _) => false,
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(x), _) => x.same_form(&other).await,
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(y)) => y.same_form(&self).await,
             (_, _) => false,
         }
     }
@@ -176,6 +216,9 @@ enum OptimizedWeakHeadNormalForm {
 impl OptimizedWeakHeadNormalForm {
     async fn forced_equal(&self, other: &Value) -> bool {
         self.deoptimize().await.forced_equal(other).await
+    }
+    async fn same_form(&self, other: &Value) -> bool {
+        self.deoptimize().await.same_form(other).await
     }
 }
 #[async_trait]
