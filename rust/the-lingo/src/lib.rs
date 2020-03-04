@@ -2,6 +2,7 @@ use async_std::sync::{Arc, RwLock, Mutex};
 use std::{fmt, ops::Deref};
 use futures::prelude::Future;
 use async_recursion::async_recursion;
+use async_trait::async_trait;
 
 #[derive(Debug, Clone)]
 pub struct Value (Arc<RwLock<ValueUnpacked>>);
@@ -127,6 +128,18 @@ impl OptimizedWeakHeadNormalForm {
         panic!("TODO")
     }
 }
+#[async_trait]
+trait ValueDeoptimize {
+    async fn deoptimize(&self) -> Value;
+}
+#[async_trait]
+impl ValueDeoptimize for OptimizedWeakHeadNormalForm {
+    async fn deoptimize(&self) -> Value {
+        match self {
+            OptimizedWeakHeadNormalForm::Mapping(x) => x.deoptimize().await
+        }
+    }
+}
 
 #[derive(Debug)]
 struct Mapping (Box<Vec<(Value, Value)>>);
@@ -143,5 +156,11 @@ impl Mapping {
             }
         }
         Option::None
+    }
+}
+#[async_trait]
+impl ValueDeoptimize for Mapping {
+    async fn deoptimize(&self) -> Value {
+        panic!("TODO")
     }
 }
