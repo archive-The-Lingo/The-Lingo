@@ -195,6 +195,35 @@ impl Value {
     async fn do_evaluate(self, env: Mapping) -> Self {
         panic!("TODO")
     }
+    pub fn apply(&self, xs: &Vec<Self>) -> Self {
+        Value::from(ValueUnpacked::from(ValueUnpackedDelay {
+            countinue: Mutex::new(Box::pin(self.clone().do_apply(xs.clone()))),
+            stop: Mutex::new(Box::pin(async { panic!("TODO") })),
+        }))
+    }
+    async fn do_apply(self, xs: Vec<Self>) -> Self {
+        panic!("TODO")
+    }
+    pub fn apply_macro(&self, env: &Mapping, xs: &Vec<Self>) -> Self {
+        Value::from(ValueUnpacked::from(ValueUnpackedDelay {
+            countinue: Mutex::new(Box::pin(
+                self.clone().do_apply_macro(env.clone(), xs.clone()),
+            )),
+            stop: Mutex::new(Box::pin(async { panic!("TODO") })),
+        }))
+    }
+    async fn do_apply_macro(self, env: Mapping, xs: Vec<Self>) -> Self {
+        panic!("TODO")
+    }
+    pub fn builtin(&self, env: &Mapping, xs: &Vec<Self>) -> Self {
+        Value::from(ValueUnpacked::from(ValueUnpackedDelay {
+            countinue: Mutex::new(Box::pin(self.clone().do_builtin(env.clone(), xs.clone()))),
+            stop: Mutex::new(Box::pin(async { panic!("TODO") })),
+        }))
+    }
+    async fn do_builtin(self, env: Mapping, xs: Vec<Self>) -> Self {
+        panic!("TODO")
+    }
 }
 impl From<&str> for Value {
     fn from(x: &str) -> Self {
