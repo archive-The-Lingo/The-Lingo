@@ -1,8 +1,10 @@
-use std::{sync::{Arc, Mutex}, fmt};
+use async_std::sync::{Arc, RwLock};
+use std::fmt;
 use futures::prelude::Future;
+use async_recursion::async_recursion;
 
 #[derive(Debug, Clone)]
-pub struct Value (Arc<Mutex<ValueUnpacked>>);
+pub struct Value (Arc<RwLock<ValueUnpacked>>);
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.0, &other.0)
@@ -10,6 +12,13 @@ impl PartialEq for Value {
 }
 impl Eq for Value {}
 impl Value {
+    #[async_recursion]
+    async fn force(self) -> Value {
+        match &*self.0.read().await {
+            ValueUnpacked::Just(x) => x.clone().force().await,
+            _ => panic!("TODO")
+        }
+    }
     async fn forced_equal(&self, other: &Self) -> bool {
         panic!("TODO")
     }
@@ -57,4 +66,3 @@ impl Mapping {
         Option::None
     }
 }
-
