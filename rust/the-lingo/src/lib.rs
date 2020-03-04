@@ -339,6 +339,7 @@ impl fmt::Debug for ValueUnpackedDelay {
 
 #[derive(Debug)]
 enum OptimizedWeakHeadNormalForm {
+    List(Vec<Value>),
     Mapping(Mapping),
     Nat(Nat),
 }
@@ -358,9 +359,22 @@ trait ValueDeoptimize {
 impl ValueDeoptimize for OptimizedWeakHeadNormalForm {
     async fn deoptimize(&self) -> Value {
         match self {
+            OptimizedWeakHeadNormalForm::List(x) => x.deoptimize().await,
             OptimizedWeakHeadNormalForm::Mapping(x) => x.deoptimize().await,
             OptimizedWeakHeadNormalForm::Nat(x) => x.deoptimize().await,
         }
+    }
+}
+
+impl From<Vec<Value>> for Value {
+    fn from(x: Vec<Value>) -> Self {
+        Value::from(ValueUnpacked::from(OptimizedWeakHeadNormalForm::List(x)))
+    }
+}
+#[async_trait]
+impl ValueDeoptimize for Vec<Value> {
+    async fn deoptimize(&self) -> Value {
+        panic!("TODO")
     }
 }
 
