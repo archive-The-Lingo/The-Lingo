@@ -3,6 +3,7 @@ use async_std::sync::{Arc, Mutex, RwLock};
 use async_trait::async_trait;
 use futures::prelude::Future;
 use std::{fmt, pin::Pin};
+use im::{vector, vector::Vector};
 extern crate num_bigint;
 extern crate num_traits;
 type Nat = num_bigint::BigUint;
@@ -35,18 +36,18 @@ impl Value {
             return self.clone();
         }
         let mut status_evaluating: Value = self.clone();
-        let mut status_history: Vec<Value> = vec![];
+        let mut status_history: Vector<Value> = vector![];
         while !status_evaluating.is_weak_head_normal_form().await {
             let locked = status_evaluating.0.read().await;
             match &*locked {
                 ValueUnpacked::Just(x) => {
-                    status_history.push(status_evaluating.clone());
+                    status_history.push_back(status_evaluating.clone());
                     let next = x.clone();
                     drop(locked);
                     status_evaluating = next;
                 }
                 ValueUnpacked::Delay(x) => {
-                    status_history.push(status_evaluating.clone());
+                    status_history.push_back(status_evaluating.clone());
                     let next = (&mut *x.countinue.lock().await).await;
                     drop(locked);
                     status_evaluating = next;
@@ -74,12 +75,12 @@ impl Value {
             return self.clone();
         }
         let mut status_evaluating: Value = self.clone();
-        let mut status_history: Vec<Value> = vec![];
+        let mut status_history: Vector<Value> = vector![];
         while status_evaluating.is_just().await {
             let locked = status_evaluating.0.read().await;
             match &*locked {
                 ValueUnpacked::Just(x) => {
-                    status_history.push(status_evaluating.clone());
+                    status_history.push_back(status_evaluating.clone());
                     let next = x.clone();
                     drop(locked);
                     status_evaluating = next;
@@ -195,16 +196,16 @@ impl Value {
     async fn do_evaluate(self, env: Mapping) -> Self {
         panic!("TODO")
     }
-    pub fn apply(&self, xs: &Vec<Self>) -> Self {
+    pub fn apply(&self, xs: &Vector<Self>) -> Self {
         Value::from(ValueUnpacked::from(ValueUnpackedDelay {
             countinue: Mutex::new(Box::pin(self.clone().do_apply(xs.clone()))),
             stop: Mutex::new(Box::pin(async { panic!("TODO") })),
         }))
     }
-    async fn do_apply(self, xs: Vec<Self>) -> Self {
+    async fn do_apply(self, xs: Vector<Self>) -> Self {
         panic!("TODO")
     }
-    pub fn apply_macro(&self, env: &Mapping, xs: &Vec<Self>) -> Self {
+    pub fn apply_macro(&self, env: &Mapping, xs: &Vector<Self>) -> Self {
         Value::from(ValueUnpacked::from(ValueUnpackedDelay {
             countinue: Mutex::new(Box::pin(
                 self.clone().do_apply_macro(env.clone(), xs.clone()),
@@ -212,28 +213,28 @@ impl Value {
             stop: Mutex::new(Box::pin(async { panic!("TODO") })),
         }))
     }
-    async fn do_apply_macro(self, env: Mapping, xs: Vec<Self>) -> Self {
+    async fn do_apply_macro(self, env: Mapping, xs: Vector<Self>) -> Self {
         panic!("TODO")
     }
-    pub fn builtin(&self, env: &Mapping, xs: &Vec<Self>) -> Self {
+    pub fn builtin(&self, env: &Mapping, xs: &Vector<Self>) -> Self {
         Value::from(ValueUnpacked::from(ValueUnpackedDelay {
             countinue: Mutex::new(Box::pin(self.clone().do_builtin(env.clone(), xs.clone()))),
             stop: Mutex::new(Box::pin(async { panic!("TODO") })),
         }))
     }
-    async fn do_builtin(self, env: Mapping, xs: Vec<Self>) -> Self {
+    async fn do_builtin(self, env: Mapping, xs: Vector<Self>) -> Self {
         panic!("TODO")
     }
-    async fn into_vec(&self) -> Option<Vec<Self>> {
+    async fn into_vector(&self) -> Option<Vector<Self>> {
         let mut state = self.clone();
-        let mut result = vec![];
+        let mut result = vector![];
         loop {
             match &*state.get_weak_head_normal_form().await.0.read().await {
                 ValueUnpacked::Null => {
                     break;
                 }
                 ValueUnpacked::Pair(x, xs) => {
-                    result.push(x.clone());
+                    result.push_back(x.clone());
                     state = xs.clone();
                 }
                 _ => {
@@ -339,7 +340,7 @@ impl fmt::Debug for ValueUnpackedDelay {
 
 #[derive(Debug)]
 enum OptimizedWeakHeadNormalForm {
-    List(Vec<Value>),
+    List(Vector<Value>),
     Mapping(Mapping),
     Nat(Nat),
 }
@@ -366,13 +367,13 @@ impl ValueDeoptimize for OptimizedWeakHeadNormalForm {
     }
 }
 
-impl From<Vec<Value>> for Value {
-    fn from(x: Vec<Value>) -> Self {
+impl From<Vector<Value>> for Value {
+    fn from(x: Vector<Value>) -> Self {
         Value::from(ValueUnpacked::from(OptimizedWeakHeadNormalForm::List(x)))
     }
 }
 #[async_trait]
-impl ValueDeoptimize for Vec<Value> {
+impl ValueDeoptimize for Vector<Value> {
     async fn deoptimize(&self) -> Value {
         panic!("TODO")
     }
@@ -391,12 +392,12 @@ impl ValueDeoptimize for Nat {
 }
 
 #[derive(Debug, Clone)]
-pub struct Mapping(Box<Vec<(Value, Value)>>);
+pub struct Mapping(Box<Vector<(Value, Value)>>);
 lazy_static! {
-    pub static ref NULL_MAPPING: Mapping = Mapping(Box::new(vec![]));
+    pub static ref NULL_MAPPING: Mapping = Mapping(Box::new(vector![]));
 }
 impl Mapping {
-    pub async fn new(xs: &Vec<(Value, Value)>) -> Self {
+    pub async fn new(xs: &Vector<(Value, Value)>) -> Self {
         let mut result = NULL_MAPPING.clone();
         for (k, v) in xs.iter().rev() {
             result = result.set(k, v).await;
@@ -404,17 +405,17 @@ impl Mapping {
         result
     }
     pub async fn set(&self, to_set: &Value, to_set_value: &Value) -> Self {
-        let mut result = vec![];
+        let mut result = vector![];
         let mut found = false;
         for (k, v) in self.0.iter() {
             if !to_set.forced_equal(k).await {
-                result.push((k.clone(), v.clone()));
+                result.push_back((k.clone(), v.clone()));
             } else {
                 assert!(!found);
                 found = true;
             }
         }
-        result.push((to_set.clone(), to_set_value.clone()));
+        result.push_back((to_set.clone(), to_set_value.clone()));
         Mapping(Box::new(result))
     }
     pub async fn get(&self, to_find: &Value) -> Option<&Value> {
@@ -426,7 +427,7 @@ impl Mapping {
         Option::None
     }
 }
-impl From<Mapping> for Vec<(Value, Value)> {
+impl From<Mapping> for Vector<(Value, Value)> {
     fn from(x: Mapping) -> Self {
         (*x.0).clone()
     }
