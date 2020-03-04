@@ -27,7 +27,7 @@ impl Value {
             _ => true
         }
     }
-    async fn get_weak_head_normal_form(&self) -> Self {
+    pub async fn get_weak_head_normal_form(&self) -> Self {
         if self.is_weak_head_normal_form().await {
             return self.clone();
         }
@@ -93,7 +93,7 @@ impl Value {
         }
         status_evaluating
     }
-    async fn forced_equal(&self, other: &Self) -> bool {
+    pub async fn forced_equal(&self, other: &Self) -> bool {
         self.clone().moved_forced_equal(other.clone()).await
     }
     #[async_recursion]
@@ -133,7 +133,7 @@ impl Value {
             (_, _) => false,
         }
     }
-    async fn same_form(&self, other: &Self) -> bool {
+    pub async fn same_form(&self, other: &Self) -> bool {
         self.clone().moved_same_form(other.clone()).await
     }
     #[async_recursion]
@@ -178,7 +178,10 @@ impl Value {
 lazy_static! {
     pub static ref NULL: Value = Value::new(ValueUnpacked::Null);
 }
-pub fn new_symbol(x : &String) -> Value {
+pub fn new_symbol(x : &str) -> Value {
+    Value::new(ValueUnpacked::Symbol(String::from(x)))
+}
+pub fn new_symbol_from_string(x : &String) -> Value {
     Value::new(ValueUnpacked::Symbol(x.clone()))
 }
 pub fn new_pair(x : &Value, y : &Value) -> Value {
@@ -186,6 +189,11 @@ pub fn new_pair(x : &Value, y : &Value) -> Value {
 }
 pub fn new_struct(x : &Value, y : &Value) -> Value {
     Value::new(ValueUnpacked::Struct(x.clone(), y.clone()))
+}
+
+lazy_static! {
+    pub static ref EXP_S: Value = new_symbol("式");
+    pub static ref ID_S: Value = new_symbol("標識符");
 }
 
 #[derive(Debug)]
