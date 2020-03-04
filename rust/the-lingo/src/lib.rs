@@ -21,25 +21,19 @@ impl Value {
     fn new(x: ValueUnpacked) -> Self {
         Value(Arc::new(RwLock::new(x)))
     }
-    async fn not_weak_head_normal_form(&self) -> bool {
-        match &*self.0.read().await {
-            ValueUnpacked::Just(_) | ValueUnpacked::Delay(_) => true,
-            _ => false
-        }
-    }
-    async fn is_weak_head_normal_form(&self) -> bool {
+    pub async fn is_weak_head_normal_form(&self) -> bool {
         match &*self.0.read().await {
             ValueUnpacked::Just(_) | ValueUnpacked::Delay(_) => false,
             _ => true
         }
     }
     async fn get_weak_head_normal_form(&self) -> Self {
-        if self.not_weak_head_normal_form().await {
+        if self.is_weak_head_normal_form().await {
             return self.clone();
         }
         let mut status_evaluating: Value = self.clone();
         let mut status_history: Vec<Value> = vec![];
-        while status_evaluating.is_weak_head_normal_form().await {
+        while !status_evaluating.is_weak_head_normal_form().await {
             let locked = status_evaluating.0.read().await;
             match &*locked {
                 ValueUnpacked::Just(x) => {
@@ -59,6 +53,40 @@ impl Value {
                 }
             }
         }
+        assert!(status_evaluating.is_weak_head_normal_form().await);
+        for x in status_history.iter() {
+            assert!(*x != status_evaluating);
+            *x.0.write().await = ValueUnpacked::Just(status_evaluating.clone());
+        }
+        status_evaluating
+    }
+    async fn is_just(&self) -> bool {
+        match &*self.0.read().await {
+            ValueUnpacked::Just(_) => true,
+            _ => false
+        }
+    }
+    async fn remove_justs(&self) -> Self {
+        if !self.is_just().await {
+            return self.clone();
+        }
+        let mut status_evaluating: Value = self.clone();
+        let mut status_history: Vec<Value> = vec![];
+        while status_evaluating.is_just().await {
+            let locked = status_evaluating.0.read().await;
+            match &*locked {
+                ValueUnpacked::Just(x) => {
+                    status_history.push(status_evaluating.clone());
+                    let next = x.clone();
+                    drop(locked);
+                    status_evaluating = next;
+                },
+                _ => {
+                    break;
+                }
+            }
+        }
+        assert!(!status_evaluating.is_just().await);
         for x in status_history.iter() {
             assert!(*x != status_evaluating);
             *x.0.write().await = ValueUnpacked::Just(status_evaluating.clone());
