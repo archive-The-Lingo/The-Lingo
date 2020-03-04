@@ -1,4 +1,4 @@
-use async_std::sync::{Arc, RwLock};
+use async_std::sync::{Arc, RwLock, Mutex};
 use std::fmt;
 use futures::prelude::Future;
 use async_recursion::async_recursion;
@@ -14,8 +14,15 @@ impl Eq for Value {}
 impl Value {
     #[async_recursion]
     async fn force(self) -> Value {
-        match &*self.0.read().await {
+        let locked = self.0.read().await;
+        match &*locked {
             ValueUnpacked::Just(x) => x.clone().force().await,
+            ValueUnpacked::Delay(x) => {
+                let result: Value = (&mut *x.countinue.lock().await).await.force().await;
+                drop(locked);
+                *self.0.write().await = ValueUnpacked::Just(result.clone());
+                result
+            },
             _ => panic!("TODO")
         }
     }
@@ -35,8 +42,8 @@ enum ValueUnpacked {
     Optimized(OptimizedValue)
 }
 struct ValueUnpackedDelay {
-    countinue: Box<dyn Future<Output = Value> + Send + Sync>,
-    stop: Box<dyn Future<Output = Value> + Send + Sync>
+    countinue: Box<Mutex<dyn Future<Output = Value> + Unpin + Send + Sync>>,
+    stop: Box<Mutex<dyn Future<Output = Value> + Unpin + Send + Sync>>
 }
 impl fmt::Debug for ValueUnpackedDelay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
