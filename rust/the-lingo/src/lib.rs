@@ -175,25 +175,60 @@ impl Value {
     }
 }
 
-lazy_static! {
-    pub static ref NULL: Value = Value::new(ValueUnpacked::Null);
-}
-pub fn new_symbol(x : &str) -> Value {
-    Value::new(ValueUnpacked::Symbol(String::from(x)))
-}
-pub fn new_symbol_from_string(x : &String) -> Value {
-    Value::new(ValueUnpacked::Symbol(x.clone()))
-}
 pub fn new_pair(x : &Value, y : &Value) -> Value {
     Value::new(ValueUnpacked::Pair(x.clone(), y.clone()))
 }
 pub fn new_struct(x : &Value, y : &Value) -> Value {
     Value::new(ValueUnpacked::Struct(x.clone(), y.clone()))
 }
+impl From<&str> for Value {
+    fn from(x: &str) -> Self {
+        Value::new(ValueUnpacked::Symbol(String::from(x)))
+    }
+}
+impl From<String> for Value {
+    fn from(x: String) -> Self {
+        Value::new(ValueUnpacked::Symbol(x))
+    }
+}
+impl From<&String> for Value {
+    fn from(x: &String) -> Self {
+        Value::from(x.clone())
+    }
+}
 
 lazy_static! {
-    pub static ref EXP_S: Value = new_symbol("式");
-    pub static ref ID_S: Value = new_symbol("標識符");
+    pub static ref EXP_S: Value = Value::from("式");
+    pub static ref ID_S: Value = Value::from("標識符");
+    pub static ref APPLY_FUNCTION_S: Value = Value::from("用-函式");
+    pub static ref APPLY_MACRO_S: Value = Value::from("用-構式子");
+    pub static ref FUNCTION_S: Value = Value::from("函式");
+    pub static ref MACRO_S: Value = Value::from("構式子");
+    pub static ref COMMENT_S: Value = Value::from("注釋");
+    pub static ref EXCEPTION_S: Value = Value::from("異常");
+    pub static ref EVALUATE_S: Value = Value::from("解算");
+    pub static ref MAPPING_S: Value = Value::from("映射");
+    pub static ref BUILTIN_S: Value = Value::from("內建");
+    pub static ref FALSE_S: Value = Value::from("陰");
+    pub static ref TRUE_S: Value = Value::from("陽");
+    pub static ref CHAR_S: Value = Value::from("字符");
+    pub static ref STRING_S: Value = Value::from("字串");
+    pub static ref NAT_ZERO_S: Value = Value::from("自然數/零");
+    pub static ref NAT_SUCC_S: Value = Value::from("自然數/加一");
+    pub static ref SYMBOL_TO_STRING_S: Value = Value::from("符號→字串");
+    pub static ref STRING_TO_SYMBOL_S: Value = Value::from("字串→符號");
+    pub static ref NEW_PAIR_S: Value = Value::from("構造-列表/序對");
+    pub static ref ELIM_PAIR_S: Value = Value::from("解構-列表/序對");
+    pub static ref IS_PAIR_S: Value = Value::from("列表/序對？");
+    pub static ref IS_NULL_S: Value = Value::from("列表/空？");
+    pub static ref NEW_STRUCT_S: Value = Value::from("構造-結構體");
+    pub static ref ELIM_STRUCT_S: Value = Value::from("解構-結構體");
+    pub static ref IS_STRUCT_S: Value = Value::from("符號？");
+    pub static ref RECURSION_S: Value = Value::from("遞歸");
+
+    pub static ref NULL_V: Value = Value::new(ValueUnpacked::Null);
+    pub static ref FALSE_V: Value = new_struct(&FALSE_S, &NULL_V);
+    pub static ref TRUE_V: Value = new_struct(&TRUE_S, &NULL_V);
 }
 
 #[derive(Debug)]
