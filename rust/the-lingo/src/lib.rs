@@ -3,6 +3,11 @@ use std::{fmt, ops::Deref};
 use futures::prelude::Future;
 use async_recursion::async_recursion;
 use async_trait::async_trait;
+extern crate num_bigint;
+extern crate num_traits;
+type Nat = num_bigint::BigUint;
+#[macro_use]
+extern crate lazy_static;
 
 #[derive(Debug, Clone)]
 pub struct Value (Arc<RwLock<ValueUnpacked>>);
@@ -13,6 +18,9 @@ impl PartialEq for Value {
 }
 impl Eq for Value {}
 impl Value {
+    fn new(x: ValueUnpacked) -> Self {
+        Value(Arc::new(RwLock::new(x)))
+    }
     async fn not_weak_head_normal_form(&self) -> bool {
         match &*self.0.read().await {
             ValueUnpacked::Just(_) | ValueUnpacked::Delay(_) => true,
@@ -99,6 +107,19 @@ impl Value {
     }
 }
 
+lazy_static! {
+    pub static ref NULL: Value = Value::new(ValueUnpacked::Null);
+}
+pub fn new_symbol(x : &String) -> Value {
+    Value::new(ValueUnpacked::Symbol(x.clone()))
+}
+pub fn new_pair(x : &Value, y : &Value) -> Value {
+    Value::new(ValueUnpacked::Pair(x.clone(), y.clone()))
+}
+pub fn new_struct(x : &Value, y : &Value) -> Value {
+    Value::new(ValueUnpacked::Struct(x.clone(), y.clone()))
+}
+
 #[derive(Debug)]
 enum ValueUnpacked {
     Null,
@@ -121,11 +142,12 @@ impl fmt::Debug for ValueUnpackedDelay {
 
 #[derive(Debug)]
 enum OptimizedWeakHeadNormalForm {
-    Mapping(Mapping)
+    Mapping(Mapping),
+    Nat(Nat)
 }
 impl OptimizedWeakHeadNormalForm {
     async fn forced_equal(&self, other: &Value) -> bool {
-        panic!("TODO")
+        self.deoptimize().await.forced_equal(other).await
     }
 }
 #[async_trait]
@@ -136,8 +158,16 @@ trait ValueDeoptimize {
 impl ValueDeoptimize for OptimizedWeakHeadNormalForm {
     async fn deoptimize(&self) -> Value {
         match self {
-            OptimizedWeakHeadNormalForm::Mapping(x) => x.deoptimize().await
+            OptimizedWeakHeadNormalForm::Mapping(x) => x.deoptimize().await,
+            OptimizedWeakHeadNormalForm::Nat(x) => x.deoptimize().await
         }
+    }
+}
+
+#[async_trait]
+impl ValueDeoptimize for Nat {
+    async fn deoptimize(&self) -> Value {
+        panic!("TODO")
     }
 }
 
