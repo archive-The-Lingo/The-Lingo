@@ -1,5 +1,5 @@
 use async_std::sync::{Arc, RwLock, Mutex};
-use std::fmt;
+use std::{fmt, ops::Deref};
 use futures::prelude::Future;
 use async_recursion::async_recursion;
 
@@ -24,32 +24,77 @@ impl Value {
             _ => true
         }
     }
-    #[async_recursion]
-    async fn get_weak_head_normal_form(self) -> Value {
-        let locked = self.0.read().await;
-        match &*locked {
-            ValueUnpacked::Just(x) => {
-                if x.is_weak_head_normal_form().await {
-                    let result: Value = x.clone().get_weak_head_normal_form().await;
-                    drop(locked);
-                    *self.0.write().await = ValueUnpacked::Just(result.clone());
-                    result
-                } else {
-                    x.clone()
-                }
-            },
-            ValueUnpacked::Delay(x) => {
-                let result: Value = (&mut *x.countinue.lock().await).await
-                    .get_weak_head_normal_form().await;
-                drop(locked);
-                *self.0.write().await = ValueUnpacked::Just(result.clone());
-                result
-            },
-            _ => panic!("TODO")
+    async fn get_weak_head_normal_form(&self) -> Self {
+        if self.not_weak_head_normal_form().await {
+            return self.clone();
         }
+        let mut status_evaluating: Value = self.clone();
+        let mut status_history: Vec<Value> = vec![];
+        while status_evaluating.is_weak_head_normal_form().await {
+            let locked = status_evaluating.0.read().await;
+            match &*locked {
+                ValueUnpacked::Just(x) => {
+                    status_history.push(status_evaluating.clone());
+                    let next = x.clone();
+                    drop(locked);
+                    status_evaluating = next;
+                },
+                ValueUnpacked::Delay(x) => {
+                    status_history.push(status_evaluating.clone());
+                    let next = (&mut *x.countinue.lock().await).await;
+                    drop(locked);
+                    status_evaluating = next;
+                },
+                _ => {
+                    break;
+                }
+            }
+        }
+        for x in status_history.iter() {
+            assert!(*x != status_evaluating);
+            *x.0.write().await = ValueUnpacked::Just(status_evaluating.clone());
+        }
+        status_evaluating
     }
     async fn forced_equal(&self, other: &Self) -> bool {
-        panic!("TODO")
+        self.clone().moved_forced_equal(other.clone()).await
+    }
+    #[async_recursion]
+    async fn moved_forced_equal(self, other: Self) -> bool {
+        if self == other { return true; }
+        match (&*self.get_weak_head_normal_form().await.0.read().await,
+                &*other.get_weak_head_normal_form().await.0.read().await) {
+            (ValueUnpacked::Null, ValueUnpacked::Null) => true,
+            (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
+                if x == y {
+                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                    true
+                } else {
+                    false
+                }
+            },
+            (ValueUnpacked::Pair(x0, x1), ValueUnpacked::Pair(y0, y1)) => {
+                if x0.forced_equal(y0).await && x1.forced_equal(y1).await {
+                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                    true
+                } else {
+                    false
+                }
+            },
+            (ValueUnpacked::Struct(x0, x1), ValueUnpacked::Struct(y0, y1)) => {
+                if x0.forced_equal(y0).await && x1.forced_equal(y1).await {
+                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                    true
+                } else {
+                    false
+                }
+            },
+            (ValueUnpacked::Just(_), _) | (_, ValueUnpacked::Just(_)) |
+              (_, ValueUnpacked::Delay(_)) | (ValueUnpacked::Delay(_), _) => panic!("assert failed"),
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(x), _) => x.forced_equal(&other).await,
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(y)) => y.forced_equal(&self).await,
+            (_, _) => false,
+        }
     }
 }
 
@@ -61,7 +106,7 @@ enum ValueUnpacked {
     Struct(Value,Value),
     Just(Value),
     Delay(ValueUnpackedDelay),
-    Optimized(OptimizedValue)
+    OptimizedWeakHeadNormalForm(OptimizedWeakHeadNormalForm)
 }
 struct ValueUnpackedDelay {
     countinue: Box<Mutex<dyn Future<Output = Value> + Unpin + Send + Sync>>,
@@ -74,8 +119,13 @@ impl fmt::Debug for ValueUnpackedDelay {
 }
 
 #[derive(Debug)]
-enum OptimizedValue {
+enum OptimizedWeakHeadNormalForm {
     Mapping(Mapping)
+}
+impl OptimizedWeakHeadNormalForm {
+    async fn forced_equal(&self, other: &Value) -> bool {
+        panic!("TODO")
+    }
 }
 
 #[derive(Debug)]
