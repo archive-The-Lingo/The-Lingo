@@ -1,4 +1,4 @@
-use async_recursion::async_recursion;
+//use async_recursion::async_recursion;
 use async_std::sync::{Arc, Mutex, RwLock};
 use async_trait::async_trait;
 use futures::{join, prelude::Future};
@@ -97,103 +97,6 @@ impl Value {
         }
         status_evaluating
     }
-    pub async fn forced_equal(&self, other: &Self) -> bool {
-        self.clone().moved_forced_equal(other.clone()).await
-    }
-    #[async_recursion]
-    async fn moved_forced_equal(self, other: Self) -> bool {
-        if self == other {
-            return true;
-        }
-        let (val0, val1) = join!(
-            self.get_weak_head_normal_form(),
-            other.get_weak_head_normal_form()
-        );
-        drop(self);
-        drop(other);
-        match ({ val0.clone().0.read().await.clone() }, {
-            val1.clone().0.read().await.clone()
-        }) {
-            (ValueUnpacked::Null, ValueUnpacked::Null) => true,
-            (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
-                if x == y {
-                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
-                    true
-                } else {
-                    false
-                }
-            }
-            (ValueUnpacked::Pair(x0, x1), ValueUnpacked::Pair(y0, y1)) => {
-                if x0.moved_forced_equal(y0).await && x1.moved_forced_equal(y1).await {
-                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
-                    true
-                } else {
-                    false
-                }
-            }
-            (ValueUnpacked::Struct(x0, x1), ValueUnpacked::Struct(y0, y1)) => {
-                if x0.moved_forced_equal(y0).await && x1.moved_forced_equal(y1).await {
-                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
-                    true
-                } else {
-                    false
-                }
-            }
-            (ValueUnpacked::Just(_), _)
-            | (_, ValueUnpacked::Just(_))
-            | (_, ValueUnpacked::Delay(_))
-            | (ValueUnpacked::Delay(_), _) => panic!("assert failed"),
-            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.forced_equal(&val1).await,
-            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.forced_equal(&val0).await,
-            (_, _) => false,
-        }
-    }
-    pub async fn same_form(&self, other: &Self) -> bool {
-        self.clone().moved_same_form(other.clone()).await
-    }
-    #[async_recursion]
-    async fn moved_same_form(self, other: Self) -> bool {
-        if self == other {
-            return true;
-        }
-        let (val0, val1) = join!(self.remove_justs(), other.remove_justs());
-        drop(self);
-        drop(other);
-        match ({ val0.clone().0.read().await.clone() }, {
-            val1.clone().0.read().await.clone()
-        }) {
-            (ValueUnpacked::Null, ValueUnpacked::Null) => true,
-            (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
-                if x == y {
-                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
-                    true
-                } else {
-                    false
-                }
-            }
-            (ValueUnpacked::Pair(x0, x1), ValueUnpacked::Pair(y0, y1)) => {
-                if x0.moved_same_form(y0).await && x1.moved_same_form(y1).await {
-                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
-                    true
-                } else {
-                    false
-                }
-            }
-            (ValueUnpacked::Struct(x0, x1), ValueUnpacked::Struct(y0, y1)) => {
-                if x0.moved_same_form(y0).await && x1.moved_same_form(y1).await {
-                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
-                    true
-                } else {
-                    false
-                }
-            }
-            (ValueUnpacked::Just(_), _) | (_, ValueUnpacked::Just(_)) => panic!("assert failed"),
-            (_, ValueUnpacked::Delay(_)) | (ValueUnpacked::Delay(_), _) => false,
-            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.same_form(&val1).await,
-            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.same_form(&val0).await,
-            (_, _) => false,
-        }
-    }
     pub fn evaluate(&self, env: &Mapping) -> Self {
         Value::from(ValueUnpacked::from(ValueUnpackedDelay {
             countinue: Arc::new(Mutex::new(Box::pin(self.clone().do_evaluate(env.clone())))),
@@ -252,6 +155,111 @@ impl Value {
             }
         }
         Option::Some(result)
+    }
+}
+#[async_trait]
+pub trait ValueEqual {
+    async fn moved_forced_equal(self, other: Self) -> bool;
+    async fn forced_equal(&self, other: &Self) -> bool;
+    async fn moved_same_form(self, other: Self) -> bool;
+    async fn same_form(&self, other: &Self) -> bool;
+}
+#[async_trait]
+impl ValueEqual for Value {
+     async fn same_form(&self, other: &Self) -> bool {
+        self.clone().moved_same_form(other.clone()).await
+    }
+     async fn forced_equal(&self, other: &Self) -> bool {
+        self.clone().moved_forced_equal(other.clone()).await
+    }
+    async fn moved_forced_equal(self, other: Self) -> bool {
+        if self == other {
+            return true;
+        }
+        let (val0, val1) = join!(
+            self.get_weak_head_normal_form(),
+            other.get_weak_head_normal_form()
+        );
+        drop(self);
+        drop(other);
+        match ({ val0.clone().0.read().await.clone() }, {
+            val1.clone().0.read().await.clone()
+        }) {
+            (ValueUnpacked::Null, ValueUnpacked::Null) => true,
+            (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
+                if x == y {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+            (ValueUnpacked::Pair(x0, x1), ValueUnpacked::Pair(y0, y1)) => {
+                if x0.moved_forced_equal(y0).await && x1.moved_forced_equal(y1).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+            (ValueUnpacked::Struct(x0, x1), ValueUnpacked::Struct(y0, y1)) => {
+                if x0.moved_forced_equal(y0).await && x1.moved_forced_equal(y1).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+            (ValueUnpacked::Just(_), _)
+            | (_, ValueUnpacked::Just(_))
+            | (_, ValueUnpacked::Delay(_))
+            | (ValueUnpacked::Delay(_), _) => panic!("assert failed"),
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.forced_equal(&val1).await,
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.forced_equal(&val0).await,
+            (_, _) => false,
+        }
+    }
+    async fn moved_same_form(self, other: Self) -> bool {
+        if self == other {
+            return true;
+        }
+        let (val0, val1) = join!(self.remove_justs(), other.remove_justs());
+        drop(self);
+        drop(other);
+        match ({ val0.clone().0.read().await.clone() }, {
+            val1.clone().0.read().await.clone()
+        }) {
+            (ValueUnpacked::Null, ValueUnpacked::Null) => true,
+            (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
+                if x == y {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+            (ValueUnpacked::Pair(x0, x1), ValueUnpacked::Pair(y0, y1)) => {
+                if x0.moved_same_form(y0).await && x1.moved_same_form(y1).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+            (ValueUnpacked::Struct(x0, x1), ValueUnpacked::Struct(y0, y1)) => {
+                if x0.moved_same_form(y0).await && x1.moved_same_form(y1).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+            (ValueUnpacked::Just(_), _) | (_, ValueUnpacked::Just(_)) => panic!("assert failed"),
+            (_, ValueUnpacked::Delay(_)) | (ValueUnpacked::Delay(_), _) => false,
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.same_form(&val1).await,
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.same_form(&val0).await,
+            (_, _) => false,
+        }
     }
 }
 impl From<&str> for Value {
@@ -356,6 +364,18 @@ enum OptimizedWeakHeadNormalForm {
 }
 impl OptimizedWeakHeadNormalForm {
     async fn forced_equal(&self, other: &Value) -> bool {
+        /*
+        let other = other.get_weak_head_normal_form().await;
+        let locked_other = other.0.read().await;
+        match (self, &*locked_other) {
+            (
+                OptimizedWeakHeadNormalForm::List(xs),
+                ValueUnpacked::OptimizedWeakHeadNormalForm(OptimizedWeakHeadNormalForm::List(ys)),
+            ) => {
+                Option::Some(xs.equal(ys))
+            }
+        };
+        */
         self.deoptimize().await.forced_equal(other).await
     }
     async fn same_form(&self, other: &Value) -> bool {
@@ -382,6 +402,14 @@ impl From<Vector<Value>> for Value {
         Value::from(ValueUnpacked::from(OptimizedWeakHeadNormalForm::List(x)))
     }
 }
+/*
+#[async_trait]
+impl ValueEqual for Vector<Value> {
+    async fn equal(&self, other: &Self) -> bool {
+        self.len() == other && self.iter().zip(other).map()
+    }
+}
+*/
 #[async_trait]
 impl ValueDeoptimize for Vector<Value> {
     async fn deoptimize(&self) -> Value {
