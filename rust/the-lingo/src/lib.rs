@@ -349,8 +349,8 @@ impl From<OptimizedWeakHeadNormalForm> for ValueUnpacked {
 }
 #[derive(Clone)]
 struct ValueUnpackedDelay {
-    countinue: Arc<Mutex<Pin<Box<dyn Future<Output = Value> + Send + Sync>>>>,
-    stop: Arc<Mutex<Pin<Box<dyn Future<Output = Value> + Send + Sync>>>>,
+    countinue: Arc<Mutex<Pin<Box<dyn Future<Output = Value> + Send>>>>,
+    stop: Arc<Mutex<Pin<Box<dyn Future<Output = Value> + Send>>>>,
 }
 impl fmt::Debug for ValueUnpackedDelay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
