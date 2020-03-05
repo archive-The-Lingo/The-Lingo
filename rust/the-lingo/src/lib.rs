@@ -2,8 +2,8 @@ use async_recursion::async_recursion;
 use async_std::sync::{Arc, Mutex, RwLock};
 use async_trait::async_trait;
 use futures::prelude::Future;
-use std::{fmt, pin::Pin};
 use im::{vector, vector::Vector};
+use std::{fmt, pin::Pin};
 extern crate num_bigint;
 extern crate num_traits;
 type Nat = num_bigint::BigUint;
@@ -37,7 +37,7 @@ impl Value {
         }
         let mut status_evaluating: Value = self.clone();
         let mut status_history: Vector<Value> = vector![];
-        while !status_evaluating.is_weak_head_normal_form().await {
+        loop {
             let locked = status_evaluating.0.read().await;
             match &*locked {
                 ValueUnpacked::Just(x) => {
@@ -76,7 +76,7 @@ impl Value {
         }
         let mut status_evaluating: Value = self.clone();
         let mut status_history: Vector<Value> = vector![];
-        while status_evaluating.is_just().await {
+        loop {
             let locked = status_evaluating.0.read().await;
             match &*locked {
                 ValueUnpacked::Just(x) => {
@@ -105,30 +105,34 @@ impl Value {
         if self == other {
             return true;
         }
+        let val0: Value = self.get_weak_head_normal_form().await;
+        let val1: Value = other.get_weak_head_normal_form().await;
+        drop(self);
+        drop(other);
         match (
-            &*self.get_weak_head_normal_form().await.0.read().await,
-            &*other.get_weak_head_normal_form().await.0.read().await,
+            {val0.clone().0.read().await.clone()},
+            {val1.clone().0.read().await.clone()},
         ) {
             (ValueUnpacked::Null, ValueUnpacked::Null) => true,
             (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
                 if x == y {
-                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
                     true
                 } else {
                     false
                 }
             }
             (ValueUnpacked::Pair(x0, x1), ValueUnpacked::Pair(y0, y1)) => {
-                if x0.forced_equal(y0).await && x1.forced_equal(y1).await {
-                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                if x0.moved_forced_equal(y0).await && x1.moved_forced_equal(y1).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
                     true
                 } else {
                     false
                 }
             }
             (ValueUnpacked::Struct(x0, x1), ValueUnpacked::Struct(y0, y1)) => {
-                if x0.forced_equal(y0).await && x1.forced_equal(y1).await {
-                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                if x0.moved_forced_equal(y0).await && x1.moved_forced_equal(y1).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
                     true
                 } else {
                     false
@@ -138,8 +142,8 @@ impl Value {
             | (_, ValueUnpacked::Just(_))
             | (_, ValueUnpacked::Delay(_))
             | (ValueUnpacked::Delay(_), _) => panic!("assert failed"),
-            (ValueUnpacked::OptimizedWeakHeadNormalForm(x), _) => x.forced_equal(&other).await,
-            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(y)) => y.forced_equal(&self).await,
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.forced_equal(&val1).await,
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.forced_equal(&val0).await,
             (_, _) => false,
         }
     }
@@ -151,30 +155,34 @@ impl Value {
         if self == other {
             return true;
         }
+        let val0: Value = self.remove_justs().await;
+        let val1: Value = other.remove_justs().await;
+        drop(self);
+        drop(other);
         match (
-            &*self.remove_justs().await.0.read().await,
-            &*other.remove_justs().await.0.read().await,
+            {val0.clone().0.read().await.clone()},
+            {val1.clone().0.read().await.clone()},
         ) {
             (ValueUnpacked::Null, ValueUnpacked::Null) => true,
             (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
                 if x == y {
-                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
                     true
                 } else {
                     false
                 }
             }
             (ValueUnpacked::Pair(x0, x1), ValueUnpacked::Pair(y0, y1)) => {
-                if x0.same_form(y0).await && x1.same_form(y1).await {
-                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                if x0.moved_same_form(y0).await && x1.moved_same_form(y1).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
                     true
                 } else {
                     false
                 }
             }
             (ValueUnpacked::Struct(x0, x1), ValueUnpacked::Struct(y0, y1)) => {
-                if x0.same_form(y0).await && x1.same_form(y1).await {
-                    *self.0.write().await = ValueUnpacked::Just(other.clone());
+                if x0.moved_same_form(y0).await && x1.moved_same_form(y1).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
                     true
                 } else {
                     false
@@ -182,15 +190,15 @@ impl Value {
             }
             (ValueUnpacked::Just(_), _) | (_, ValueUnpacked::Just(_)) => panic!("assert failed"),
             (_, ValueUnpacked::Delay(_)) | (ValueUnpacked::Delay(_), _) => false,
-            (ValueUnpacked::OptimizedWeakHeadNormalForm(x), _) => x.same_form(&other).await,
-            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(y)) => y.same_form(&self).await,
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.same_form(&val1).await,
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.same_form(&val0).await,
             (_, _) => false,
         }
     }
     pub fn evaluate(&self, env: &Mapping) -> Self {
         Value::from(ValueUnpacked::from(ValueUnpackedDelay {
-            countinue: Mutex::new(Box::pin(self.clone().do_evaluate(env.clone()))),
-            stop: Mutex::new(Box::pin(async { panic!("TODO") })),
+            countinue: Arc::new(Mutex::new(Box::pin(self.clone().do_evaluate(env.clone())))),
+            stop: Arc::new(Mutex::new(Box::pin(async { panic!("TODO") }))),
         }))
     }
     async fn do_evaluate(self, env: Mapping) -> Self {
@@ -198,8 +206,8 @@ impl Value {
     }
     pub fn apply(&self, xs: &Vector<Self>) -> Self {
         Value::from(ValueUnpacked::from(ValueUnpackedDelay {
-            countinue: Mutex::new(Box::pin(self.clone().do_apply(xs.clone()))),
-            stop: Mutex::new(Box::pin(async { panic!("TODO") })),
+            countinue: Arc::new(Mutex::new(Box::pin(self.clone().do_apply(xs.clone())))),
+            stop: Arc::new(Mutex::new(Box::pin(async { panic!("TODO") }))),
         }))
     }
     async fn do_apply(self, xs: Vector<Self>) -> Self {
@@ -207,10 +215,10 @@ impl Value {
     }
     pub fn apply_macro(&self, env: &Mapping, xs: &Vector<Self>) -> Self {
         Value::from(ValueUnpacked::from(ValueUnpackedDelay {
-            countinue: Mutex::new(Box::pin(
+            countinue: Arc::new(Mutex::new(Box::pin(
                 self.clone().do_apply_macro(env.clone(), xs.clone()),
-            )),
-            stop: Mutex::new(Box::pin(async { panic!("TODO") })),
+            ))),
+            stop: Arc::new(Mutex::new(Box::pin(async { panic!("TODO") }))),
         }))
     }
     async fn do_apply_macro(self, env: Mapping, xs: Vector<Self>) -> Self {
@@ -218,8 +226,10 @@ impl Value {
     }
     pub fn builtin(&self, env: &Mapping, xs: &Vector<Self>) -> Self {
         Value::from(ValueUnpacked::from(ValueUnpackedDelay {
-            countinue: Mutex::new(Box::pin(self.clone().do_builtin(env.clone(), xs.clone()))),
-            stop: Mutex::new(Box::pin(async { panic!("TODO") })),
+            countinue: Arc::new(Mutex::new(Box::pin(
+                self.clone().do_builtin(env.clone(), xs.clone()),
+            ))),
+            stop: Arc::new(Mutex::new(Box::pin(async { panic!("TODO") }))),
         }))
     }
     async fn do_builtin(self, env: Mapping, xs: Vector<Self>) -> Self {
@@ -308,7 +318,7 @@ lazy_static! {
     pub static ref TRUE_V: Value = Value::new_struct(&TRUE_S, &NULL_V);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum ValueUnpacked {
     Null,
     Symbol(String),
@@ -328,9 +338,10 @@ impl From<OptimizedWeakHeadNormalForm> for ValueUnpacked {
         ValueUnpacked::OptimizedWeakHeadNormalForm(x)
     }
 }
+#[derive(Clone)]
 struct ValueUnpackedDelay {
-    countinue: Mutex<Pin<Box<dyn Future<Output = Value> + Send + Sync>>>,
-    stop: Mutex<Pin<Box<dyn Future<Output = Value> + Send + Sync>>>,
+    countinue: Arc<Mutex<Pin<Box<dyn Future<Output = Value> + Send + Sync>>>>,
+    stop: Arc<Mutex<Pin<Box<dyn Future<Output = Value> + Send + Sync>>>>,
 }
 impl fmt::Debug for ValueUnpackedDelay {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -338,7 +349,7 @@ impl fmt::Debug for ValueUnpackedDelay {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum OptimizedWeakHeadNormalForm {
     List(Vector<Value>),
     Mapping(Mapping),
