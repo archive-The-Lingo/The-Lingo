@@ -1,7 +1,7 @@
 use async_recursion::async_recursion;
 use async_std::sync::{Arc, Mutex, RwLock};
 use async_trait::async_trait;
-use futures::prelude::Future;
+use futures::{join, prelude::Future};
 use im::{vector, vector::Vector};
 use std::{fmt, pin::Pin};
 extern crate num_bigint;
@@ -105,8 +105,10 @@ impl Value {
         if self == other {
             return true;
         }
-        let val0: Value = self.get_weak_head_normal_form().await;
-        let val1: Value = other.get_weak_head_normal_form().await;
+        let (val0, val1) = join!(
+            self.get_weak_head_normal_form(),
+            other.get_weak_head_normal_form()
+        );
         drop(self);
         drop(other);
         match ({ val0.clone().0.read().await.clone() }, {
@@ -154,8 +156,7 @@ impl Value {
         if self == other {
             return true;
         }
-        let val0: Value = self.remove_justs().await;
-        let val1: Value = other.remove_justs().await;
+        let (val0, val1) = join!(self.remove_justs(), other.remove_justs());
         drop(self);
         drop(other);
         match ({ val0.clone().0.read().await.clone() }, {
