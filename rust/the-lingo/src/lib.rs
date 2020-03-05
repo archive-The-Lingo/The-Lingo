@@ -10,6 +10,8 @@ type Nat = num_bigint::BigUint;
 #[macro_use]
 extern crate lazy_static;
 
+// TODO: use https://crates.io/crates/async-scoped or https://docs.rs/futures/0.3.4/futures/stream/trait.StreamExt.html#method.for_each_concurrent etc to run scoped tasks concurrently
+
 #[derive(Debug, Clone)]
 pub struct Value(Arc<RwLock<ValueUnpacked>>);
 impl PartialEq for Value {
