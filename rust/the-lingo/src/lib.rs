@@ -1,7 +1,7 @@
 //use async_recursion::async_recursion;
 use async_std::sync::{Arc, Mutex, RwLock};
 use async_trait::async_trait;
-use futures::{join, prelude::Future};
+use futures::{future::join_all, join, prelude::Future};
 use im::{vector, vector::Vector};
 use std::{fmt, pin::Pin};
 extern crate num_bigint;
@@ -158,21 +158,23 @@ impl Value {
     }
 }
 #[async_trait]
-pub trait ValueEqual {
-    async fn moved_forced_equal(self, other: Self) -> bool;
-    async fn forced_equal(&self, other: &Self) -> bool;
-    async fn moved_same_form(self, other: Self) -> bool;
-    async fn same_form(&self, other: &Self) -> bool;
-}
-#[async_trait]
-impl ValueEqual for Value {
-     async fn same_form(&self, other: &Self) -> bool {
-        self.clone().moved_same_form(other.clone()).await
+pub trait ValueEqual<T: 'static + Sync + Send + Clone>: Sync + Send + Clone {
+    async fn moved_forced_equal(self, other: T) -> bool {
+        self.forced_equal(&other).await
     }
-     async fn forced_equal(&self, other: &Self) -> bool {
+    async fn forced_equal(&self, other: &T) -> bool {
         self.clone().moved_forced_equal(other.clone()).await
     }
-    async fn moved_forced_equal(self, other: Self) -> bool {
+    async fn moved_same_form(self, other: T) -> bool {
+        self.same_form(&other).await
+    }
+    async fn same_form(&self, other: &T) -> bool {
+        self.clone().moved_same_form(other.clone()).await
+    }
+}
+#[async_trait]
+impl ValueEqual<Value> for Value {
+    async fn moved_forced_equal(self, other: Value) -> bool {
         if self == other {
             return true;
         }
@@ -219,7 +221,7 @@ impl ValueEqual for Value {
             (_, _) => false,
         }
     }
-    async fn moved_same_form(self, other: Self) -> bool {
+    async fn moved_same_form(self, other: Value) -> bool {
         if self == other {
             return true;
         }
@@ -362,7 +364,8 @@ enum OptimizedWeakHeadNormalForm {
     Mapping(Mapping),
     Nat(Nat),
 }
-impl OptimizedWeakHeadNormalForm {
+#[async_trait]
+impl ValueEqual<Value> for OptimizedWeakHeadNormalForm {
     async fn forced_equal(&self, other: &Value) -> bool {
         /*
         let other = other.get_weak_head_normal_form().await;
@@ -383,7 +386,7 @@ impl OptimizedWeakHeadNormalForm {
     }
 }
 #[async_trait]
-trait ValueDeoptimize {
+trait ValueDeoptimize: Sync + Send {
     async fn deoptimize(&self) -> Value;
 }
 #[async_trait]
@@ -402,14 +405,32 @@ impl From<Vector<Value>> for Value {
         Value::from(ValueUnpacked::from(OptimizedWeakHeadNormalForm::List(x)))
     }
 }
-/*
 #[async_trait]
-impl ValueEqual for Vector<Value> {
-    async fn equal(&self, other: &Self) -> bool {
-        self.len() == other && self.iter().zip(other).map()
+impl ValueEqual<Vector<Value>> for Vector<Value> {
+    async fn forced_equal(&self, other: &Vector<Value>) -> bool {
+        self.len() == other.len()
+            && join_all(self.iter().zip(other).map(|(x, y)| x.forced_equal(y)))
+                .await
+                .iter()
+                .fold(true, |x, y| x && *y)
+    }
+    async fn same_form(&self, other: &Vector<Value>) -> bool {
+        self.len() == other.len()
+            && join_all(self.iter().zip(other).map(|(x, y)| x.same_form(y)))
+                .await
+                .iter()
+                .fold(true, |x, y| x && *y)
     }
 }
-*/
+#[async_trait]
+impl ValueEqual<Value> for Vector<Value> {
+    async fn forced_equal(&self, other: &Value) -> bool {
+        panic!("TODO")
+    }
+    async fn same_form(&self, other: &Value) -> bool {
+        panic!("TODO")
+    }
+}
 #[async_trait]
 impl ValueDeoptimize for Vector<Value> {
     async fn deoptimize(&self) -> Value {
