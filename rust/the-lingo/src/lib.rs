@@ -109,10 +109,9 @@ impl Value {
         let val1: Value = other.get_weak_head_normal_form().await;
         drop(self);
         drop(other);
-        match (
-            {val0.clone().0.read().await.clone()},
-            {val1.clone().0.read().await.clone()},
-        ) {
+        match ({ val0.clone().0.read().await.clone() }, {
+            val1.clone().0.read().await.clone()
+        }) {
             (ValueUnpacked::Null, ValueUnpacked::Null) => true,
             (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
                 if x == y {
@@ -159,10 +158,9 @@ impl Value {
         let val1: Value = other.remove_justs().await;
         drop(self);
         drop(other);
-        match (
-            {val0.clone().0.read().await.clone()},
-            {val1.clone().0.read().await.clone()},
-        ) {
+        match ({ val0.clone().0.read().await.clone() }, {
+            val1.clone().0.read().await.clone()
+        }) {
             (ValueUnpacked::Null, ValueUnpacked::Null) => true,
             (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
                 if x == y {
@@ -406,6 +404,9 @@ impl ValueDeoptimize for Nat {
 pub struct Mapping(Box<Vector<(Value, Value)>>);
 lazy_static! {
     pub static ref NULL_MAPPING: Mapping = Mapping(Box::new(vector![]));
+    pub static ref NULL_MAPPING_V: Value = Value::from(ValueUnpacked::from(
+        OptimizedWeakHeadNormalForm::Mapping((*NULL_MAPPING).clone())
+    ));
 }
 impl Mapping {
     pub async fn new(xs: &Vector<(Value, Value)>) -> Self {
