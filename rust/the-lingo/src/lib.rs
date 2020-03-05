@@ -216,8 +216,8 @@ impl ValueEqual<Value> for Value {
             | (_, ValueUnpacked::Just(_))
             | (_, ValueUnpacked::Delay(_))
             | (ValueUnpacked::Delay(_), _) => panic!("assert failed"),
-            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.forced_equal(&val1).await,
-            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.forced_equal(&val0).await,
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.moved_forced_equal(val1).await,
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.moved_forced_equal(val0).await,
             (_, _) => false,
         }
     }
@@ -258,8 +258,8 @@ impl ValueEqual<Value> for Value {
             }
             (ValueUnpacked::Just(_), _) | (_, ValueUnpacked::Just(_)) => panic!("assert failed"),
             (_, ValueUnpacked::Delay(_)) | (ValueUnpacked::Delay(_), _) => false,
-            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.same_form(&val1).await,
-            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.same_form(&val0).await,
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.moved_same_form(val1).await,
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.moved_same_form(val0).await,
             (_, _) => false,
         }
     }
@@ -367,22 +367,26 @@ enum OptimizedWeakHeadNormalForm {
 #[async_trait]
 impl ValueEqual<Value> for OptimizedWeakHeadNormalForm {
     async fn forced_equal(&self, other: &Value) -> bool {
-        /*
         let other = other.get_weak_head_normal_form().await;
-        let locked_other = other.0.read().await;
-        match (self, &*locked_other) {
+        match (self, &*other.0.read().await) {
             (
                 OptimizedWeakHeadNormalForm::List(xs),
                 ValueUnpacked::OptimizedWeakHeadNormalForm(OptimizedWeakHeadNormalForm::List(ys)),
-            ) => {
-                Option::Some(xs.equal(ys))
-            }
-        };
-        */
-        self.deoptimize().await.forced_equal(other).await
+            ) => return xs.forced_equal(ys).await,
+            _ => ()
+        }
+        self.deoptimize().await.moved_forced_equal(other).await
     }
     async fn same_form(&self, other: &Value) -> bool {
-        self.deoptimize().await.same_form(other).await
+        let other = other.remove_justs().await;
+        match (self, &*other.0.read().await) {
+            (
+                OptimizedWeakHeadNormalForm::List(xs),
+                ValueUnpacked::OptimizedWeakHeadNormalForm(OptimizedWeakHeadNormalForm::List(ys)),
+            ) => return xs.same_form(ys).await,
+            _ => ()
+        }
+        self.deoptimize().await.moved_same_form(other).await
     }
 }
 #[async_trait]
@@ -420,15 +424,6 @@ impl ValueEqual<Vector<Value>> for Vector<Value> {
                 .await
                 .iter()
                 .fold(true, |x, y| x && *y)
-    }
-}
-#[async_trait]
-impl ValueEqual<Value> for Vector<Value> {
-    async fn forced_equal(&self, other: &Value) -> bool {
-        panic!("TODO")
-    }
-    async fn same_form(&self, other: &Value) -> bool {
-        panic!("TODO")
     }
 }
 #[async_trait]
