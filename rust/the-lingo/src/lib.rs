@@ -176,7 +176,7 @@ pub trait ValueEqual<T: 'static + Sync + Send + Clone>: Sync + Send + Clone {
 }
 #[async_trait]
 impl ValueEqual<Value> for Value {
-    async fn moved_forced_equal(self, other: Value) -> bool {
+    async fn forced_equal(&self, other: &Value) -> bool {
         if self == other {
             return true;
         }
@@ -189,7 +189,10 @@ impl ValueEqual<Value> for Value {
         match ({ val0.clone().0.read().await.clone() }, {
             val1.clone().0.read().await.clone()
         }) {
-            (ValueUnpacked::Null, ValueUnpacked::Null) => true,
+            (ValueUnpacked::Null, ValueUnpacked::Null) => {
+                *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                true
+            }
             (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
                 if x == y {
                     *val0.0.write().await = ValueUnpacked::Just(val1.clone());
@@ -218,12 +221,26 @@ impl ValueEqual<Value> for Value {
             | (_, ValueUnpacked::Just(_))
             | (_, ValueUnpacked::Delay(_))
             | (ValueUnpacked::Delay(_), _) => panic!("assert failed"),
-            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.moved_forced_equal(val1).await,
-            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.moved_forced_equal(val0).await,
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => {
+                if v0.moved_forced_equal(val1.clone()).await {
+                    *val1.0.write().await = ValueUnpacked::Just(val0.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => {
+                if v1.moved_forced_equal(val0.clone()).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                    true
+                } else {
+                    false
+                }
+            }
             (_, _) => false,
         }
     }
-    async fn moved_same_form(self, other: Value) -> bool {
+    async fn same_form(&self, other: &Value) -> bool {
         if self == other {
             return true;
         }
@@ -233,7 +250,10 @@ impl ValueEqual<Value> for Value {
         match ({ val0.clone().0.read().await.clone() }, {
             val1.clone().0.read().await.clone()
         }) {
-            (ValueUnpacked::Null, ValueUnpacked::Null) => true,
+            (ValueUnpacked::Null, ValueUnpacked::Null) => {
+                *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                true
+            }
             (ValueUnpacked::Symbol(x), ValueUnpacked::Symbol(y)) => {
                 if x == y {
                     *val0.0.write().await = ValueUnpacked::Just(val1.clone());
@@ -260,8 +280,22 @@ impl ValueEqual<Value> for Value {
             }
             (ValueUnpacked::Just(_), _) | (_, ValueUnpacked::Just(_)) => panic!("assert failed"),
             (_, ValueUnpacked::Delay(_)) | (ValueUnpacked::Delay(_), _) => false,
-            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => v0.moved_same_form(val1).await,
-            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => v1.moved_same_form(val0).await,
+            (ValueUnpacked::OptimizedWeakHeadNormalForm(v0), _) => {
+                if v0.moved_same_form(val1.clone()).await {
+                    *val1.0.write().await = ValueUnpacked::Just(val0.clone());
+                    true
+                } else {
+                    false
+                }
+            }
+            (_, ValueUnpacked::OptimizedWeakHeadNormalForm(v1)) => {
+                if v1.moved_same_form(val0.clone()).await {
+                    *val0.0.write().await = ValueUnpacked::Just(val1.clone());
+                    true
+                } else {
+                    false
+                }
+            }
             (_, _) => false,
         }
     }
@@ -375,7 +409,7 @@ impl ValueEqual<Value> for OptimizedWeakHeadNormalForm {
                 OptimizedWeakHeadNormalForm::List(xs),
                 ValueUnpacked::OptimizedWeakHeadNormalForm(OptimizedWeakHeadNormalForm::List(ys)),
             ) => return xs.forced_equal(ys).await,
-            _ => ()
+            _ => (),
         }
         self.deoptimize().await.moved_forced_equal(other).await
     }
@@ -386,7 +420,7 @@ impl ValueEqual<Value> for OptimizedWeakHeadNormalForm {
                 OptimizedWeakHeadNormalForm::List(xs),
                 ValueUnpacked::OptimizedWeakHeadNormalForm(OptimizedWeakHeadNormalForm::List(ys)),
             ) => return xs.same_form(ys).await,
-            _ => ()
+            _ => (),
         }
         self.deoptimize().await.moved_same_form(other).await
     }
