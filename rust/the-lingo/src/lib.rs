@@ -401,9 +401,23 @@ trait ValueDeoptimize: Sync + Send {
     async fn deoptimize(&self) -> Value;
 }
 #[async_trait]
-trait ValueOptimize: Sync + Send + Sized {
+trait ValueOptimize: Sync + Send + Sized + Clone {
     async fn optimize(arg: &Value) -> Option<Self>;
+    async fn package_as_value(self) -> Value;
 }
+trait ValueOptimize_Hack_AndSave: ValueOptimize {
+    fn optimize_and_save<'a>(
+        arg: &'a Value,
+    ) -> Pin<Box<dyn Future<Output = Option<Self>> + Send + 'a>> {
+        Box::pin(async move {
+            // async_trait doesn't work correctly on the `Self` type
+            let result: Self = ValueOptimize::optimize(arg).await?;
+            *arg.0.write().await = ValueUnpacked::Just(result.clone().package_as_value().await);
+            Option::Some(result)
+        })
+    }
+}
+impl<T> ValueOptimize_Hack_AndSave for T where T:ValueOptimize {}
 #[async_trait]
 impl ValueDeoptimize for OptimizedWeakHeadNormalForm {
     async fn deoptimize(&self) -> Value {
@@ -458,12 +472,24 @@ impl ValueOptimize for Vector<Value> {
                     result.push_back(x.clone());
                     state = xs.clone();
                 }
+                ValueUnpacked::OptimizedWeakHeadNormalForm(OptimizedWeakHeadNormalForm::List(
+                    xs,
+                )) => {
+                    result.append(xs.clone());
+                    break;
+                }
+                ValueUnpacked::OptimizedWeakHeadNormalForm(x) => {
+                    state = x.deoptimize().await;
+                }
                 _ => {
                     return Option::None;
                 }
             }
         }
         Option::Some(result)
+    }
+    async fn package_as_value(self) -> Value {
+        Value::from(ValueUnpacked::from(OptimizedWeakHeadNormalForm::List(self)))
     }
 }
 
