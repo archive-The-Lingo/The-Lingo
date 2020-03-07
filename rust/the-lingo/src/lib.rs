@@ -128,36 +128,6 @@ impl Value {
     async fn do_apply_macro(self, env: Mapping, xs: Vector<Self>) -> Self {
         panic!("TODO")
     }
-    pub fn builtin(&self, env: &Mapping, xs: &Vector<Self>) -> Self {
-        Value::from(ValueUnpacked::from(ValueUnpackedDelay {
-            countinue: Arc::new(Mutex::new(Box::pin(
-                self.clone().do_builtin(env.clone(), xs.clone()),
-            ))),
-            stop: Arc::new(Mutex::new(Box::pin(async { panic!("TODO") }))),
-        }))
-    }
-    async fn do_builtin(self, env: Mapping, xs: Vector<Self>) -> Self {
-        panic!("TODO")
-    }
-    async fn into_vector(&self) -> Option<Vector<Self>> {
-        let mut state = self.clone();
-        let mut result = vector![];
-        loop {
-            match &*state.get_weak_head_normal_form().await.0.read().await {
-                ValueUnpacked::Null => {
-                    break;
-                }
-                ValueUnpacked::Pair(x, xs) => {
-                    result.push_back(x.clone());
-                    state = xs.clone();
-                }
-                _ => {
-                    return Option::None;
-                }
-            }
-        }
-        Option::Some(result)
-    }
 }
 #[async_trait]
 pub trait ValueEqual<T: 'static + Sync + Send + Clone>: Sync + Send + Clone {
@@ -350,11 +320,11 @@ lazy_static! {
     pub static ref NAT_SUCC_S: Value = Value::from("自然數/加一");
     pub static ref SYMBOL_TO_STRING_S: Value = Value::from("符號→字串");
     pub static ref STRING_TO_SYMBOL_S: Value = Value::from("字串→符號");
-    pub static ref NEW_PAIR_S: Value = Value::from("構造-列表/序對");
+    pub static ref CONS_PAIR_S: Value = Value::from("構造-列表/序對");
     pub static ref ELIM_PAIR_S: Value = Value::from("解構-列表/序對");
     pub static ref IS_PAIR_S: Value = Value::from("列表/序對？");
     pub static ref IS_NULL_S: Value = Value::from("列表/空？");
-    pub static ref NEW_STRUCT_S: Value = Value::from("構造-結構體");
+    pub static ref CONS_STRUCT_S: Value = Value::from("構造-結構體");
     pub static ref ELIM_STRUCT_S: Value = Value::from("解構-結構體");
     pub static ref IS_STRUCT_S: Value = Value::from("符號？");
     pub static ref RECURSION_S: Value = Value::from("遞歸");
@@ -399,6 +369,7 @@ enum OptimizedWeakHeadNormalForm {
     List(Vector<Value>),
     Mapping(Mapping),
     Nat(Nat),
+    Expr(Expr),
 }
 #[async_trait]
 impl ValueEqual<Value> for OptimizedWeakHeadNormalForm {
@@ -430,12 +401,17 @@ trait ValueDeoptimize: Sync + Send {
     async fn deoptimize(&self) -> Value;
 }
 #[async_trait]
+trait ValueOptimize: Sync + Send + Sized {
+    async fn optimize(arg: &Value) -> Option<Self>;
+}
+#[async_trait]
 impl ValueDeoptimize for OptimizedWeakHeadNormalForm {
     async fn deoptimize(&self) -> Value {
         match self {
             OptimizedWeakHeadNormalForm::List(x) => x.deoptimize().await,
             OptimizedWeakHeadNormalForm::Mapping(x) => x.deoptimize().await,
             OptimizedWeakHeadNormalForm::Nat(x) => x.deoptimize().await,
+            OptimizedWeakHeadNormalForm::Expr(x) => x.deoptimize().await,
         }
     }
 }
@@ -466,6 +442,28 @@ impl ValueEqual<Vector<Value>> for Vector<Value> {
 impl ValueDeoptimize for Vector<Value> {
     async fn deoptimize(&self) -> Value {
         panic!("TODO")
+    }
+}
+#[async_trait]
+impl ValueOptimize for Vector<Value> {
+    async fn optimize(arg: &Value) -> Option<Self> {
+        let mut state = arg.clone();
+        let mut result = vector![];
+        loop {
+            match &*state.get_weak_head_normal_form().await.0.read().await {
+                ValueUnpacked::Null => {
+                    break;
+                }
+                ValueUnpacked::Pair(x, xs) => {
+                    result.push_back(x.clone());
+                    state = xs.clone();
+                }
+                _ => {
+                    return Option::None;
+                }
+            }
+        }
+        Option::Some(result)
     }
 }
 
@@ -527,6 +525,32 @@ impl From<Mapping> for Vector<(Value, Value)> {
 }
 #[async_trait]
 impl ValueDeoptimize for Mapping {
+    async fn deoptimize(&self) -> Value {
+        panic!("TODO")
+    }
+}
+
+#[derive(Debug, Clone)]
+enum Expr {
+    Id(Value),
+    ApplyFunction(/*function Expr*/ Value, Vector</*Expr*/ Value>),
+    ApplyMacro(/*function Expr*/ Value, Vector</*Expr*/ Value>),
+    Comment(/*comment Expr*/ Value, Value),
+    BuiltinQuote(Value),
+    BuiltinEvaluate(/*Mapping*/ Value, /*Expr*/ Value),
+    BuiltinFunction(/*args*/ Value, /*Expr*/ Value),
+    BuiltinApplyFunction(/*function Expr*/ Value, /*list Expr*/ Value),
+    BuiltinConsStruct(/*Expr*/ Value, /*Expr*/ Value),
+    BuiltinConsPair(/*Expr*/ Value, /*Expr*/ Value),
+    BuiltinIsStruct(/*Expr*/ Value),
+    BuiltinIsPair(/*Expr*/ Value),
+    BuiltinIsNull(/*Expr*/ Value),
+    BuiltinSymbolToString(/*Expr*/ Value),
+    BuiltinStringToSymbol(/*Expr*/ Value),
+    BuiltinRecursion(/*id Expr*/ Value, /*Expr*/ Value),
+}
+#[async_trait]
+impl ValueDeoptimize for Expr {
     async fn deoptimize(&self) -> Value {
         panic!("TODO")
     }
