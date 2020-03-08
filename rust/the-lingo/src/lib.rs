@@ -405,7 +405,8 @@ trait ValueOptimize: Sync + Send + Sized + Clone {
     async fn optimize(arg: &Value) -> Option<Self>;
     async fn package_as_value(self) -> Value;
 }
-trait ValueOptimize_Hack_AndSave: ValueOptimize {
+// a hack
+trait ValueOptimizeHackAndSave: ValueOptimize {
     fn optimize_and_save<'a>(
         arg: &'a Value,
     ) -> Pin<Box<dyn Future<Output = Option<Self>> + Send + 'a>> {
@@ -417,7 +418,7 @@ trait ValueOptimize_Hack_AndSave: ValueOptimize {
         })
     }
 }
-impl<T> ValueOptimize_Hack_AndSave for T where T:ValueOptimize {}
+impl<T> ValueOptimizeHackAndSave for T where T:ValueOptimize {}
 #[async_trait]
 impl ValueDeoptimize for OptimizedWeakHeadNormalForm {
     async fn deoptimize(&self) -> Value {
