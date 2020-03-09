@@ -418,7 +418,7 @@ trait ValueOptimizeHackAndSave: ValueOptimize {
         })
     }
 }
-impl<T> ValueOptimizeHackAndSave for T where T:ValueOptimize {}
+impl<T> ValueOptimizeHackAndSave for T where T: ValueOptimize {}
 #[async_trait]
 impl ValueDeoptimize for OptimizedWeakHeadNormalForm {
     async fn deoptimize(&self) -> Value {
@@ -556,6 +556,17 @@ impl ValueDeoptimize for Mapping {
         panic!("TODO")
     }
 }
+#[async_trait]
+impl ValueOptimize for Mapping {
+    async fn optimize(arg: &Value) -> Option<Self> {
+        panic!("TODO")
+    }
+    async fn package_as_value(self) -> Value {
+        Value::from(ValueUnpacked::from(OptimizedWeakHeadNormalForm::Mapping(
+            self,
+        )))
+    }
+}
 
 #[derive(Debug, Clone)]
 enum Expr {
@@ -580,5 +591,14 @@ enum Expr {
 impl ValueDeoptimize for Expr {
     async fn deoptimize(&self) -> Value {
         panic!("TODO")
+    }
+}
+#[async_trait]
+impl ValueOptimize for Expr {
+    async fn optimize(arg: &Value) -> Option<Self> {
+        panic!("TODO")
+    }
+    async fn package_as_value(self) -> Value {
+        Value::from(ValueUnpacked::from(OptimizedWeakHeadNormalForm::Expr(self)))
     }
 }
