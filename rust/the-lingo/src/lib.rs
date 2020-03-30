@@ -1,46 +1,59 @@
-use async_std::sync::{Arc, Mutex, RwLock};
 use async_trait::async_trait;
 use futures::{executor::block_on, future::join_all, join, prelude::Future};
 use im::{vector, vector::Vector};
-use std::{fmt, pin::Pin};
+use std::{
+    fmt,
+    iter::Iterator,
+    pin::Pin,
+    ptr,
+    sync::{Mutex, RwLock},
+};
 extern crate num_bigint;
 extern crate num_traits;
 type Nat = num_bigint::BigUint;
 #[macro_use]
 extern crate lazy_static;
+use bacon_rajan_cc::{Cc, Trace, Tracer};
 use downcast_rs::{impl_downcast, Downcast};
 
-#[async_trait]
-trait Values: Downcast + Send + Sync + fmt::Debug {
+#[async_trait(?Send)]
+trait Values: Downcast + Trace + fmt::Debug {
     async fn impl_forced_equal(&self, other: &Value) -> bool;
     async fn impl_same_form(&self, other: &Value) -> bool;
     async fn deoptimize_to_core_whnf(&self) -> Option<ValueCoreWHNF>;
     async fn deoptimize_force_to_core_whnf(&self) -> ValueCoreWHNF;
     async fn evaluate(&self, map: &Mapping) -> Value;
     async fn apply(&self, args: &Vector<Value>) -> Value;
-    async fn optimize(x: &Value) -> Self where Self: Sized;
+    async fn optimize(x: &Value) -> Self
+    where
+        Self: Sized;
     async fn dyn_optimize_as_value(&self, x: &Value) -> Value;
 }
 impl_downcast!(Values);
 
 #[derive(Debug, Clone)]
-pub struct Value(Arc<RwLock<Arc<dyn Values>>>);
+pub struct Value(Cc<RwLock<Cc<Box<dyn Values>>>>);
+impl Trace for Value {
+    fn trace(&self, tracer: &mut Tracer) {
+        self.0.read().unwrap().trace(tracer);
+    }
+}
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&block_on(self.read()), &block_on(other.read()))
+        ptr::eq::<Cc<Box<dyn Values>>>(&block_on(self.read()), &block_on(other.read()))
     }
 }
 impl Eq for Value {}
 impl Value {
-    async fn read(&self) -> Arc<dyn Values> {
-        self.0.read().await.clone()
+    async fn read(&self) -> Cc<Box<dyn Values>> {
+        self.0.read().unwrap().clone()
     }
-    async fn unsafe_write(&self, x: Arc<dyn Values>) {
-        *self.0.write().await = x;
+    async fn unsafe_write(&self, x: Cc<Box<dyn Values>>) {
+        *self.0.write().unwrap() = x;
     }
     async fn unsafe_write_pointer(&self, x: Value) {
         assert!(self != &x);
-        self.unsafe_write(Arc::new(x)).await;
+        self.unsafe_write(Cc::new(Box::new(x))).await;
     }
     async fn remove_pointers(&self) -> Value {
         let mut status_evaluating: Value = self.clone();
@@ -51,7 +64,7 @@ impl Value {
         }
         for x in status_history.into_iter() {
             assert!(x != status_evaluating);
-            x.unsafe_write(Arc::new(status_evaluating.clone())).await;
+            x.unsafe_write_pointer(status_evaluating.clone()).await;
         }
         status_evaluating
     }
@@ -84,7 +97,7 @@ impl Value {
         }
     }
 }
-#[async_trait]
+#[async_trait(?Send)]
 impl Values for Value {
     async fn impl_forced_equal(&self, other: &Value) -> bool {
         self.read().await.impl_forced_equal(other).await
@@ -149,6 +162,3 @@ impl Values for ValueCoreWHNF {
 
 #[derive(Debug, Clone)]
 pub struct Mapping(Box<Vector<(Value, Value)>>);
-lazy_static! {
-    pub static ref NULL_MAPPING: Mapping = Mapping(Box::new(vector![]));
-}
