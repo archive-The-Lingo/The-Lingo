@@ -13,11 +13,14 @@ extern crate num_traits;
 type Nat = num_bigint::BigUint;
 #[macro_use]
 extern crate lazy_static;
-use bacon_rajan_cc::{Cc, Trace, Tracer};
+use gcmodule::{ThreadedObjectSpace, ThreadedCc, Trace};
 use downcast_rs::{impl_downcast, Downcast};
 
-#[async_trait(?Send)]
-trait Values: Downcast + Trace + fmt::Debug {
+lazy_static! {
+    pub static ref THREADED_OBJECT_SPACE: ThreadedObjectSpace = ThreadedObjectSpace::default();
+}
+#[async_trait]
+trait Values: Downcast + Trace + fmt::Debug + Send + Sync {
     async fn impl_forced_equal(&self, other: &Value) -> bool;
     async fn impl_same_form(&self, other: &Value) -> bool;
     async fn deoptimize_to_core_whnf(&self) -> Option<ValueCoreWHNF>;
@@ -31,34 +34,29 @@ trait Values: Downcast + Trace + fmt::Debug {
 }
 impl_downcast!(Values);
 
-#[derive(Debug, Clone)]
-pub struct Value(Cc<RwLock<Cc<Box<dyn Values>>>>);
-impl Trace for Value {
-    fn trace(&self, tracer: &mut Tracer) {
-        self.0.read().unwrap().trace(tracer);
-    }
-}
+#[derive(Trace, Debug, Clone)]
+pub struct Value(ThreadedCc<RwLock<ThreadedCc<Box<dyn Values>>>>);
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
-        ptr::eq::<Cc<Box<dyn Values>>>(&block_on(self.read()), &block_on(other.read()))
+        ptr::eq::<ThreadedCc<Box<dyn Values>>>(&block_on(self.read()), &block_on(other.read()))
     }
 }
 impl Eq for Value {}
 impl Value {
-    async fn read(&self) -> Cc<Box<dyn Values>> {
-        self.0.read().unwrap().clone()
+    async fn read(&self) -> ThreadedCc<Box<dyn Values>> {
+        self.0.borrow().read().unwrap().clone()
     }
-    async fn unsafe_write(&self, x: Cc<Box<dyn Values>>) {
-        *self.0.write().unwrap() = x;
+    async fn unsafe_write(&self, x: ThreadedCc<Box<dyn Values>>) {
+        *self.0.borrow().write().unwrap() = x;
     }
     async fn unsafe_write_pointer(&self, x: Value) {
         assert!(self != &x);
-        self.unsafe_write(Cc::new(Box::new(x))).await;
+        self.unsafe_write(THREADED_OBJECT_SPACE.create(Box::new(x))).await;
     }
     async fn remove_pointers(&self) -> Value {
         let mut status_evaluating: Value = self.clone();
         let mut status_history: Vector<Value> = vector![];
-        while let Some(x) = status_evaluating.read().await.downcast_ref::<Value>() {
+        while let Some(x) = status_evaluating.read().await.borrow().downcast_ref::<Value>() {
             status_history.push_back(status_evaluating.clone());
             status_evaluating = x.clone();
         }
@@ -75,7 +73,7 @@ impl Value {
         if this == other {
             return true;
         }
-        if self.read().await.impl_forced_equal(&other).await {
+        if self.read().await.borrow().impl_forced_equal(&other).await {
             other.unsafe_write_pointer(this).await;
             true
         } else {
@@ -89,7 +87,7 @@ impl Value {
         if this == other {
             return true;
         }
-        if self.read().await.impl_same_form(&other).await {
+        if self.read().await.borrow().impl_same_form(&other).await {
             other.unsafe_write_pointer(this).await;
             true
         } else {
@@ -97,31 +95,31 @@ impl Value {
         }
     }
 }
-#[async_trait(?Send)]
+#[async_trait]
 impl Values for Value {
     async fn impl_forced_equal(&self, other: &Value) -> bool {
-        self.read().await.impl_forced_equal(other).await
+        self.read().await.borrow().impl_forced_equal(other).await
     }
     async fn impl_same_form(&self, other: &Value) -> bool {
-        self.read().await.impl_same_form(other).await
+        self.read().await.borrow().impl_same_form(other).await
     }
     async fn deoptimize_force_to_core_whnf(&self) -> ValueCoreWHNF {
-        self.read().await.deoptimize_force_to_core_whnf().await
+        self.read().await.borrow().deoptimize_force_to_core_whnf().await
     }
     async fn deoptimize_to_core_whnf(&self) -> Option<ValueCoreWHNF> {
-        self.read().await.deoptimize_to_core_whnf().await
+        self.read().await.borrow().deoptimize_to_core_whnf().await
     }
     async fn optimize(x: &Value) -> Value {
         x.clone()
     }
     async fn dyn_optimize_as_value(&self, x: &Value) -> Value {
-        self.read().await.dyn_optimize_as_value(x).await
+        self.read().await.borrow().dyn_optimize_as_value(x).await
     }
     async fn evaluate(&self, map: &Mapping) -> Value {
-        self.read().await.evaluate(map).await
+        self.read().await.borrow().evaluate(map).await
     }
     async fn apply(&self, args: &Vector<Value>) -> Value {
-        self.read().await.apply(args).await
+        self.read().await.borrow().apply(args).await
     }
 }
 #[derive(Debug, Clone)]
