@@ -9,10 +9,26 @@ sealed trait Exp extends UnboxedValue {
   def readback(): (Mapping, Exp) = (new Mapping(), Quote(Value(this)))
 }
 
-final case class Quote(x:Value) extends Exp {
+final case class Quote(x: Value) extends Exp {
   def reduce() = throw new UnsupportedOperationException("TODO")
 
   def eval(context: Mapping) = x
+
+  def apply(xs: List[Value]) = throw new UnsupportedOperationException("TODO")
+}
+
+final case class Comment(comment: Value, x: Value) extends Exp {
+  def reduce() = throw new UnsupportedOperationException("TODO")
+
+  def eval(context: Mapping) = x.eval(context)
+
+  def apply(xs: List[Value]) = x.apply(xs)
+}
+
+final case class Apply(f: Value, xs: List[Value]) extends Exp {
+  def reduce() = throw new UnsupportedOperationException("TODO")
+
+  def eval(context: Mapping) = f.eval(context).apply(xs.map((x: Value) => x.eval(context)))
 
   def apply(xs: List[Value]) = throw new UnsupportedOperationException("TODO")
 }
