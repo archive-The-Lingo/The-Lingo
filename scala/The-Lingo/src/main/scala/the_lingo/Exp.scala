@@ -5,12 +5,10 @@
 */
 package the_lingo
 
-sealed trait Exp extends UnboxedValue {
-  def readback(): (Mapping, Exp) = (new Mapping(), Quote(Value(this)))
-}
+sealed trait Exp extends WeakHeadNormalForm
 
 final case class Quote(x: Value) extends Exp {
-  def reduce() = throw new UnsupportedOperationException("TODO")
+  def toCore() = throw new UnsupportedOperationException("TODO")
 
   def eval(context: Mapping) = x
 
@@ -18,7 +16,7 @@ final case class Quote(x: Value) extends Exp {
 }
 
 final case class Comment(comment: Value, x: Value) extends Exp {
-  def reduce() = throw new UnsupportedOperationException("TODO")
+  def toCore() = throw new UnsupportedOperationException("TODO")
 
   def eval(context: Mapping) = x.eval(context)
 
@@ -26,7 +24,7 @@ final case class Comment(comment: Value, x: Value) extends Exp {
 }
 
 final case class Apply(f: Value, xs: List[Value]) extends Exp {
-  def reduce() = throw new UnsupportedOperationException("TODO")
+  def toCore() = throw new UnsupportedOperationException("TODO")
 
   def eval(context: Mapping) = f.eval(context).apply(xs.map((x: Value) => x.eval(context)))
 

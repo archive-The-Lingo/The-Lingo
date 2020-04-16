@@ -5,12 +5,18 @@
 */
 package the_lingo
 
-final class Mapping extends WeakHeadNormalForm {
-  private val xs: List[(Value, Value)] = List()
-
-  def toCore() = throw new UnsupportedOperationException("TODO")
+sealed trait CoreWeakHeadNormalForm extends WeakHeadNormalForm {
+  def toCore() = this
 
   def eval(context: Mapping) = throw new UnsupportedOperationException("TODO")
 
   def apply(xs: List[Value]) = throw new UnsupportedOperationException("TODO")
 }
+
+final case class Null() extends CoreWeakHeadNormalForm
+
+final case class Symbol(x: String) extends CoreWeakHeadNormalForm
+
+final case class Pair(x: Value, y: Value) extends CoreWeakHeadNormalForm
+
+final case class Tagged(tag: Value, xs: Value) extends CoreWeakHeadNormalForm

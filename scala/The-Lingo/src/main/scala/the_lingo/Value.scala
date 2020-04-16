@@ -5,8 +5,12 @@
 */
 package the_lingo
 
-final case class Value(var x: UnboxedValue) extends UnboxedValue {
-  def reduce() = x.reduce()
+final case class Value(var x: NotWeakHeadNormalForm) extends NotWeakHeadNormalForm {
+  def reduce() = {
+    val result = x.reduce()
+    x = result
+    result
+  }
 
   def eval(context: Mapping) = x.eval(context)
 
@@ -15,7 +19,7 @@ final case class Value(var x: UnboxedValue) extends UnboxedValue {
   def apply(xs: List[Value]) = x.apply(xs)
 }
 
-trait UnboxedValue {
+trait NotWeakHeadNormalForm {
   def reduce(): WeakHeadNormalForm
 
   def eval(context: Mapping): Value
@@ -23,4 +27,12 @@ trait UnboxedValue {
   def readback(): (Mapping, Exp)
 
   def apply(xs: List[Value]): Value
+}
+
+trait WeakHeadNormalForm extends NotWeakHeadNormalForm {
+  def reduce(): WeakHeadNormalForm = this
+
+  def readback() = (new Mapping(), Quote(Value(this)))
+
+  def toCore(): CoreWeakHeadNormalForm
 }

@@ -5,11 +5,15 @@
 */
 package the_lingo
 
-final class Delay(continue: => Value, stop: => (Mapping, Exp)){
+final class Delay(continue: => Value, stop: => (Mapping, Exp)) extends NotWeakHeadNormalForm {
   private lazy val cont = continue
-  private lazy val readbck =  stop
+  private lazy val readbck = stop
+
   def reduce() = cont.reduce()
+
   def eval(context: Mapping) = cont.eval(context)
+
   def readback() = readbck
+
   def apply(xs: List[Value]) = cont.apply(xs)
 }
