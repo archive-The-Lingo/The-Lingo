@@ -3,7 +3,7 @@
   License, v. 2.0. If a copy of the MPL was not distributed with this
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
-package the_lingo
+package the_lingo.lang
 
 final class Mapping extends WeakHeadNormalForm {
   private val xs: List[(Value, Value)] = List()
@@ -13,4 +13,8 @@ final class Mapping extends WeakHeadNormalForm {
   def eval(context: Mapping) = throw new UnsupportedOperationException("TODO")
 
   def apply(xs: List[Value]) = throw new UnsupportedOperationException("TODO")
+}
+
+object Mapping {
+  val Null = new Mapping()
 }

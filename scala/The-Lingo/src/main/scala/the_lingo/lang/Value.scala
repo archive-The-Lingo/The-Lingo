@@ -3,7 +3,7 @@
   License, v. 2.0. If a copy of the MPL was not distributed with this
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
-package the_lingo
+package the_lingo.lang
 
 final case class Value(var x: NotWeakHeadNormalForm) extends NotWeakHeadNormalForm {
   def reduce() = {
@@ -32,7 +32,7 @@ trait NotWeakHeadNormalForm {
 trait WeakHeadNormalForm extends NotWeakHeadNormalForm {
   def reduce(): WeakHeadNormalForm = this
 
-  def readback() = (new Mapping(), Quote(Value(this)))
+  def readback() = (Mapping.Null, Quote(Value(this)))
 
   def toCore(): CoreWeakHeadNormalForm
 }
