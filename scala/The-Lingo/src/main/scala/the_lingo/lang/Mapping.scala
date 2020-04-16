@@ -10,11 +10,11 @@ final class Mapping extends WeakHeadNormalForm {
 
   def toCore() = throw new UnsupportedOperationException("TODO")
 
-  def eval(context: Mapping) = throw new UnsupportedOperationException("TODO")
+  def eval(context: Mapping, stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 
-  def apply(xs: List[Value]) = throw new UnsupportedOperationException("TODO")
+  def apply(xs: List[Value], stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 }
 
-object Mapping {
+final object Mapping {
   val Null = new Mapping()
 }

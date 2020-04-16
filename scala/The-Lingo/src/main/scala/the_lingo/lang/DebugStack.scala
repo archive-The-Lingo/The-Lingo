@@ -5,6 +5,10 @@
 */
 package the_lingo.lang
 
-class Debug {
+import the_lingo.lang.private_utils.Nat
+
+final case class DebugStack(xs: List[DebugStackElement]) {
   // TODO
 }
+
+final case class DebugStackElement(file: String, addr: List[Nat])

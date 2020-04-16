@@ -9,11 +9,11 @@ final class Delay(continue: => Value, stop: => (Mapping, Exp)) extends NotWeakHe
   private lazy val cont = continue
   private lazy val readbck = stop
 
-  def reduce() = cont.reduce()
+  def reduce_rec() = cont.reduce_rec()
 
-  def eval(context: Mapping) = cont.eval(context)
+  def eval(context: Mapping, stack: DebugStack) = cont.eval(context, stack)
 
   def readback() = readbck
 
-  def apply(xs: List[Value]) = cont.apply(xs)
+  def apply(xs: List[Value], stack: DebugStack) = cont.apply(xs, stack)
 }

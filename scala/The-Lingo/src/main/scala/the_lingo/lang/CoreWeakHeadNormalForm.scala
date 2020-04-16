@@ -8,9 +8,9 @@ package the_lingo.lang
 sealed trait CoreWeakHeadNormalForm extends WeakHeadNormalForm {
   def toCore() = this
 
-  def eval(context: Mapping) = throw new UnsupportedOperationException("TODO")
+  def eval(context: Mapping, stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 
-  def apply(xs: List[Value]) = throw new UnsupportedOperationException("TODO")
+  def apply(xs: List[Value], stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 }
 
 final case class Null() extends CoreWeakHeadNormalForm

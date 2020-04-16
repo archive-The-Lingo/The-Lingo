@@ -6,31 +6,31 @@
 package the_lingo.lang
 
 final case class Value(var x: NotWeakHeadNormalForm) extends NotWeakHeadNormalForm {
-  def reduce() = {
-    val result = x.reduce()
+  def reduce_rec() = {
+    val result = x.reduce_rec()
     x = result
     result
   }
 
-  def eval(context: Mapping) = x.eval(context)
+  def eval(context: Mapping, stack: DebugStack) = x.eval(context, stack)
 
   def readback() = x.readback()
 
-  def apply(xs: List[Value]) = x.apply(xs)
+  def apply(xs: List[Value], stack: DebugStack) = x.apply(xs, stack)
 }
 
 trait NotWeakHeadNormalForm {
-  def reduce(): WeakHeadNormalForm
+  def reduce_rec(): WeakHeadNormalForm
 
-  def eval(context: Mapping): Value
+  def eval(context: Mapping, stack: DebugStack): Value
 
   def readback(): (Mapping, Exp)
 
-  def apply(xs: List[Value]): Value
+  def apply(xs: List[Value], stack: DebugStack): Value
 }
 
 trait WeakHeadNormalForm extends NotWeakHeadNormalForm {
-  def reduce(): WeakHeadNormalForm = this
+  def reduce_rec(): WeakHeadNormalForm = this
 
   def readback() = (Mapping.Null, Quote(Value(this)))
 
