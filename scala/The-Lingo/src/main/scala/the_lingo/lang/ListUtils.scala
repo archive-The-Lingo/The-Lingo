@@ -6,10 +6,10 @@
 package the_lingo.lang
 
 private final object ListUtils {
-  def seqToValue(xs: Seq[Value]): Value = xs match {
-    case x :: xs => Value(Pair(x, seqToValue(xs)))
+  def listToValue(xs: List[Value]): Value = xs match {
+    case x :: xs => Value(Pair(x, listToValue(xs)))
     case Nil => Value(Null())
   }
 
-  def consList(xs: Value*): Value = seqToValue(xs)
+  def consList(xs: Value*): Value = listToValue(xs.toList)
 }
