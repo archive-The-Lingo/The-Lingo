@@ -21,3 +21,7 @@ TheLingo assume for now:
 
 1. Implement the core language in a language for electronic computers
 1. Implement some experimental languages in the core language
+
+## Status
+
+I rewrote the core language hundreds of times and I am still rewriting it.
