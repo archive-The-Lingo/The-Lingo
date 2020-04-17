@@ -5,6 +5,11 @@
 */
 package the_lingo.lang
 
+private final object Exp {
+  def consExp(tag: Value, xs: List[Value]): CoreWeakHeadNormalForm =
+    Tagged(Symbols.Exp, ListUtils.consList(tag, ListUtils.listToValue(xs)))
+}
+
 sealed trait Exp extends WeakHeadNormalForm {
   def real_eval(context: Mapping, stack: DebugStack): Value
 
@@ -14,7 +19,7 @@ sealed trait Exp extends WeakHeadNormalForm {
 }
 
 final case class Quote(x: Value) extends Exp {
-  def toCore() = throw new UnsupportedOperationException("TODO")
+  def toCore() = Exp.consExp(Symbols.Quote, List(x))
 
   def real_eval(context: Mapping, stack: DebugStack) = x
 
@@ -22,17 +27,18 @@ final case class Quote(x: Value) extends Exp {
 }
 
 final case class Comment(comment: Value, x: Value) extends Exp {
-  def toCore() = throw new UnsupportedOperationException("TODO")
+  def toCore() = Exp.consExp(Symbols.Comment, List(comment, x))
 
   def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, throw new UnsupportedOperationException("TODO"))
 
   def apply(xs: List[Value], stack: DebugStack) = x.apply(xs, throw new UnsupportedOperationException("TODO"))
 }
 
-final case class Apply(f: Value, xs: List[Value]) extends Exp {
-  def toCore() = throw new UnsupportedOperationException("TODO")
+final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
+  def toCore() =
+    Exp.consExp(Symbols.ApplyFunc, List(f, ListUtils.listToValue(xs)))
 
-  def real_eval(context: Mapping, stack: DebugStack) = f.eval(context, stack).apply(xs.map((x: Value) => x.eval(context, stack)),stack)
+  def real_eval(context: Mapping, stack: DebugStack) = f.eval(context, stack).apply(xs.map((x: Value) => x.eval(context, stack)), stack)
 
   def apply(xs: List[Value], stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 }
