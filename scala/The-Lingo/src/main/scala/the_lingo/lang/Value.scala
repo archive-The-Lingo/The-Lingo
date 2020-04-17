@@ -8,7 +8,7 @@ package the_lingo.lang
 final case class Value(var x: NotWeakHeadNormalForm) extends NotWeakHeadNormalForm {
   def reduce_rec() = {
     val result = x.reduce_rec()
-    x = result // This is thread safe.
+    x = result // `x` and `result` are equivalent, so this is thread safe as long as writing is atomic.
     result
   }
 
