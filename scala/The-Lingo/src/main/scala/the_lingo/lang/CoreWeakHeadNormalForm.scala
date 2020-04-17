@@ -15,7 +15,7 @@ sealed trait CoreWeakHeadNormalForm extends WeakHeadNormalForm {
 
 final case class Null() extends CoreWeakHeadNormalForm
 
-final case class Symbol(x: String) extends CoreWeakHeadNormalForm
+final case class Sym(x: Symbol) extends CoreWeakHeadNormalForm
 
 final case class Pair(x: Value, y: Value) extends CoreWeakHeadNormalForm
 

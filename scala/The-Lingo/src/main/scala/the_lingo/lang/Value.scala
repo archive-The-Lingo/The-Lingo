@@ -5,6 +5,11 @@
 */
 package the_lingo.lang
 
+final object Value {
+  implicit def packValue(x:NotWeakHeadNormalForm):Value = Value(x)
+  implicit def packValueList(xs:List[NotWeakHeadNormalForm]):List[Value] = xs.map {Value(_)}
+}
+
 final case class Value(var x: NotWeakHeadNormalForm) extends NotWeakHeadNormalForm {
   def reduce_rec() = {
     val result = x.reduce_rec()

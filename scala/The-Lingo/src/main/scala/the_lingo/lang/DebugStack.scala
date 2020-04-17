@@ -11,4 +11,8 @@ final case class DebugStack(xs: List[DebugStackElement]) {
   // TODO
 }
 
-final case class DebugStackElement(file: String, addr: List[Nat])
+sealed trait DebugStackElement
+
+final case class DebugStackElement_StructuredUnixFile(file: String, addr: List[Nat]) extends DebugStackElement
+
+final case class DebugStackElement_UnixFile(file: String, line: Nat) extends DebugStackElement
