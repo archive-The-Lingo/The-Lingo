@@ -10,10 +10,10 @@ import scala.util.parsing.combinator.RegexParsers
 final object LangParser extends RegexParsers {
   private def space_regex: Parser[String] = whiteSpace
 
-  private def id_regex = """(\w|[-？?/])+""".r
+  private def sym_regex = """(\w|[-？?/])+""".r
 
   private def sym: Parser[Value] =
-    id_regex ^^ {
+    sym_regex ^^ {
       case x => Sym(Symbol(x))
     }
 
@@ -30,10 +30,9 @@ final object LangParser extends RegexParsers {
     }
 
   private def id: Parser[Exp] =
-    "$" ~> id_regex ^^ {
-      case x => Id(Value(Sym(Symbol(x))))
+    "$" ~> value ^^ {
+      Id(_)
     }
-
 
   private def applyFunc: Parser[Exp] =
     "[" ~> exp ~ rep(space_regex ~> exp) <~ "]" ^^ {
