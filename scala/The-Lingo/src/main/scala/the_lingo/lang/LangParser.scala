@@ -6,8 +6,9 @@
 package the_lingo.lang
 
 import scala.util.parsing.combinator.RegexParsers
+import scala.util.parsing.input.Positional
 
-final object LangParser extends RegexParsers {
+final case class LangParser(file: String) extends RegexParsers {
   private def space_regex: Parser[String] = whiteSpace
 
   private def sym_regex = """(\w|[-？?/])+""".r
@@ -59,9 +60,15 @@ final object LangParser extends RegexParsers {
       case f ~ xs => Builtin(f, xs)
     }
 
-  def exp: Parser[Exp] = id | applyFunc | applyMacro | quote
+  def exp: Parser[Exp] = posed(id | applyFunc | applyMacro | quote)
 
   def value: Parser[Value] = sym | list | tagged | exp ^^ {
     Value(_)
+  }
+
+  private def pos: Parser[Positional] = positioned(success(new Positional {}))
+
+  private def posed(x: Parser[Exp]): Parser[Exp] = pos ~ x ~ pos ^^ {
+    case start ~ x ~ end => PositionedExp(DebugStackElement(file, start.pos, end.pos), x)
   }
 }

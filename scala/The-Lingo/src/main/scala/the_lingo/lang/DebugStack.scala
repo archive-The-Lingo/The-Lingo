@@ -7,12 +7,17 @@ package the_lingo.lang
 
 import the_lingo.lang.private_utils.Nat
 
+import scala.util.parsing.input.Position
+
 final case class DebugStack(xs: List[DebugStackElement]) {
-  // TODO
+  def push(x: DebugStackElement): DebugStack = DebugStack(x :: xs)
 }
 
-sealed trait DebugStackElement
+final case class DebugStackElement(file: String, start: DebugStackElementPos, end: DebugStackElementPos)
 
-final case class DebugStackElement_StructuredUnixFile(file: String, addr: List[Nat]) extends DebugStackElement
+final case class DebugStackElementPos(line: Nat, column: Nat)
 
-final case class DebugStackElement_UnixFile(file: String, line: Nat) extends DebugStackElement
+final object DebugStackElementPos {
+  implicit def position2DebugStackElementPos(x: Position): DebugStackElementPos =
+    DebugStackElementPos(line = Nat.apply(x.line), column = Nat.apply(x.column))
+}

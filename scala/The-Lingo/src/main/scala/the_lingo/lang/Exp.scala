@@ -35,7 +35,13 @@ final case class Quote(x: Value) extends Exp {
 final case class Comment(comment: Value, x: Value) extends Exp {
   def toCore() = Exp.consExp(Symbols.Comment, List(comment, x))
 
-  def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, throw new UnsupportedOperationException("TODO"))
+  def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, stack)
+}
+
+final case class PositionedExp(pos: DebugStackElement, x: Value) extends Exp {
+  def toCore() = throw new UnsupportedOperationException("TODO")
+
+  def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, stack.push(pos))
 }
 
 final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
