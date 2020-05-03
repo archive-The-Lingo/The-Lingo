@@ -48,7 +48,7 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 ### 一
 
-我不假定一個表達式的Weak Head Normal Form是唯一的
+我不假定Weak Head Normal Form是唯一的
 
 ### 二
 
@@ -64,9 +64,9 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 圖靈的有關停機問題證明就此失效
 
-而該語言在直覺上還是能描述所有可計算算法
+而該語言在直覺上仍能描述所有可計算算法
 
 這不是說我可以證明某個實現總會結束執行
 
-只是恰好破壞了圖靈證明「不存在解決停機問題的通用演算法」時的假設
+只是恰好破壞了圖靈證明時的假設
 
