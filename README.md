@@ -50,6 +50,10 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 我不假定Weak Head Normal Form是唯一的
 
+就像某些語言
+
+沒有定義從集合pop元素的順序
+
 ### 二
 
 我允許
