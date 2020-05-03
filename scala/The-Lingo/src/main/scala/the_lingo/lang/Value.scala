@@ -34,6 +34,10 @@ trait NotWeakHeadNormalForm {
   def app(xs: List[Value], stack: DebugStack): Value
 }
 
+private[lang] final object NotWeakHead {
+  def unapply(x: NotWeakHeadNormalForm): Option[WeakHeadNormalForm] = Some(x.reduce_rec())
+}
+
 trait WeakHeadNormalForm extends NotWeakHeadNormalForm {
   def reduce_rec(): WeakHeadNormalForm = this
 

@@ -13,6 +13,10 @@ sealed trait CoreWeakHeadNormalForm extends WeakHeadNormalForm {
   def app(xs: List[Value], stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 }
 
+private[lang] final object CoreWeakHead {
+  def unapply(x: WeakHeadNormalForm): Option[CoreWeakHeadNormalForm] = Some(x.toCore())
+}
+
 final case class Null() extends CoreWeakHeadNormalForm
 
 final case class Sym(x: Symbol) extends CoreWeakHeadNormalForm
