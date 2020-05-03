@@ -17,6 +17,12 @@ final case class Null() extends CoreWeakHeadNormalForm
 
 final case class Sym(x: Symbol) extends CoreWeakHeadNormalForm
 
+final object Sym {
+  def apply(x: Symbol): Sym = Sym(x)
+
+  def apply(x: String): Sym = Sym(Symbol(x))
+}
+
 final case class Pair(x: Value, y: Value) extends CoreWeakHeadNormalForm
 
 final case class Tagged(tag: Value, xs: Value) extends CoreWeakHeadNormalForm

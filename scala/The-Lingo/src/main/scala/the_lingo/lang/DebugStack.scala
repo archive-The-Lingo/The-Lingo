@@ -19,5 +19,5 @@ final case class DebugStackElementPos(line: Nat, column: Nat)
 
 final object DebugStackElementPos {
   implicit def position2DebugStackElementPos(x: Position): DebugStackElementPos =
-    DebugStackElementPos(line = Nat.apply(x.line), column = Nat.apply(x.column))
+    DebugStackElementPos(line = Nat(x.line), column = Nat(x.column))
 }
