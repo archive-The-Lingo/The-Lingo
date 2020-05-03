@@ -68,5 +68,5 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 這不是說我可以證明某個實現總會結束執行
 
-只是恰好破壞了圖靈證明時的假設
+只是恰好破壞了圖靈證明時的假設：Weak Head Normal Form是唯一的
 
