@@ -46,6 +46,14 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 就可能出現明顯的謬誤
 
+### 零
+
+該語言是函數式的
+
+函數沒有副作用
+
+值是不可變的
+
 ### 一
 
 我不假定Weak Head Normal Form是唯一的
