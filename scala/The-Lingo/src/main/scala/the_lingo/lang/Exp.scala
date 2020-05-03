@@ -17,7 +17,7 @@ sealed trait Exp extends WeakHeadNormalForm {
     this.real_eval(context, stack)
   }, (context, this)))
 
-  def apply(xs: List[Value], stack: DebugStack) = throw new UnsupportedOperationException("TODO")
+  def app(xs: List[Value], stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 }
 
 final case class Id(x: Value) extends Exp {
@@ -48,7 +48,7 @@ final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
   def toCore() =
     Exp.consExp(Symbols.ApplyFunc, List(f, ListUtils.listToValue(xs)))
 
-  def real_eval(context: Mapping, stack: DebugStack) = f.eval(context, stack).apply(xs.map((x: Value) => x.eval(context, stack)), stack)
+  def real_eval(context: Mapping, stack: DebugStack) = f.eval(context, stack).app(xs.map((x: Value) => x.eval(context, stack)), stack)
 }
 
 final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {

@@ -21,7 +21,7 @@ final case class Value(var x: NotWeakHeadNormalForm) extends NotWeakHeadNormalFo
 
   def readback() = x.readback()
 
-  def apply(xs: List[Value], stack: DebugStack) = x.apply(xs, stack)
+  def app(xs: List[Value], stack: DebugStack) = x.app(xs, stack)
 }
 
 trait NotWeakHeadNormalForm {
@@ -31,7 +31,7 @@ trait NotWeakHeadNormalForm {
 
   def readback(): (Mapping, Exp)
 
-  def apply(xs: List[Value], stack: DebugStack): Value
+  def app(xs: List[Value], stack: DebugStack): Value
 }
 
 trait WeakHeadNormalForm extends NotWeakHeadNormalForm {

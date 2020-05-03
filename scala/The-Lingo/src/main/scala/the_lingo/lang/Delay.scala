@@ -15,5 +15,5 @@ final class Delay(continue: => Value, stop: => (Mapping, Exp)) extends NotWeakHe
 
   def readback() = readbck
 
-  def apply(xs: List[Value], stack: DebugStack) = cont.apply(xs, stack)
+  def app(xs: List[Value], stack: DebugStack) = cont.app(xs, stack)
 }
