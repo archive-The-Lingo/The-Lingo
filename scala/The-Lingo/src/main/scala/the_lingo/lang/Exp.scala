@@ -10,8 +10,10 @@ final object Exp {
     Tagged(Symbols.Exp, ListUtils.consList(tag, ListUtils.listToValue(xs)))
 }
 
-final object AsExp {
-  private[lang] def unapply(x: CoreWeakHeadNormalForm): Option[Exp] = x match {
+private[lang] final object AsExp {
+  def apply(x: CoreWeakHeadNormalForm): Option[Exp] = AsExp.unapply(x)
+
+  def unapply(x: CoreWeakHeadNormalForm): Option[Exp] = x match {
     case Tagged(NotWeakHead(CoreWeakHead(Symbols.Exp)), xs) => throw new UnsupportedOperationException("TODO")
     case _ => None
   }
