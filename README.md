@@ -56,21 +56,21 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 ### 一
 
-我不假定Weak Head Normal Form是唯一的
+我不假定 Weak Head Normal Form 是唯一的
 
 就像某些語言
 
-沒有定義從集合pop元素的順序
+沒有定義從集合 pop 元素的順序
 
 ### 二
 
 我允許
 
-一個實現在計算Weak Head Normal Form的過程中
+一個實現在計算 Weak Head Normal Form 的過程中
 
-將確定爲永遠不能化簡爲Weak Head Normal Form的Expression
+將確定爲永遠不能化簡爲 Weak Head Normal Form 的 Expression
 
-解釋爲某種Weak Head Normal Form
+解釋爲某種 Weak Head Normal Form
 
 #### 效應
 
@@ -80,5 +80,4 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 這不是說我可以證明某個實現總會結束執行
 
-只是恰好破壞了圖靈證明時的假設：Weak Head Normal Form是唯一的
-
+只是恰好破壞了圖靈證明時的假設：Weak Head Normal Form 是唯一的
