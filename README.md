@@ -1,6 +1,6 @@
 # TheLingo
 
-This is an experimental language trying not to assume
+This is an experimental language
 
 TheLingo don't assume:
 
@@ -32,9 +32,7 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 其目的在於
 
-將他人引導進其觀察所得的體驗中
-
-讓他人體驗我的體驗
+將他人引導進其觀察所得的體驗中 讓他人體驗我的體驗
 
 該目的若能達到
 
@@ -70,7 +68,8 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 解釋爲某種表示`Exception`的`Weak Head Normal Form`
 
-#### 效應
+----------
+效應：
 
 圖靈的有關停機問題證明就此失效
 
@@ -80,9 +79,15 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 只是恰好破壞了圖靈證明時的假設：`Weak Head Normal Form`是唯一的
 
-
 ### 四
 
 `library`應有確定的`介面` -- 既不更改 也盡量不增加
 
 當不得已要更改`介面`時 應視爲新的`library`
+
+### 五
+
+一個完整的`library`或程式應包含它需要的所有代碼 不依賴可以在任何時刻消失的`URL`
+
+因此 `包管理器`作爲更新依賴的工具 不再是下載依賴的工具
+
