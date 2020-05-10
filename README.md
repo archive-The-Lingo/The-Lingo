@@ -28,19 +28,23 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 ## 注
 
-我希望我將給該語言寫一個完整而模糊的定義
-
-作爲一種啓示
+我希望我將給該語言寫一個完整而模糊的敘述 作爲一種啓示
 
 其目的在於
 
-將他人引導進其觀察所得的體驗中
++ 將他人引導進其觀察所得的體驗中
 
-讓他人體驗我的體驗
++ 讓他人體驗我的體驗
 
-我知道
+該目的若能達到
 
-該處的定義十分模糊
+那麼此處的敘述也是無足輕重的
+
+因此該處的敘述不應該作爲戒律
+
+----------
+
+我知道 該處的敘述十分模糊
 
 一旦用某種人們所認爲的比較精確的語言以某種方式扭曲後寫出來
 
@@ -50,27 +54,23 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 該語言是函數式的
 
-函數沒有副作用
-
-值是不可變的
+函數沒有副作用 值是不可變的
 
 ### 一
 
-我不假定 Weak Head Normal Form 是唯一的
+我不假定`Weak Head Normal Form`是唯一的
 
-就像某些語言
-
-沒有定義從集合 pop 元素的順序
+就像某些語言 沒有定義從集合`pop`元素的順序
 
 ### 二
 
 我允許
 
-一個實現在計算 Weak Head Normal Form 的過程中
+一個實現在計算`Weak Head Normal Form`的過程中
 
-將確定爲永遠不能化簡爲 Weak Head Normal Form 的 Expression
+將確定爲永遠不能化簡爲`Weak Head Normal Form`的`Expression`
 
-解釋爲某種 Weak Head Normal Form
+解釋爲某種表示`Exception`的`Weak Head Normal Form`
 
 #### 效應
 
@@ -80,4 +80,11 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 這不是說我可以證明某個實現總會結束執行
 
-只是恰好破壞了圖靈證明時的假設：Weak Head Normal Form 是唯一的
+只是恰好破壞了圖靈證明時的假設：`Weak Head Normal Form`是唯一的
+
+
+### 四
+
+`library`應有確定的`介面` -- 既不更改 也盡量不增加
+
+當不得已要更改`介面`時 應視爲新的`library`
