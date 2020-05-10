@@ -32,9 +32,9 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 其目的在於
 
- 將他人引導進其觀察所得的體驗中
+將他人引導進其觀察所得的體驗中
 
- 讓他人體驗我的體驗
+讓他人體驗我的體驗
 
 該目的若能達到
 
