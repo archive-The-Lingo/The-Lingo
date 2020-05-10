@@ -32,9 +32,9 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 其目的在於
 
-+ 將他人引導進其觀察所得的體驗中
+ 將他人引導進其觀察所得的體驗中
 
-+ 讓他人體驗我的體驗
+ 讓他人體驗我的體驗
 
 該目的若能達到
 
@@ -46,9 +46,7 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 我知道 該處的敘述十分模糊
 
-一旦用某種人們所認爲的比較精確的語言以某種方式扭曲後寫出來
-
-就可能出現明顯的謬誤
+一旦用某種人們所認爲的比較精確的語言以某種方式扭曲後寫出來 就可能出現明顯的謬誤
 
 ### 零
 
