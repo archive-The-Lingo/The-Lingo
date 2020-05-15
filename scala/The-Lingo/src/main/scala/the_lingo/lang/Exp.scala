@@ -27,6 +27,8 @@ sealed trait Exp extends WeakHeadNormalForm {
   }, (context, this)))
 
   def app(xs: List[Value], stack: DebugStack) = throw new UnsupportedOperationException("TODO")
+
+  def equal_reduce_rec(x: Value) = throw new UnsupportedOperationException("TODO")
 }
 
 final case class Id(x: Value) extends Exp {

@@ -16,6 +16,12 @@ final class Mapping extends WeakHeadNormalForm {
   def eval(context: Mapping, stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 
   def app(xs: List[Value], stack: DebugStack) = throw new UnsupportedOperationException("TODO")
+
+  def equal_reduce_rec(x: Value) = throw new UnsupportedOperationException("TODO")
+
+  def updated(key: Value, value: Value): Mapping = throw new UnsupportedOperationException("TODO")
+
+  def get(key: Value): Option[Value] = throw new UnsupportedOperationException("TODO")
 }
 
 final object Mapping {

@@ -11,9 +11,13 @@ final class Delay(continue: => Value, stop: => (Mapping, Exp)) extends NotWeakHe
 
   def reduce_rec() = cont.reduce_rec()
 
+  def reduce() = cont.reduce()
+
   def eval(context: Mapping, stack: DebugStack) = cont.eval(context, stack)
 
   def readback() = readbck
 
   def app(xs: List[Value], stack: DebugStack) = cont.app(xs, stack)
+
+  def equal_reduce_rec(x: Value) = cont.equal_reduce_rec(x)
 }
