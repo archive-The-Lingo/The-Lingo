@@ -20,14 +20,14 @@ final case class LangParser(file: String) extends RegexParsers {
 
   private def list: Parser[Value] =
     "(" ~> repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ ")" ^^ {
-      case xs ~ Some(tail) => ListUtils.listToValue(xs, tail)
-      case xs ~ None => ListUtils.listToValue(xs)
+      case xs ~ Some(tail) => ListUtils.ValueList(xs, tail)
+      case xs ~ None => ListUtils.ValueList(xs)
     }
 
   private def tagged: Parser[Value] =
     "&(" ~> value ~ space_regex ~ repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ ")" ^^ {
-      case x ~ sp ~ xs ~ Some(tail) => Tagged(x, ListUtils.listToValue(xs, tail))
-      case x ~ sp ~ xs ~ None => Tagged(x, ListUtils.listToValue(xs))
+      case x ~ sp ~ xs ~ Some(tail) => Tagged(x, ListUtils.ValueList(xs, tail))
+      case x ~ sp ~ xs ~ None => Tagged(x, ListUtils.ValueList(xs))
     }
 
   private def id: Parser[Exp] =

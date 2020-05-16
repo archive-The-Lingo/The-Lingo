@@ -6,12 +6,23 @@
 package the_lingo.lang
 
 private final object ListUtils {
-  def listToValue(xs: List[Value]): Value = listToValue(xs, Null())
+  final object ValueList {
+    def apply(xs: List[Value], tail: Value): Value = xs match {
+      case x :: xs => apply(xs, Pair(x, tail))
+      case Nil => tail
+    }
 
-  def listToValue(xs: List[Value], tail: Value): Value = xs match {
-    case x :: xs => listToValue(xs, Pair(x, tail))
-    case Nil => tail
+    def apply(xs: List[Value]): Value = apply(xs, Null())
+
+    def unapply(arg: Value): Option[List[Value]] = arg.reduce_rec().toCore() match {
+      case Pair(x, xs) => unapply(xs) match {
+        case Some(tail) => Some(x :: tail)
+        case None => None
+      }
+      case Null() => Some(Nil)
+      case _ => None
+    }
   }
 
-  def consList(xs: Value*): Value = listToValue(xs.toList)
+  def consList(xs: Value*): Value = ValueList(xs.toList)
 }

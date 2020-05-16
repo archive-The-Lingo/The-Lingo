@@ -7,14 +7,24 @@ package the_lingo.lang
 
 final object Exp {
   private[lang] def consExp(tag: Value, xs: List[Value]): CoreWeakHeadNormalForm =
-    Tagged(Symbols.Exp, ListUtils.consList(tag, ListUtils.listToValue(xs)))
+    Tagged(Symbols.Exp, ListUtils.consList(tag, ListUtils.ValueList(xs)))
 }
 
 private[lang] final object AsExp {
   def apply(x: CoreWeakHeadNormalForm): Option[Exp] = AsExp.unapply(x)
 
   def unapply(x: CoreWeakHeadNormalForm): Option[Exp] = x match {
-    case Tagged(NotWeakHead(CoreWeakHead(Symbols.Exp)), xs) => throw new UnsupportedOperationException("TODO")
+    case Tagged(NotWeakHead(CoreWeakHead(Symbols.Exp)), NotWeakHead(CoreWeakHead(Pair(tag, ListUtils.ValueList(xs))))) =>
+      Tuple2(tag.reduce_rec().toCore(), xs) match {
+        case (Symbols.Id, List(x)) => Some(Id(x))
+        case (Symbols.Quote, List(x)) => Some(Quote(x))
+        case (Symbols.Comment, List(comment, x)) => Some(Comment(comment, x))
+        // TODO: PositionedExp
+        case (Symbols.ApplyFunc, List(f, ListUtils.ValueList(xs))) => Some(ApplyFunc(f, xs))
+        case (Symbols.ApplyMacro, List(f, ListUtils.ValueList(xs))) => Some(ApplyFunc(f, xs))
+        case (Symbols.Builtin, List(f, ListUtils.ValueList(xs))) => Some(Builtin(f, xs))
+        case _ => None
+      }
     case _ => None
   }
 }
@@ -57,21 +67,21 @@ final case class PositionedExp(pos: DebugStackElement, x: Value) extends Exp {
 
 final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
   def toCore() =
-    Exp.consExp(Symbols.ApplyFunc, List(f, ListUtils.listToValue(xs)))
+    Exp.consExp(Symbols.ApplyFunc, List(f, ListUtils.ValueList(xs)))
 
   private[lang] def real_eval(context: Mapping, stack: DebugStack) = f.eval(context, stack).app(xs.map((x: Value) => x.eval(context, stack)), stack)
 }
 
 final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
   def toCore() =
-    Exp.consExp(Symbols.ApplyMacro, List(f, ListUtils.listToValue(xs)))
+    Exp.consExp(Symbols.ApplyMacro, List(f, ListUtils.ValueList(xs)))
 
   private[lang] def real_eval(context: Mapping, stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 }
 
 final case class Builtin(f: Value, xs: List[Value]) extends Exp {
   def toCore() =
-    Exp.consExp(Symbols.Builtin, List(f, ListUtils.listToValue(xs)))
+    Exp.consExp(Symbols.Builtin, List(f, ListUtils.ValueList(xs)))
 
   private[lang] def real_eval(context: Mapping, stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 }
