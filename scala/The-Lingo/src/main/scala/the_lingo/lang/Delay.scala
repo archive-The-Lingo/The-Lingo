@@ -5,19 +5,25 @@
 */
 package the_lingo.lang
 
-final class Delay(continue: => Value, stop: => (Mapping, Exp)) extends NotWeakHeadNormalForm {
+final class Delay(continue: => Value, stop: => Exp) extends MayNotWHNF {
   private lazy val cont = continue
   private lazy val readbck = stop
 
-  def reduce_rec() = cont.reduce_rec()
+  override def reduce_rec() = cont.reduce_rec()
 
-  def reduce() = cont.reduce()
+  override def reduce() = cont.reduce()
 
-  def eval(context: Mapping, stack: DebugStack) = cont.eval(context, stack)
+  override def eval(context: Mapping, stack: DebugStack) = cont.eval(context, stack)
 
-  def readback() = readbck
+  override def readback() = readbck
 
-  def app(xs: List[Value], stack: DebugStack) = cont.app(xs, stack)
+  override def app(xs: List[Value], stack: DebugStack) = cont.app(xs, stack)
+}
 
-  def equal_reduce_rec(x: Value) = cont.equal_reduce_rec(x)
+final object Delay {
+  def apply(continue: => Value, stop: => Exp): Value = new Delay({
+    continue
+  }, {
+    stop
+  })
 }

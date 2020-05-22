@@ -6,6 +6,7 @@
 package the_lingo.lang
 
 private final object ListUtils {
+
   final object ValueList {
     def apply(xs: List[Value], tail: Value): Value = xs match {
       case x :: xs => apply(xs, Pair(x, tail))

@@ -9,15 +9,30 @@ import the_lingo.lang.private_utils.Nat
 
 import scala.util.parsing.input.Position
 
-final case class DebugStack(xs: List[DebugStackElement]) {
-  def push(x: DebugStackElement): DebugStack = DebugStack(x :: xs)
+final case class DebugStack(xs: List[Pos]) {
+  def push(x: Pos): DebugStack = DebugStack(x :: xs)
 }
 
-final case class DebugStackElement(file: String, start: DebugStackElementPos, end: DebugStackElementPos)
+final case class Pos(file: String, start: LineColumn, end: LineColumn) extends WHNF {
+  override def toCore() = throw new UnsupportedOperationException("TODO")
+}
 
-final case class DebugStackElementPos(line: Nat, column: Nat)
+private final object AsPos {
+  def apply(x: WHNF): Option[Pos] = unapply(x)
 
-final object DebugStackElementPos {
-  implicit def position2DebugStackElementPos(x: Position): DebugStackElementPos =
-    DebugStackElementPos(line = Nat(x.line), column = Nat(x.column))
+  def applyCore(x: CoreWHNF): Option[Pos] = unapplyCore(x)
+
+  def unapply(x: WHNF): Option[Pos] = x match {
+    case x: Pos => Some(x)
+    case _ => unapplyCore(x.toCore())
+  }
+
+  def unapplyCore(x: CoreWHNF): Option[Pos] = throw new UnsupportedOperationException("TODO")
+}
+
+final case class LineColumn(line: Nat, column: Nat)
+
+private final object LineColumn {
+  implicit def position2LineColumn(x: Position): LineColumn =
+    LineColumn(line = Nat(x.line), column = Nat(x.column))
 }

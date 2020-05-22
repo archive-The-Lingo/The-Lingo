@@ -5,25 +5,22 @@
 */
 package the_lingo.lang
 
-final class Mapping extends WeakHeadNormalForm {
-  private val xs: List[(Value, Value)] = List()
-
-  def toCore() = Tagged(Symbols.Mapping, ListUtils.ValueList(xs.map(p => {
+final case class Mapping private(private val xs: List[(Value, Value)]) extends WHNF {
+  override def toCore() = Tagged(Symbols.Mapping, ListUtils.ValueList(xs.map(p => {
     val (p1, p2) = p
     ListUtils.consList(p1, p2)
   })))
 
-  def eval(context: Mapping, stack: DebugStack) = throw new UnsupportedOperationException("TODO")
+  def updated(key: Value, value: Value): Mapping = new Mapping(
+    (key, value) :: xs.filterNot(_ match { case (k, v) => k.equal_reduce_rec(key) })
+  )
 
-  def app(xs: List[Value], stack: DebugStack) = throw new UnsupportedOperationException("TODO")
-
-  def equal_reduce_rec(x: Value) = throw new UnsupportedOperationException("TODO")
-
-  def updated(key: Value, value: Value): Mapping = throw new UnsupportedOperationException("TODO")
-
-  def get(key: Value): Option[Value] = throw new UnsupportedOperationException("TODO")
+  def get(key: Value): Option[Value] = for {
+    (k, v) <- xs.find(_ match {
+      case (k, v) => k.equal_reduce_rec(key)
+    })} yield v
 }
 
 final object Mapping {
-  val Null = new Mapping()
+  val Null = new Mapping(List())
 }
