@@ -119,6 +119,7 @@ trait WHNF extends MayNotWHNF {
   private[lang] def optional_equal_reduce_rec(x: Value): Option[Boolean] = None
 }
 
+// GC-ed IO things
 trait OpaqueWHNF extends WHNF {
 
 }
