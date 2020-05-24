@@ -13,11 +13,25 @@ private final object Value {
   implicit def packValueList(xs: List[MayNotWHNF]): List[Value] = xs.map {
     Value(_)
   }
+
+  def cached_option_as[A <: WHNF](f: WHNF => Option[A]): Value => Option[A] =
+    (x: Value) => {
+      val result = f(x.reduce_rec())
+      result match {
+        case Some(v) => {
+          x.synchronized {
+            x.notsynced_maybe_write(v)
+          }
+        }
+        case None => {}
+      }
+      result
+    }
 }
 
 final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
   // writing requires synchronized. reading doesn't
-  private def maybe_write(v: MayNotWHNF) = {
+  private def notsynced_maybe_write(v: MayNotWHNF) = {
     x match {
       case _: OpaqueWHNF => {}
       case _ => {
@@ -29,7 +43,7 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
   override def reduce_rec() = {
     val result = x.reduce_rec()
     this.synchronized {
-      this.maybe_write(result)
+      this.notsynced_maybe_write(result)
     }
     result
   }
@@ -38,7 +52,7 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
     val result = x.unpack_rec().reduce()
     result match {
       case _: WHNF => this.synchronized {
-        this.maybe_write(result)
+        this.notsynced_maybe_write(result)
       }
       case _ => {} // cache NotWeakHeadNormalForm may cause problems. For example: x.reduce() = x
     }
@@ -57,7 +71,7 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
       while (true) {
         x match {
           case v: Value => {
-            this.maybe_write(v.x)
+            this.notsynced_maybe_write(v.x)
             if (!history.add(v)) {
               throw new UnsupportedOperationException("TODO: loop")
             }

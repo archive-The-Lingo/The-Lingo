@@ -17,7 +17,7 @@ final case class Pos(file: String, start: LineColumn, end: LineColumn) extends W
   override def toCore() = throw new UnsupportedOperationException("TODO")
 }
 
-private final object AsPos {
+private final object AsPosNotCached {
   def apply(x: WHNF): Option[Pos] = unapply(x)
 
   def applyCore(x: CoreWHNF): Option[Pos] = unapplyCore(x)
@@ -28,6 +28,16 @@ private final object AsPos {
   }
 
   def unapplyCore(x: CoreWHNF): Option[Pos] = throw new UnsupportedOperationException("TODO")
+}
+
+private final object AsPosCached {
+  val apply = Value.cached_option_as(AsPosNotCached.apply)
+
+  def apply(x: Value): Option[Pos] = apply.apply(x)
+
+  val unapply = apply
+
+  def unapply(x: Value): Option[Pos] = unapply.apply(x)
 }
 
 final case class LineColumn(line: Nat, column: Nat)

@@ -10,7 +10,7 @@ final object Exp {
     Tagged(Symbols.Exp, ListUtils.consList(tag, ListUtils.ValueList(xs)))
 }
 
-private final object AsExp {
+private final object AsExpNotCached {
   def apply(x: WHNF): Option[Exp] = unapply(x)
 
   def applyCore(x: CoreWHNF): Option[Exp] = unapplyCore(x)
@@ -26,7 +26,7 @@ private final object AsExp {
         case (Symbols.Id, List(x)) => Some(Id(x))
         case (Symbols.Quote, List(x)) => Some(Quote(x))
         case (Symbols.Comment, List(comment, x)) => Some(Comment(comment, x))
-        case (Symbols.Positioned, List(AsWHNF(AsPos(pos)), x)) => Some(Positioned(pos, x))
+        case (Symbols.Positioned, List(AsPosCached(pos), x)) => Some(Positioned(pos, x))
         case (Symbols.ApplyFunc, List(f, ListUtils.ValueList(xs))) => Some(ApplyFunc(f, xs))
         case (Symbols.ApplyMacro, List(f, ListUtils.ValueList(xs))) => Some(ApplyFunc(f, xs))
         case (Symbols.Builtin, List(f, ListUtils.ValueList(xs))) => Some(Builtin(f, xs))
@@ -34,6 +34,16 @@ private final object AsExp {
       }
     case _ => None
   }
+}
+
+private final object AsExpCached {
+  val apply = Value.cached_option_as(AsExpNotCached.apply)
+
+  def apply(x: Value): Option[Exp] = apply.apply(x)
+
+  val unapply = apply
+
+  def unapply(x: Value): Option[Exp] = unapply.apply(x)
 }
 
 sealed trait Exp extends WHNF {
