@@ -16,11 +16,12 @@ private final object Value {
 
   def cached_option_as[A <: WHNF](f: WHNF => Option[A]): Value => Option[A] =
     (x: Value) => {
-      val result = f(x.reduce_rec())
+      val ptr = x.unpack_rec_to_single_pack()
+      val result = f(ptr.reduce_rec())
       result match {
         case Some(v) => {
-          x.synchronized {
-            x.notsynced_maybe_write(v)
+          ptr.synchronized {
+            ptr.notsynced_maybe_write(v)
           }
         }
         case None => {}
@@ -41,9 +42,10 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
   }
 
   override def reduce_rec() = {
-    val result = x.reduce_rec()
-    this.synchronized {
-      this.notsynced_maybe_write(result)
+    val ptr = this.unpack_rec_to_single_pack()
+    val result = ptr.reduce_rec()
+    ptr.synchronized {
+      ptr.notsynced_maybe_write(result)
     }
     result
   }
@@ -64,7 +66,7 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
 
   override def app(xs: List[Value], stack: DebugStack) = x.app(xs, stack)
 
-  private[lang] def do_unpack_rec(): MayNotWHNF = {
+  /*private[lang] def do_unpack_rec(): MayNotWHNF = {
     val history: mutable.HashSet[Value] = new mutable.HashSet() // TODO: check the equality HashSet using (should be ref)
     this.synchronized {
       while (true) {
@@ -76,6 +78,22 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
             }
           }
           case _ => return x
+        }
+      }
+    }
+    throw new Exception()
+  }*/
+
+  private[lang] def do_unpack_rec(): MayNotWHNF = {
+    var iter = this
+    // for multi-threading
+    while (true) {
+      iter.x match {
+        case _: Value => {
+          iter = iter.unpack_rec_to_single_pack()
+        }
+        case result => {
+          return result
         }
       }
     }
