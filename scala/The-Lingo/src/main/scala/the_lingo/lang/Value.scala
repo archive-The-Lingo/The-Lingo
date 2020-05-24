@@ -20,9 +20,7 @@ private final object Value {
       val result = f(ptr.reduce_rec())
       result match {
         case Some(v) => {
-          ptr.synchronized {
-            ptr.notsynced_maybe_write(v)
-          }
+          ptr.smart_maybe_write(v)
         }
         case None => {}
       }
@@ -41,12 +39,17 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
     }
   }
 
+  private def smart_maybe_write(v: MayNotWHNF) = {
+    val ptr = this.unpack_rec_to_single_pack()
+    ptr.synchronized {
+      ptr.notsynced_maybe_write(v)
+    }
+  }
+
   override def reduce_rec() = {
     val ptr = this.unpack_rec_to_single_pack()
     val result = ptr.reduce_rec()
-    ptr.synchronized {
-      ptr.notsynced_maybe_write(result)
-    }
+    ptr.smart_maybe_write(result)
     result
   }
 
@@ -54,9 +57,7 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
     val ptr = this.unpack_rec_to_single_pack()
     val result = ptr.reduce()
     assert(result.unpack_rec() ne ptr.unpack_rec())
-    ptr.synchronized {
-      ptr.notsynced_maybe_write(result)
-    }
+    ptr.smart_maybe_write(result)
     result
   }
 
