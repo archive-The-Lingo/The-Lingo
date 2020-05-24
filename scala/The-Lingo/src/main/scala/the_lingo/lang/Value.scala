@@ -49,12 +49,11 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
   }
 
   override def reduce() = {
-    val result = x.unpack_rec().reduce()
-    result match {
-      case _: WHNF => this.synchronized {
-        this.notsynced_maybe_write(result)
-      }
-      case _ => {} // cache NotWeakHeadNormalForm may cause problems. For example: x.reduce() = x
+    val ptr = this.unpack_rec_to_single_pack()
+    val result = ptr.reduce()
+    assert(result.unpack_rec() ne ptr.unpack_rec())
+    ptr.synchronized {
+      ptr.notsynced_maybe_write(result)
     }
     result
   }
@@ -77,6 +76,25 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
             }
           }
           case _ => return x
+        }
+      }
+    }
+    throw new Exception()
+  }
+
+  private def unpack_rec_to_single_pack(): Value = {
+    val history: mutable.HashSet[Value] = new mutable.HashSet() // TODO: check the equality HashSet using (should be ref)
+    this.synchronized {
+      while (true) {
+        x match {
+          case v@Value(vx: Value) => {
+            this.notsynced_maybe_write(vx)
+            if (!history.add(v)) {
+              throw new UnsupportedOperationException("TODO: loop")
+            }
+          }
+          case x: Value => return x
+          case _ => return this
         }
       }
     }
