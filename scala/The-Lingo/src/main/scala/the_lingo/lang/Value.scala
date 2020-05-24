@@ -17,10 +17,19 @@ private final object Value {
 
 final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
   // writing requires synchronized. reading doesn't
+  private def maybe_write(v: MayNotWHNF) = {
+    x match {
+      case _: OpaqueWHNF => {}
+      case _ => {
+        x = v
+      }
+    }
+  }
+
   override def reduce_rec() = {
     val result = x.reduce_rec()
     this.synchronized {
-      x = result
+      this.maybe_write(result)
     }
     result
   }
@@ -29,7 +38,7 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
     val result = x.unpack_rec().reduce()
     result match {
       case _: WHNF => this.synchronized {
-        x = result
+        this.maybe_write(result)
       }
       case _ => {} // cache NotWeakHeadNormalForm may cause problems. For example: x.reduce() = x
     }
@@ -48,7 +57,7 @@ final case class Value(var x: MayNotWHNF) extends MayNotWHNF {
       while (true) {
         x match {
           case v: Value => {
-            x = v.x
+            this.maybe_write(v.x)
             if (!history.add(v)) {
               throw new UnsupportedOperationException("TODO: loop")
             }
@@ -108,4 +117,8 @@ trait WHNF extends MayNotWHNF {
   def toCore(): CoreWHNF
 
   private[lang] def optional_equal_reduce_rec(x: Value): Option[Boolean] = None
+}
+
+trait OpaqueWHNF extends WHNF {
+
 }
