@@ -3,7 +3,7 @@
   License, v. 2.0. If a copy of the MPL was not distributed with this
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
-package the_lingo.lang
+package the.lingo
 
 final class Delay(continue: => Value, stop: => Exp) extends MayNotWHNF {
   private lazy val cont = continue
@@ -13,17 +13,13 @@ final class Delay(continue: => Value, stop: => Exp) extends MayNotWHNF {
 
   override def reduce() = cont.reduce()
 
-  override def eval(context: Mapping, stack: DebugStack) = cont.eval(context, stack)
-
   override def readback() = readbck
-
-  override def app(xs: List[Value], stack: DebugStack) = cont.app(xs, stack)
 }
 
 final object Delay {
-  def apply(continue: => Value, stop: => Exp): Value = new Delay({
+  def apply(continue: => Value, stop: => Exp): Value = Value(new Delay({
     continue
   }, {
     stop
-  })
+  }))
 }

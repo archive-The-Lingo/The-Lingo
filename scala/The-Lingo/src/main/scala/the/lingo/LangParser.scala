@@ -3,7 +3,7 @@
   License, v. 2.0. If a copy of the MPL was not distributed with this
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
-package the_lingo.lang
+package the.lingo
 
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.Positional
@@ -13,21 +13,21 @@ final case class LangParser(file: String) extends RegexParsers {
 
   private def sym_regex = """(\w|[-？?/])+""".r
 
-  private def sym: Parser[Value] =
+  private def sym: Parser[Sym] =
     sym_regex ^^ {
       case x => Sym(Symbol(x))
     }
 
   private def list: Parser[Value] =
     "(" ~> repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ ")" ^^ {
-      case xs ~ Some(tail) => ListUtils.ValueList(xs, tail)
-      case xs ~ None => ListUtils.ValueList(xs)
+      case xs ~ Some(tail) => ListUtils.ConsList(xs, tail)
+      case xs ~ None => ListUtils.ConsList(xs)
     }
 
   private def tagged: Parser[Value] =
     "&(" ~> value ~ space_regex ~ repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ ")" ^^ {
-      case x ~ sp ~ xs ~ Some(tail) => Tagged(x, ListUtils.ValueList(xs, tail))
-      case x ~ sp ~ xs ~ None => Tagged(x, ListUtils.ValueList(xs))
+      case x ~ sp ~ xs ~ Some(tail) => Tagged(x, ListUtils.ConsList(xs, tail))
+      case x ~ sp ~ xs ~ None => Tagged(x, ListUtils.ConsList(xs))
     }
 
   private def id: Parser[Exp] =
@@ -56,13 +56,15 @@ final case class LangParser(file: String) extends RegexParsers {
     }
 
   private def builtin: Parser[Exp] =
-    "!(" ~> exp ~ rep(space_regex ~> exp) <~ ")" ^^ {
+    "!(" ~> sym ~ rep(space_regex ~> exp) <~ ")" ^^ {
       case f ~ xs => Builtin(f, xs)
     }
 
   def exp: Parser[Exp] = posed(id | applyFunc | applyMacro | quote)
 
-  def value: Parser[Value] = sym | list | tagged | exp ^^ {
+  def value: Parser[Value] = sym ^^ {
+    Value(_)
+  } | list | tagged | exp ^^ {
     Value(_)
   }
 

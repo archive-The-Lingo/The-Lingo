@@ -3,9 +3,9 @@
   License, v. 2.0. If a copy of the MPL was not distributed with this
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
-package the_lingo.lang
+package the.lingo
 
-import the_lingo.lang.private_utils.Nat
+import the.lingo.private_utils.Nat
 
 import scala.util.parsing.input.Position
 
@@ -17,25 +17,18 @@ final case class Pos(file: String, start: LineColumn, end: LineColumn) extends W
   override def toCore() = throw new UnsupportedOperationException("TODO")
 }
 
-private final object AsPosNotCached {
-  def apply(x: WHNF): Option[Pos] = unapply(x)
+private final object AsPosCached {
 
-  def applyCore(x: CoreWHNF): Option[Pos] = unapplyCore(x)
+  private final object NotCached {
+    def unapply(x: WHNF): Option[Pos] = x match {
+      case x: Pos => Some(x)
+      case _ => unapplyCore(x.toCore())
+    }
 
-  def unapply(x: WHNF): Option[Pos] = x match {
-    case x: Pos => Some(x)
-    case _ => unapplyCore(x.toCore())
+    def unapplyCore(x: CoreWHNF): Option[Pos] = throw new UnsupportedOperationException("TODO")
   }
 
-  def unapplyCore(x: CoreWHNF): Option[Pos] = throw new UnsupportedOperationException("TODO")
-}
-
-private final object AsPosCached {
-  val apply = Value.cached_option_as(AsPosNotCached.apply)
-
-  def apply(x: Value): Option[Pos] = apply.apply(x)
-
-  val unapply = apply
+  private val unapply = Value.cached_option_as(NotCached.unapply)
 
   def unapply(x: Value): Option[Pos] = unapply.apply(x)
 }

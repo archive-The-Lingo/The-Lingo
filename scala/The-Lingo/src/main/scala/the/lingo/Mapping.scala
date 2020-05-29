@@ -3,12 +3,12 @@
   License, v. 2.0. If a copy of the MPL was not distributed with this
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
-package the_lingo.lang
+package the.lingo
 
 final case class Mapping private(private val xs: List[(Value, Value)]) extends WHNF {
-  override def toCore() = Tagged(Symbols.Mapping, ListUtils.ValueList(xs.map(p => {
+  override def toCore() = Tagged(Symbols.Mapping, ListUtils.ConsList(xs.map(p => {
     val (p1, p2) = p
-    ListUtils.consList(p1, p2)
+    ListUtils.list(p1, p2)
   })))
 
   def updated(key: Value, value: Value): Mapping = new Mapping(
