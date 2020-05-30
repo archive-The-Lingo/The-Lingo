@@ -91,9 +91,9 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
     Exp.consExp(Symbols.Builtin, List(f, ListUtils.ConsList(xs)))
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = (f, xs) match {
-    case (Symbols.ConsPair, head :: tail :: Nil) => Pair(head.eval(context, stack), tail.eval(context, stack))
-    case (Symbols.ConsTagged, tag :: xs :: Nil) => Tagged(tag.eval(context, stack), xs.eval(context, stack))
-    case (Symbols.Rec, id :: v :: Nil) => throw new UnsupportedOperationException("TODO")
+    case (Symbols.Builtins.ConsPair, head :: tail :: Nil) => Pair(head.eval(context, stack), tail.eval(context, stack))
+    case (Symbols.Builtins.ConsTagged, tag :: xs :: Nil) => Tagged(tag.eval(context, stack), xs.eval(context, stack))
+    case (Symbols.Builtins.Rec, id :: v :: Nil) => throw new UnsupportedOperationException("TODO")
     // TODO
     case _ => throw new UnsupportedOperationException("TODO")
   }

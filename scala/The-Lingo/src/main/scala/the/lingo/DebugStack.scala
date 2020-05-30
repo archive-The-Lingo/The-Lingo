@@ -12,13 +12,13 @@ import scala.util.parsing.input.Position
 final case class DebugStack(xs: List[Pos]) extends WHNF {
   def push(x: Pos): DebugStack = DebugStack(x :: xs)
 
-  override def toCore() = Tagged(Symbols.UNIXFilePositionStack, ListUtils.list(ValueList(xs)))
+  override def toCore() = Tagged(Symbols.Tags.UNIXFilePositionStack, ListUtils.list(ValueList(xs)))
 }
 
 final case class Pos(file: String, start: LineColumn, end: LineColumn) extends WHNF {
   override def toCore() =
     Tagged(
-      Symbols.UNIXFilePosition,
+      Symbols.Tags.UNIXFilePosition,
       ListUtils.list(
         ValueString(file),
         ListUtils.list(
