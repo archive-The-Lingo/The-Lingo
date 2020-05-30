@@ -1,10 +1,7 @@
+# This should be purely functional since PRs also use it
 name: Scala CI
 
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -17,5 +14,12 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 11
+    - name: Cache SBT
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.ivy2/cache
+          ~/.sbt
+      key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
     - name: Run tests
       run: cd scala/The-Lingo && sbt test
