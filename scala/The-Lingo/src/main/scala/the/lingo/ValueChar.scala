@@ -8,5 +8,5 @@ package the.lingo
 import the.lingo.private_utils.Nat
 
 final case class ValueChar(x: Char) extends WHNF {
-  override def toCore() = Tagged(Symbols.Nat, ValueList(List(ValueNat(Nat(x.toInt)))))
+  override def toCore() = Tagged(Symbols.Nat, ListUtils.list(ValueNat(Nat(x.toInt))))
 }

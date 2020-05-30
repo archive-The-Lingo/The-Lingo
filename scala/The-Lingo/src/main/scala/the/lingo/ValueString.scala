@@ -6,5 +6,5 @@
 package the.lingo
 
 final case class ValueString(x: String) extends WHNF {
-  override def toCore() = Tagged(Symbols.String, ValueList(x.toList.map(ValueChar.apply)))
+  override def toCore() = Tagged(Symbols.String, ListUtils.list(ValueList(x.toList.map(ValueChar.apply))))
 }

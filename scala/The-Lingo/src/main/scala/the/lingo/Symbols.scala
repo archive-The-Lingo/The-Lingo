@@ -6,6 +6,7 @@
 package the.lingo
 
 final object Symbols {
+  val Core:Sym = '核
   val Id: Sym = '識別子
   val Exp: Sym = '式
   val ApplyFunc: Sym = Sym("用-函式")
