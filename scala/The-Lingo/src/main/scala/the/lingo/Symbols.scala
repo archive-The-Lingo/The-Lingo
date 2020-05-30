@@ -22,6 +22,7 @@ final object Symbols {
   val True: Sym = '陽
   val Char: Sym = '字符
   val String: Sym = '字串
+  val Nat: Sym = '自然數
   val NatZero: Sym = Sym("自然數/零")
   val NatSucc: Sym = Sym("自然數/加一")
   val SymbolToString: Sym = Sym("符號→字串")

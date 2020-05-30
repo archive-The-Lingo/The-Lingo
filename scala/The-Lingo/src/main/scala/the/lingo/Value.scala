@@ -8,9 +8,9 @@ package the.lingo
 import scala.collection.mutable
 
 private final object Value {
-  implicit def implictPackWHNF[A <: WHNF](x: A): Value = Value(x)
+  implicit def implicitPackWHNF[A <: WHNF](x: A): Value = Value(x)
 
-  implicit def implictPackWHNFList[A <: WHNF](xs: List[A]): List[Value] = xs.map {
+  implicit def implicitPackWHNFList[A <: WHNF](xs: List[A]): List[Value] = xs.map {
     Value(_)
   }
 

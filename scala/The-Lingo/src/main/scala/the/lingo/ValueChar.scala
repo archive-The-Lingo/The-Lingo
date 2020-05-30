@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.private_utils.Nat
+
 final case class ValueChar(x: Char) extends WHNF {
-  override def toCore() = throw new UnsupportedOperationException("TODO")
+  override def toCore() = Tagged(Symbols.Nat, ValueList(List(ValueNat(Nat(x.toInt)))))
 }
