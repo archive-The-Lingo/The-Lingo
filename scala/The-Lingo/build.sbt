@@ -6,4 +6,4 @@ scalaVersion := "2.13.1"
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
 
-scalacOptions := Seq("-unchecked", "-deprecation")
+scalacOptions := Seq("-language:implicitConversions", "-unchecked", "-deprecation", "-feature")
