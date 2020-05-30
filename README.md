@@ -4,7 +4,6 @@ This is an experimental language
 
 TheLingo don't assume:
 
-+ Numbers are basic
 + Docs and codes are mainly written in English
 + Time can be represented in unsigned 64-bit integer
 + Users are all on one planet, and the network delay won't exceed 24h
