@@ -25,7 +25,7 @@ final object Symbols {
   val String: Sym = '字串
   val Nat: Sym = '自然數
   val NatZero: Sym = Sym("自然數/零")
-  val NatSucc: Sym = Sym("自然數/加一")
+  val NatSucc: Sym = Sym("自然數/增一")
   val IsPair: Sym = Sym("序列/序對？")
   val ConsPair: Sym = Sym("構造-序列/序對")
   val ElimPair: Sym = Sym("解構-序列/序對")
@@ -40,5 +40,7 @@ final object Symbols {
   val SymbolToString: Sym = Sym("符號→字串")
   val StringToSymbol: Sym = Sym("字串→符號")
   val Rec: Sym = '遞歸
-  val Positioned: Sym = '具位置
+  val Positioned: Sym = '具座標
+  val UNIXFilePosition: Sym = 'UNIX文件座標
+  val UNIXFilePositionStack: Sym = 'UNIX文件座標堆疊
 }

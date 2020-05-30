@@ -9,12 +9,24 @@ import the.lingo.private_utils.Nat
 
 import scala.util.parsing.input.Position
 
-final case class DebugStack(xs: List[Pos]) {
+final case class DebugStack(xs: List[Pos]) extends WHNF {
   def push(x: Pos): DebugStack = DebugStack(x :: xs)
+
+  override def toCore() = Tagged(Symbols.UNIXFilePositionStack, ListUtils.list(ValueList(xs)))
 }
 
 final case class Pos(file: String, start: LineColumn, end: LineColumn) extends WHNF {
-  override def toCore() = throw new UnsupportedOperationException("TODO")
+  override def toCore() =
+    Tagged(
+      Symbols.UNIXFilePosition,
+      ListUtils.list(
+        ValueString(file),
+        ListUtils.list(
+          ValueNat(start.line),
+          ValueNat(start.column)),
+        ListUtils.list(
+          ValueNat(end.line),
+          ValueNat(end.column))))
 }
 
 private final object AsPosCached {
