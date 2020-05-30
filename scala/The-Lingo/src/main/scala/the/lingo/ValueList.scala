@@ -21,13 +21,13 @@ private final object AsListValueCached {
     }
 
     def unapplyCore(x: CoreWHNF): Option[ValueList] = x match {
-      case Pair(head, tail) => unapplyCore(tail.reduce_rec_toCore()).map(xs => ValueList(head :: xs.xs))
+      case Pair(head, tail) => AsListValueCached.unapply(tail).map(xs => ValueList(head :: xs.xs))
       case Null() => Some(ValueList(Nil))
       case _ => None
     }
   }
 
-  private val unapply = Value.cached_option_as(NotCached.unapply)
+  private val unapply_v = Value.cached_option_as(NotCached.unapply)
 
-  def unapply(x: Value): Option[ValueList] = unapply.apply(x)
+  def unapply(x: Value): Option[ValueList] = unapply_v.apply(x)
 }

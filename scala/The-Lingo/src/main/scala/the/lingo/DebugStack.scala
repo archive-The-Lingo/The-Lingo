@@ -40,9 +40,9 @@ private final object AsPosCached {
     def unapplyCore(x: CoreWHNF): Option[Pos] = throw new UnsupportedOperationException("TODO")
   }
 
-  private val unapply = Value.cached_option_as(NotCached.unapply)
+  private val unapply_v = Value.cached_option_as(NotCached.unapply)
 
-  def unapply(x: Value): Option[Pos] = unapply.apply(x)
+  def unapply(x: Value): Option[Pos] = unapply_v.apply(x)
 }
 
 final case class LineColumn(line: Nat, column: Nat)

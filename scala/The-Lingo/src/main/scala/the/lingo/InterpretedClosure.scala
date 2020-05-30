@@ -34,7 +34,7 @@ private final object AsInterpretedClosureCached {
     def unapplyCore(x: CoreWHNF): Option[InterpretedClosure] = throw new UnsupportedOperationException("TODO")
   }
 
-  private val unapply = Value.cached_option_as(NotCached.unapply)
+  private val unapply_v = Value.cached_option_as(NotCached.unapply)
 
-  def unapply(x: Value): Option[InterpretedClosure] = unapply.apply(x)
+  def unapply(x: Value): Option[InterpretedClosure] = unapply_v.apply(x)
 }

@@ -34,9 +34,9 @@ private final object AsExpCached {
     }
   }
 
-  private val unapply = Value.cached_option_as(NotCached.unapply)
+  private val unapply_v = Value.cached_option_as(NotCached.unapply)
 
-  def unapply(x: Value): Option[Exp] = unapply.apply(x)
+  def unapply(x: Value): Option[Exp] = unapply_v.apply(x)
 }
 
 sealed trait Exp extends WHNF with WHNFFeature_eval {
