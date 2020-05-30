@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.private_utils.Nat
+
 sealed trait CoreWHNF extends WHNF {
   final override def toCore() = this
 
@@ -54,6 +56,13 @@ final case class Tagged(tag: Value, xs: Value) extends CoreWHNF {
 final case class Bottom(tag: Value, xs: Value) extends CoreWHNF {
   private[lingo] override def equal_core(ab: CoreWHNF) = ab match {
     case Bottom(a, b) => a.equal_reduce_rec(tag) && b.equal_reduce_rec(xs)
+    case _ => false
+  }
+}
+
+final case class ValueNat(x: Nat) extends CoreWHNF {
+  private[lingo] override def equal_core(y: CoreWHNF) = y match {
+    case ValueNat(y) => x == y
     case _ => false
   }
 }
