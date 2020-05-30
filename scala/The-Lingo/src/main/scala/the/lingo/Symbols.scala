@@ -6,8 +6,8 @@
 package the.lingo
 
 final object Symbols {
+  val Id: Sym = '識別子
   val Exp: Sym = '式
-  val Id: Sym = '標識符
   val ApplyFunc: Sym = Sym("用-函式")
   val Macro: Sym = '構式子
   val Quote: Sym = '引
@@ -35,9 +35,9 @@ final object Symbols {
   val ConsBottom: Sym = Sym("構造-異常")
   val ElimBottom: Sym = Sym("解構-異常")
   val IsNull: Sym = Sym("序列/空？")
-  val IsSymbol: Sym = Sym("識別子？")
-  val SymbolToString: Sym = Sym("識別子→字串")
-  val StringToSymbol: Sym = Sym("字串→識別子")
+  val IsSymbol: Sym = Sym("符號？")
+  val SymbolToString: Sym = Sym("符號→字串")
+  val StringToSymbol: Sym = Sym("字串→符號")
   val Rec: Sym = '遞歸
   val Positioned: Sym = '具位置
 }
