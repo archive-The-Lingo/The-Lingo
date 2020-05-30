@@ -6,19 +6,20 @@
 package the.lingo
 
 final object Symbols {
-  val Core:Sym = '核
-  val Id: Sym = '識別子
-  val Exp: Sym = '式
+  val Core: Sym = Sym("核")
+  val Id: Sym = Sym("識別子")
+  val Exp: Sym = Sym("式")
   val ApplyFunc: Sym = Sym("用-函式")
-  val Macro: Sym = '構式子
-  val Quote: Sym = '引
+  val Macro: Sym = Sym("構式子")
+  val Quote: Sym = Sym("引")
   val ApplyMacro: Sym = Sym("用-構式子")
-  val Comment: Sym = '注釋
-  val Exception: Sym = '異常
-  val Eval: Sym = '解算
-  val Builtin: Sym = '內建
-  val Nat: Sym = '自然數
-  val Positioned: Sym = '具座標
+  val Comment: Sym = Sym("注釋")
+  val Exception: Sym = Sym("異常")
+  val Eval: Sym = Sym("解算")
+  val Builtin: Sym = Sym("內建")
+  val Nat: Sym = Sym("自然數")
+  val Positioned: Sym = Sym("具座標")
+
   final object Builtins {
     val NatZero: Sym = Sym("自然數/零")
     val NatSucc: Sym = Sym("自然數/增一")
@@ -35,16 +36,18 @@ final object Symbols {
     val IsSymbol: Sym = Sym("符號？")
     val SymbolToString: Sym = Sym("符號→字串")
     val StringToSymbol: Sym = Sym("字串→符號")
-    val Rec: Sym = '遞歸
+    val Rec: Sym = Sym("遞歸")
   }
+
   final object Tags {
-    val UNIXFilePosition: Sym = 'UNIX文件座標
-    val UNIXFilePositionStack: Sym = 'UNIX文件座標堆疊
-    val False: Sym = '陰
-    val True: Sym = '陽
-    val Char: Sym = '字符
-    val String: Sym = '字串
-    val Mapping: Sym = '映射
-    val Func: Sym = '函式
+    val UNIXFilePosition: Sym = Sym("UNIX文件座標")
+    val UNIXFilePositionStack: Sym = Sym("UNIX文件座標堆疊")
+    val False: Sym = Sym("陰")
+    val True: Sym = Sym("陽")
+    val Char: Sym = Sym("字符")
+    val String: Sym = Sym("字串")
+    val Mapping: Sym = Sym("映射")
+    val Func: Sym = Sym("函式")
   }
+
 }
