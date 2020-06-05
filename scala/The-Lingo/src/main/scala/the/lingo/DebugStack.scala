@@ -5,17 +5,23 @@
 */
 package the.lingo
 
-import the.lingo.private_utils.Nat
+import the.lingo.utils.Nat
 
 import scala.util.parsing.input.Position
 
-final case class DebugStack(xs: List[Pos]) extends WHNF {
-  def push(x: Pos): DebugStack = DebugStack(x :: xs)
+final case class DebugStack(xs: List[DebugStackPosition]) extends WHNF {
+  def push(x: DebugStackPosition): DebugStack = DebugStack(x :: xs)
 
   override def toCore() = Tagged(Symbols.Tags.UNIXFilePositionStack, ListUtils.list(ValueList(xs)))
 }
 
-final case class Pos(file: String, start: LineColumn, end: LineColumn) extends WHNF {
+sealed trait DebugStackPosition extends WHNF
+
+final case class NamedPosition(name: Value) extends DebugStackPosition {
+  override def toCore() = throw new UnsupportedOperationException("TODO")
+}
+
+final case class FilePosition(file: String, start: LineColumn, end: LineColumn) extends DebugStackPosition {
   override def toCore() =
     Tagged(
       Symbols.Tags.UNIXFilePosition,
@@ -29,20 +35,20 @@ final case class Pos(file: String, start: LineColumn, end: LineColumn) extends W
           ValueNat(end.column))))
 }
 
-private final object AsPosCached {
+private final object AsFilePositionCached {
 
   private final object NotCached {
-    def unapply(x: WHNF): Option[Pos] = x match {
-      case x: Pos => Some(x)
+    def unapply(x: WHNF): Option[FilePosition] = x match {
+      case x: FilePosition => Some(x)
       case _ => unapplyCore(x.toCore())
     }
 
-    def unapplyCore(x: CoreWHNF): Option[Pos] = throw new UnsupportedOperationException("TODO")
+    def unapplyCore(x: CoreWHNF): Option[FilePosition] = throw new UnsupportedOperationException("TODO")
   }
 
   private val unapply_v = Value.cached_option_as(NotCached.unapply)
 
-  def unapply(x: Value): Option[Pos] = unapply_v.apply(x)
+  def unapply(x: Value): Option[FilePosition] = unapply_v.apply(x)
 }
 
 final case class LineColumn(line: Nat, column: Nat)

@@ -24,7 +24,7 @@ private final object AsExpCached {
           case (Symbols.Id, List(x)) => Some(Id(x))
           case (Symbols.Quote, List(x)) => Some(Quote(x))
           case (Symbols.Comment, List(comment, x)) => Some(Comment(comment, x))
-          case (Symbols.Positioned, List(AsPosCached(pos), x)) => Some(Positioned(pos, x))
+          case (Symbols.Positioned, List(AsFilePositionCached(pos), x)) => Some(Positioned(pos, x))
           case (Symbols.ApplyFunc, List(f, ListUtils.ConsList(xs))) => Some(ApplyFunc(f, xs))
           case (Symbols.ApplyMacro, List(f, ListUtils.ConsList(xs))) => Some(ApplyFunc(f, xs))
           case (Symbols.Builtin, List(AsCoreWHNF(f: Sym), ListUtils.ConsList(xs))) => Some(Builtin(f, xs))
@@ -39,7 +39,7 @@ private final object AsExpCached {
   def unapply(x: Value): Option[Exp] = unapply_v.apply(x)
 }
 
-sealed trait Exp extends WHNF with WHNFFeature_eval {
+sealed trait Exp extends FeaturedWHN_eval {
   private[lingo] def real_eval(context: Mapping, stack: DebugStack): Value
 
   final override def feature_eval(context: Mapping, stack: DebugStack) = this.real_eval(context, stack)
@@ -65,7 +65,7 @@ final case class Comment(comment: Value, x: Value) extends Exp {
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, stack)
 }
 
-final case class Positioned(pos: Pos, x: Value) extends Exp {
+final case class Positioned(pos: DebugStackPosition, x: Value) extends Exp {
   override def toCore() =
     Exp.consExp(Symbols.Positioned, List(pos, x))
 

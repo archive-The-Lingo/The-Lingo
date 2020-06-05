@@ -131,7 +131,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     }
 
     v0 match {
-      case v0: WHNFFeature_equal =>
+      case v0: FeaturedWHNF_equal =>
         v0.feature_equal(v1) match {
           case Some(result) => return result
           case None => {}
@@ -139,7 +139,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
       case _ => {}
     }
     v1 match {
-      case v1: WHNFFeature_equal =>
+      case v1: FeaturedWHNF_equal =>
         v1.feature_equal(v0) match {
           case Some(result) => return result
           case None => {}
@@ -151,7 +151,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
 
   def eval(context: Mapping, stack: DebugStack): Value = Delay({
     this.reduce_rec() match {
-      case x: WHNFFeature_eval => x.feature_eval(context, stack)
+      case x: FeaturedWHN_eval => x.feature_eval(context, stack)
       case _ => AsExpCached.unapply(this) match {
         case Some(x) => x.feature_eval(context, stack)
         case None => throw new UnsupportedOperationException("TODO")
@@ -191,15 +191,15 @@ trait WHNF extends MayNotWHNF {
   def toCore(): CoreWHNF
 }
 
-trait WHNFFeature_equal extends WHNF {
+trait FeaturedWHNF_equal extends WHNF {
   def feature_equal(x: Value): Option[Boolean] = None
 }
 
-trait WHNFFeature_eval extends WHNF {
+trait FeaturedWHN_eval extends WHNF {
   def feature_eval(context: Mapping, stack: DebugStack): Value
 }
 
-trait WHNFFeature_app extends WHNF {
+trait FeaturedWHNF_app extends WHNF {
   def feature_app(xs: List[Value], stack: DebugStack): Value
 }
 

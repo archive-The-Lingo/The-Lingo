@@ -5,7 +5,7 @@
 */
 package the.lingo
 
-import the.lingo.private_utils.Nat
+import the.lingo.utils.Nat
 
 sealed trait CoreWHNF extends WHNF {
   final override def toCore() = this

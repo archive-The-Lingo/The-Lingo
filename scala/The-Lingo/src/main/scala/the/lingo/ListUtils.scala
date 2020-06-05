@@ -20,5 +20,18 @@ private final object ListUtils {
     })
   }
 
+  final object ConsListMaybeWithTail {
+    def apply(xs: List[Value], tail: Value): Value = ConsList.apply(xs, tail)
+
+    def unapply(xs: Value): Option[(List[Value], Value)] = xs.reduce_rec_toCore() match {
+      case Pair(head, tail) => unapply(tail).map({
+        _ match {
+          case (result, resultTail) => (head :: result, resultTail)
+        }
+      })
+      case _ => Some(Nil, xs)
+    }
+  }
+
   def list(xs: Value*): Value = ConsList(xs.toList)
 }

@@ -3,13 +3,13 @@
   License, v. 2.0. If a copy of the MPL was not distributed with this
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
-package the.lingo.private_utils
+package the.lingo.utils
 
 import java.math.BigInteger
 
 import scala.math.{BigInt, Ordered, ScalaNumber, ScalaNumericConversions}
 
-private[lingo] final object Nat {
+final object Nat {
   implicit def bigInt2nat(x: BigInt) = new Nat(x)
 
   def apply(i: Int) = bigInt2nat(BigInt.apply(i))
@@ -33,7 +33,7 @@ private[lingo] final object Nat {
   def probablePrime(bitLength: Int, rnd: scala.util.Random) = bigInt2nat(BigInt.probablePrime(bitLength, rnd))
 }
 
-private[lingo] final class Nat(val bigInt: BigInt)
+final class Nat(val bigInt: BigInt)
   extends ScalaNumber
     with ScalaNumericConversions
     with Serializable

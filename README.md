@@ -55,6 +55,8 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 我不假定`Weak Head Normal Form`是唯一的
 
+一個表達式描述它所有可能的`Weak Head Normal Form`
+
 就像某些語言 沒有定義從集合`pop`元素的順序
 
 ### 二

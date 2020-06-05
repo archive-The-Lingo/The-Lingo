@@ -71,6 +71,6 @@ final case class LangParser(file: String) extends RegexParsers {
   private def pos: Parser[Positional] = positioned(success(new Positional {}))
 
   private def posed(x: Parser[Exp]): Parser[Exp] = pos ~ x ~ pos ^^ {
-    case start ~ x ~ end => Positioned(Pos(file, start.pos, end.pos), x)
+    case start ~ x ~ end => Positioned(FilePosition(file, start.pos, end.pos), x)
   }
 }
