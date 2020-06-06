@@ -49,15 +49,27 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 該語言是函數式的
 
-函數沒有副作用 值是不可變的
+函數只依賴輸入的值沒有副作用 值是不可變的
+
+計算/`reduce` 爲 有方向的變化 （`directed change`）
+
+表達式不一定有`Canonical Form` 比如 從集合中`pop`元素
+
+`Weak Head Normal Form`不是唯一的
+
+故該語言不具有`Referential transparency`
+
+#### 零 一
+
+該描述是爲使用者而寫
+
+例：
+
+具體實現之時 值可以是可變的 只要使用者觀測不到
 
 ### 一
 
-我不假定`Weak Head Normal Form`是唯一的
-
 一個表達式描述它所有可能的`Weak Head Normal Form`
-
-就像某些語言 沒有定義從集合`pop`元素的順序
 
 ### 二
 
@@ -65,9 +77,15 @@ I rewrote the core language hundreds of times and I am still rewriting it.
 
 一個實現在計算`Weak Head Normal Form`的過程中
 
-將確定爲永遠不能化簡爲`Weak Head Normal Form`的`Expression`
+將確定爲永遠不能化簡爲`Weak Head Normal Form`的表達式
 
 解釋爲某種表示`Exception`的`Weak Head Normal Form`
+
+#### 二 一
+
+解釋時儘量把最小的子表達式爲`Exception`
+
+否則其`Exception`處理系統將失效 整個程式被解釋爲一個簡單的`Exception`
 
 ----------
 效應：
