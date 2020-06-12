@@ -19,15 +19,15 @@ private final object AsExpCached {
     }
 
     def unapplyCore(x: CoreWHNF): Option[Exp] = x match {
-      case Tagged(AsCoreWHNF(Symbols.Exp), AsCoreWHNF(Pair(tag, ListUtils.ConsList(xs)))) =>
-        (tag.reduce_rec_toCore(), xs) match {
+      case Tagged(AsSym(Symbols.Exp), AsCoreWHNF(Pair(AsSym(tag), ListUtils.ConsList(xs)))) =>
+        (tag, xs) match {
           case (Symbols.Id, List(x)) => Some(Id(x))
           case (Symbols.Quote, List(x)) => Some(Quote(x))
           case (Symbols.Comment, List(comment, x)) => Some(Comment(comment, x))
           case (Symbols.Positioned, List(AsFilePositionCached(pos), x)) => Some(Positioned(pos, x))
           case (Symbols.ApplyFunc, List(f, ListUtils.ConsList(xs))) => Some(ApplyFunc(f, xs))
           case (Symbols.ApplyMacro, List(f, ListUtils.ConsList(xs))) => Some(ApplyFunc(f, xs))
-          case (Symbols.Builtin, List(AsCoreWHNF(f: Sym), ListUtils.ConsList(xs))) => Some(Builtin(f, xs))
+          case (Symbols.Builtin, List(AsSym(f), ListUtils.ConsList(xs))) => Some(Builtin(f, xs))
           case _ => None
         }
       case _ => None
@@ -49,7 +49,7 @@ final case class Id(x: Value) extends Exp {
   override def toCore() = Exp.consExp(Symbols.Id, List(x))
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = context.get(x).getOrElse {
-    throw new UnsupportedOperationException("TODO")
+    CoreException(stack, Symbols.Exceptions.NoDefinition, context, this)
   }
 }
 
@@ -93,6 +93,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = (f, xs) match {
     case (Symbols.Builtins.ConsPair, head :: tail :: Nil) => Pair(head.eval(context, stack), tail.eval(context, stack))
     case (Symbols.Builtins.ConsTagged, tag :: xs :: Nil) => Tagged(tag.eval(context, stack), xs.eval(context, stack))
+    case (Symbols.Builtins.ConsException, tag :: xs :: Nil) => ValueException(tag.eval(context, stack), xs.eval(context, stack))
     case (Symbols.Builtins.Rec, id :: v :: Nil) => throw new UnsupportedOperationException("TODO")
     // TODO
     case _ => throw new UnsupportedOperationException("TODO")

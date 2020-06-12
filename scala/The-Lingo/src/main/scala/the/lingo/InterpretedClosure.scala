@@ -13,11 +13,15 @@ final case class InterpretedClosure(args: List[Value], vararg: Option[Value], co
         case Some(vararg) => ListUtils.ConsList(args, vararg)
         case None => ListUtils.ConsList(args)
       },
-      Builtin(Symbols.Eval, List(Quote(context), Quote(exp)))))
+      if (context.isEmpty) {
+        exp
+      } else {
+        Builtin(Symbols.Eval, List(Quote(context), Quote(exp)))
+      }))
 
   override def feature_app(xs: List[Value], stack: DebugStack) = InterpretedClosure.match_args(args, vararg, context, xs) match {
     case Some(context) => exp.eval(context, stack)
-    case None => throw new UnsupportedOperationException("TODO")
+    case None => CoreException(stack, Symbols.Exceptions.ArgsMismatch, throw new UnsupportedOperationException("TODO"), throw new UnsupportedOperationException("TODO"))
   }
 }
 
@@ -40,7 +44,7 @@ private final object AsInterpretedClosureCached {
 
     def unapplyCore(x: CoreWHNF): Option[InterpretedClosure] = x match {
       case Tagged(
-      AsCoreWHNF(Symbols.Tags.Func),
+      AsSym(Symbols.Tags.Func),
       ListUtils.ConsList(ListUtils.ConsListMaybeWithTail(args, maybeTail) :: exp :: Nil)) =>
         Some(InterpretedClosure(
           args,
@@ -48,7 +52,7 @@ private final object AsInterpretedClosureCached {
             case AsCoreWHNF(Null()) => None
             case x => Some(x)
           },
-          Mapping.Null,
+          Mapping.Empty,
           exp))
       case _ => None
     }

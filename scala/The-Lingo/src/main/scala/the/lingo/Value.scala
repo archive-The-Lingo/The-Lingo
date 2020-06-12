@@ -154,14 +154,24 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
       case x: FeaturedWHN_eval => x.feature_eval(context, stack)
       case _ => AsExpCached.unapply(this) match {
         case Some(x) => x.feature_eval(context, stack)
-        case None => throw new UnsupportedOperationException("TODO")
+        case None => CoreException(stack, Symbols.Exceptions.TypeMismatch_Exp, context, Builtin(Symbols.Eval, List(Quote(context), Quote(this))))
       }
     }
   }, {
     Builtin(Symbols.Eval, List(Quote(context), Quote(this)))
   })
 
-  def app(xs: List[Value], stack: DebugStack): Value = throw new UnsupportedOperationException("TODO")
+  def app(xs: List[Value], stack: DebugStack): Value = Delay({
+    this.reduce_rec() match {
+      case x: FeaturedWHNF_app => x.feature_app(xs, stack)
+      case _ => AsInterpretedClosureCached.unapply(this) match {
+        case Some(x) => x.feature_app(xs, stack)
+        case None => CoreException(stack, Symbols.Exceptions.TypeMismatch_Func, Mapping.Empty, ApplyFunc(this, xs))
+      }
+    }
+  }, {
+    throw new UnsupportedOperationException("TODO")
+  })
 }
 
 trait MayNotWHNF {

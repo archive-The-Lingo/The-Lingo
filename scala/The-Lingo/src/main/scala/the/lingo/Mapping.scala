@@ -19,8 +19,10 @@ final case class Mapping private(private val xs: List[(Value, Value)]) extends W
     (k, v) <- xs.find(_ match {
       case (k, v) => k.equal_reduce_rec(key)
     })} yield v
+
+  def isEmpty: Boolean = xs.isEmpty
 }
 
 final object Mapping {
-  val Null = new Mapping(List())
+  val Empty = new Mapping(List())
 }

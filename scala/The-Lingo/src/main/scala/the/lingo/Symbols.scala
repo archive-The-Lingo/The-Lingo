@@ -29,9 +29,9 @@ final object Symbols {
     val IsTagged: Sym = Sym("具型別？")
     val ConsTagged: Sym = Sym("構造-具型別")
     val ElimTagged: Sym = Sym("解構-具型別")
-    val IsBottom: Sym = Sym("異常？")
-    val ConsBottom: Sym = Sym("構造-異常")
-    val ElimBottom: Sym = Sym("解構-異常")
+    val IsException: Sym = Sym("異常？")
+    val ConsException: Sym = Sym("構造-異常")
+    val ElimException: Sym = Sym("解構-異常")
     val IsNull: Sym = Sym("序列/空？")
     val IsSymbol: Sym = Sym("符號？")
     val SymbolToString: Sym = Sym("符號→字串")
@@ -48,6 +48,14 @@ final object Symbols {
     val String: Sym = Sym("字串")
     val Mapping: Sym = Sym("映射")
     val Func: Sym = Sym("函式")
+  }
+
+  final object Exceptions {
+    val IllegalExp: Sym = Sym("非法式")
+    val NoDefinition: Sym = Sym("無定義")
+    val ArgsMismatch: Sym = Sym("參數不匹配")
+    val TypeMismatch_Func: Sym = Sym("型別不匹配/函式")
+    val TypeMismatch_Exp: Sym = Sym("型別不匹配/式")
   }
 
 }

@@ -33,6 +33,18 @@ final case class Sym(x: Symbol) extends CoreWHNF {
   }
 }
 
+final object AsSym {
+  def unapply(x: WHNF): Option[Sym] = x match {
+    case AsCoreWHNF(x: Sym) => Some(x)
+    case _ => None
+  }
+
+  def unapply(x: MayNotWHNF): Option[Sym] = x match {
+    case AsCoreWHNF(x: Sym) => Some(x)
+    case _ => None
+  }
+}
+
 final object Sym {
   implicit def apply(x: Symbol): Sym = Sym(x)
 
@@ -53,9 +65,9 @@ final case class Tagged(tag: Value, xs: Value) extends CoreWHNF {
   }
 }
 
-final case class Bottom(tag: Value, xs: Value) extends CoreWHNF {
+final case class ValueException(tag: Value, xs: Value) extends CoreWHNF {
   private[lingo] override def equal_core(ab: CoreWHNF) = ab match {
-    case Bottom(a, b) => a.equal_reduce_rec(tag) && b.equal_reduce_rec(xs)
+    case ValueException(a, b) => a.equal_reduce_rec(tag) && b.equal_reduce_rec(xs)
     case _ => false
   }
 }
@@ -65,4 +77,20 @@ final case class ValueNat(x: Nat) extends CoreWHNF {
     case ValueNat(y) => x == y
     case _ => false
   }
+}
+
+private final object AsValueNatCached {
+
+  private final object NotCached {
+    def unapply(x: WHNF): Option[ValueNat] = x match {
+      case x: ValueNat => Some(x)
+      case _ => unapplyCore(x.toCore())
+    }
+
+    def unapplyCore(x: CoreWHNF): Option[ValueNat] = throw new UnsupportedOperationException("TODO")
+  }
+
+  private val unapply_v = Value.cached_option_as(NotCached.unapply)
+
+  def unapply(x: Value): Option[ValueNat] = unapply_v.apply(x)
 }

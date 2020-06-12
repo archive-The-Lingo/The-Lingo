@@ -10,7 +10,9 @@ import java.math.BigInteger
 import scala.math.{BigInt, Ordered, ScalaNumber, ScalaNumericConversions}
 
 final object Nat {
-  implicit def bigInt2nat(x: BigInt) = new Nat(x)
+  def bigInt2nat(x: BigInt) = new Nat(x)
+
+  def apply(x: BigInt) = bigInt2nat(x)
 
   def apply(i: Int) = bigInt2nat(BigInt.apply(i))
 
@@ -38,7 +40,9 @@ final class Nat(val bigInt: BigInt)
     with ScalaNumericConversions
     with Serializable
     with Ordered[Nat] {
-  assert(bigInt > 0)
+  if (bigInt < 0) {
+    throw new IllegalArgumentException("expect a postive number")
+  }
 
   override def hashCode(): Int = bigInt.hashCode()
 
