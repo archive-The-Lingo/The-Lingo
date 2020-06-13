@@ -150,27 +150,23 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   }
 
   def eval(context: Mapping, stack: DebugStack): Value = Delay({
-    this.reduce_rec() match {
-      case x: FeaturedWHN_eval => x.feature_eval(context, stack)
-      case _ => AsExpCached.unapply(this) match {
-        case Some(x) => x.feature_eval(context, stack)
-        case None => CoreException(stack, Symbols.Exceptions.TypeMismatch_Exp, context, Builtin(Symbols.Eval, List(Quote(context), Quote(this))))
-      }
+    this match {
+      case AsWHNF(x: FeaturedWHN_eval) => x.feature_eval(context, stack)
+      case AsExpCached(x) => x.feature_eval(context, stack)
+      case _ => CoreException(stack, Symbols.Exceptions.TypeMismatch_Exp, context, Builtin(Symbols.Eval, List(Quote(context), Quote(this))))
     }
   }, {
     Builtin(Symbols.Eval, List(Quote(context), Quote(this)))
   })
 
   def app(xs: List[Value], stack: DebugStack): Value = Delay({
-    this.reduce_rec() match {
-      case x: FeaturedWHNF_app => x.feature_app(xs, stack)
-      case _ => AsInterpretedClosureCached.unapply(this) match {
-        case Some(x) => x.feature_app(xs, stack)
-        case None => CoreException(stack, Symbols.Exceptions.TypeMismatch_Func, Mapping.Empty, ApplyFunc(this, xs))
-      }
+    this match {
+      case AsWHNF(x: FeaturedWHNF_app) => x.feature_app(xs, stack)
+      case AsInterpretedClosureCached(x) => x.feature_app(xs, stack)
+      case _ => CoreException(stack, Symbols.Exceptions.TypeMismatch_Func, Mapping.Empty, ApplyFunc(this, xs))
     }
   }, {
-    throw new UnsupportedOperationException("TODO")
+    ApplyFunc(this, xs)
   })
 }
 
