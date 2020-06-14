@@ -19,21 +19,14 @@ final object ValueBoolean {
 }
 
 private final object AsValueBooleanCached {
-
-  private final object NotCached {
-    def unapply(x: WHNF): Option[ValueBoolean] = x match {
-      case x: ValueBoolean => Some(x)
-      case _ => unapplyCore(x.toCore())
-    }
-
-    def unapplyCore(x: CoreWHNF): Option[ValueBoolean] = x match {
+  private val unapply = Value.cached_option_as((arg: WHNF) => arg match {
+    case x: ValueBoolean => Some(x)
+    case _ => arg.toCore() match {
       case Tagged(AsSym(Symbols.Tags.True), AsCoreWHNF(Null())) => Some(ValueBoolean.True)
       case Tagged(AsSym(Symbols.Tags.False), AsCoreWHNF(Null())) => Some(ValueBoolean.False)
       case _ => None
     }
-  }
+  })
 
-  private val unapply_v = Value.cached_option_as(NotCached.unapply)
-
-  def unapply(x: Value): Option[ValueBoolean] = unapply_v.apply(x)
+  def unapply(x: Value): Option[ValueBoolean] = unapply.apply(x)
 }

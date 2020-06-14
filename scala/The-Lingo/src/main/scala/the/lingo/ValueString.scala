@@ -10,17 +10,10 @@ final case class ValueString(x: String) extends WHNF {
 }
 
 private final object AsValueStringCached {
-
-  private final object NotCached {
-    def unapply(x: WHNF): Option[ValueString] = x match {
-      case x: ValueString => Some(x)
-      case _ => unapplyCore(x.toCore())
-    }
-
-    def unapplyCore(x: CoreWHNF): Option[ValueString] = throw new UnsupportedOperationException("TODO")
-  }
-
-  private val unapply_v = Value.cached_option_as(NotCached.unapply)
+  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
+    case x: ValueString => Some(x)
+    case _ => throw new UnsupportedOperationException("TODO")
+  })
 
   def unapply(x: Value): Option[ValueString] = unapply_v.apply(x)
 }

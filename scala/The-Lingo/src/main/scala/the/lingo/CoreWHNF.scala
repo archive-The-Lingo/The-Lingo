@@ -80,17 +80,10 @@ final case class ValueNat(x: Nat) extends CoreWHNF {
 }
 
 private final object AsValueNatCached {
-
-  private final object NotCached {
-    def unapply(x: WHNF): Option[ValueNat] = x match {
-      case x: ValueNat => Some(x)
-      case _ => unapplyCore(x.toCore())
-    }
-
-    def unapplyCore(x: CoreWHNF): Option[ValueNat] = throw new UnsupportedOperationException("TODO")
-  }
-
-  private val unapply_v = Value.cached_option_as(NotCached.unapply)
+  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
+    case x: ValueNat => Some(x)
+    case _ => throw new UnsupportedOperationException("TODO")
+  })
 
   def unapply(x: Value): Option[ValueNat] = unapply_v.apply(x)
 }

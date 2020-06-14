@@ -13,21 +13,14 @@ final case class ValueList(xs: List[Value]) extends WHNF {
 }
 
 private final object AsListValueCached {
-
-  private final object NotCached {
-    def unapply(x: WHNF): Option[ValueList] = x match {
-      case x: ValueList => Some(x)
-      case _ => unapplyCore(x.toCore())
-    }
-
-    def unapplyCore(x: CoreWHNF): Option[ValueList] = x match {
-      case Pair(head, tail) => AsListValueCached.unapply(tail).map(xs => ValueList(head :: xs.xs))
+  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
+    case x: ValueList => Some(x)
+    case _ => arg.toCore() match {
+      case Pair(head, AsListValueCached(tail)) => Some(ValueList(head :: tail.xs))
       case Null() => Some(ValueList(Nil))
       case _ => None
     }
-  }
-
-  private val unapply_v = Value.cached_option_as(NotCached.unapply)
+  })
 
   def unapply(x: Value): Option[ValueList] = unapply_v.apply(x)
 }
