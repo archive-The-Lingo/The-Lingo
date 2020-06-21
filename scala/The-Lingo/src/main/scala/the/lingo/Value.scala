@@ -189,6 +189,10 @@ trait MayNotWHNF {
 
   final def reduce_rec_toCore(): CoreWHNF = this.reduce_rec().toCore()
 
+  /**
+   * Exp cannot fully describe the type here.
+   * It is required that there can be no non-WHNF that takes time to reduce in specific places (such as identifiers).
+   * Non-WHNF that takes time to reduce can only appear where straightforward implementations use recursive eval to reduce. */
   def readback(): Exp
 
   final def unpack_rec(): MayNotWHNF = this match {
