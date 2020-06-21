@@ -14,8 +14,14 @@ final case class ValueBoolean(x: Boolean) extends WHNF {
 }
 
 final object ValueBoolean {
-  val True = ValueBoolean(true)
-  val False = ValueBoolean(false)
+  val True = new ValueBoolean(true)
+  val False = new ValueBoolean(false)
+
+  def apply(x: Boolean) = if (x) {
+    True
+  } else {
+    False
+  }
 }
 
 private final object AsValueBooleanCached {
