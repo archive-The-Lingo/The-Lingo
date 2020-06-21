@@ -96,42 +96,42 @@ final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = throw new UnsupportedOperationException("TODO")
 }
 
-private final object Builtin {
-  def evalIs[A](predicate: CoreWHNF => Boolean, x: Value, context: Mapping, stack: DebugStack): Value =
-    ValueBoolean(predicate(x.eval(context, stack).reduce_rec_toCore()))
-}
-
 final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
   override def toCore() =
     Exp.consExp(Symbols.Builtin, List(f, ListUtils.ConsList(xs)))
 
-  private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = (f, xs) match {
-    case (Symbols.Builtins.IsPair, x :: Nil) => Builtin.evalIs(
-      _ match {
-        case _: Pair => true
-        case _ => false
-      }, x, context, stack)
-    case (Symbols.Builtins.ConsPair, head :: tail :: Nil) => Pair(head.eval(context, stack), tail.eval(context, stack))
+  private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = {
+    def evalIs[A](predicate: CoreWHNF => Boolean, x: Value): Value =
+      ValueBoolean(predicate(x.eval(context, stack).reduce_rec_toCore()))
 
-    case (Symbols.Builtins.IsTagged, x :: Nil) => Builtin.evalIs(
-      _ match {
-        case _: Tagged => true
-        case _ => false
-      }, x, context, stack)
-    case (Symbols.Builtins.ConsTagged, tag :: xs :: Nil) => Tagged(tag.eval(context, stack), xs.eval(context, stack))
+    (f, xs) match {
+      case (Symbols.Builtins.IsPair, x :: Nil) => evalIs(
+        _ match {
+          case _: Pair => true
+          case _ => false
+        }, x)
+      case (Symbols.Builtins.ConsPair, head :: tail :: Nil) => Pair(head.eval(context, stack), tail.eval(context, stack))
 
-    case (Symbols.Builtins.IsException, x :: Nil) => Builtin.evalIs(
-      _ match {
-        case _: ValueException => true
-        case _ => false
-      }, x, context, stack)
-    case (Symbols.Builtins.ConsException, tag :: xs :: Nil) => ValueException(tag.eval(context, stack), xs.eval(context, stack))
+      case (Symbols.Builtins.IsTagged, x :: Nil) => evalIs(
+        _ match {
+          case _: Tagged => true
+          case _ => false
+        }, x)
+      case (Symbols.Builtins.ConsTagged, tag :: xs :: Nil) => Tagged(tag.eval(context, stack), xs.eval(context, stack))
 
-    case (Symbols.Builtins.Rec, RemoveComment(Id(id)) :: exp :: Nil) => {
-      lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
-      result
+      case (Symbols.Builtins.IsException, x :: Nil) => evalIs(
+        _ match {
+          case _: ValueException => true
+          case _ => false
+        }, x)
+      case (Symbols.Builtins.ConsException, tag :: xs :: Nil) => ValueException(tag.eval(context, stack), xs.eval(context, stack))
+
+      case (Symbols.Builtins.Rec, RemoveComment(Id(id)) :: exp :: Nil) => {
+        lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
+        result
+      }
+      // TODO
+      case _ => throw new UnsupportedOperationException("TODO")
     }
-    // TODO
-    case _ => throw new UnsupportedOperationException("TODO")
   }
 }
