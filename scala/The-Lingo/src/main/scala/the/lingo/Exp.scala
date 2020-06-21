@@ -49,7 +49,7 @@ final case class Id(x: Value) extends Exp {
   override def toCore() = Exp.consExp(Symbols.Id, List(x))
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = context.get(x).getOrElse {
-    CoreException(stack, Symbols.Exceptions.NoDefinition, context, this)
+    CoreException(stack, Symbols.CoreExceptions.NoDefinition, context, this)
   }
 }
 
@@ -160,7 +160,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
       }
 
       // TODO
-      case _ => TODO()
+      case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
     }
   }
 }

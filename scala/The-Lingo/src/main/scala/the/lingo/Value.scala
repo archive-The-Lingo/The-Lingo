@@ -153,7 +153,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     this match {
       case AsWHNF(x: FeaturedWHN_eval) => x.feature_eval(context, stack)
       case AsExpCached(x) => x.feature_eval(context, stack)
-      case _ => CoreException(stack, Symbols.Exceptions.TypeMismatch_Exp, context, Builtin(Symbols.Eval, List(Quote(context), Quote(this))))
+      case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Exp, context, Builtin(Symbols.Eval, List(Quote(context), Quote(this))))
     }
   }, {
     Builtin(Symbols.Eval, List(Quote(context), Quote(this)))
@@ -165,7 +165,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     this match {
       case AsWHNF(x: FeaturedWHN_eval) => x.feature_eval(context, stack)
       case AsExpCached(x) => x.feature_eval(context, stack)
-      case _ => CoreException(stack, Symbols.Exceptions.TypeMismatch_Exp, context, Builtin(Symbols.Eval, List(Quote(context), Quote(this))))
+      case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Exp, context, Builtin(Symbols.Eval, List(Quote(context), Quote(this))))
     }
   }, {
     Builtin(Symbols.Eval, List(Quote(context0), Quote(this)))
@@ -175,7 +175,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     this match {
       case AsWHNF(x: FeaturedWHNF_app) => x.feature_app(xs, stack)
       case AsInterpretedClosureCached(x) => x.feature_app(xs, stack)
-      case _ => CoreException(stack, Symbols.Exceptions.TypeMismatch_Func, Mapping.Empty, ApplyFunc(this, xs))
+      case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Func, Mapping.Empty, ApplyFunc(this, xs))
     }
   }, {
     ApplyFunc(this, xs)

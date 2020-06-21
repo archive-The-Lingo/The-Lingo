@@ -51,7 +51,7 @@ final object Symbols {
     val Func: Sym = Sym("函式")
   }
 
-  final object Exceptions {
+  final object CoreExceptions {
     val IllegalExp: Sym = Sym("非法式")
     val NoDefinition: Sym = Sym("無定義")
     val ArgsMismatch: Sym = Sym("參數不匹配")
