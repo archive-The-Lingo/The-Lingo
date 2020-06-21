@@ -87,7 +87,7 @@ private final object NatUtils {
 private final object AsValueNatCached {
   private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
     case x: ValueNat => Some(x)
-    case _ => throw new UnsupportedOperationException("TODO")
+    case _ => TODO()
   })
 
   def unapply(x: Value): Option[ValueNat] = unapply_v.apply(x)

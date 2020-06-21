@@ -93,7 +93,7 @@ final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
   override def toCore() =
     Exp.consExp(Symbols.ApplyMacro, List(f, ListUtils.ConsList(xs)))
 
-  private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = throw new UnsupportedOperationException("TODO")
+  private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = TODO()
 }
 
 final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
@@ -110,7 +110,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
     def elim2[A <: WHNF](elim: CoreWHNF => Option[(Value, Value)], v: Value, idx: Value, idy: Value, exp: Value): Value =
       elim(v.eval(context, stack).reduce_rec_toCore()) match {
         case Some((x, y)) => exp.eval(context.updated(idx, x).updated(idy, y), stack)
-        case None => throw new UnsupportedOperationException("TODO")
+        case None => TODO()
       }
 
     (f, xs) match {
@@ -156,11 +156,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
       }
       case (Symbols.Builtins.NatToBinary, x :: Nil) => x.eval(context, stack) match {
         case AsCoreWHNF(ValueNat(x)) => ValueList(NatUtils.nat2booleanList(x).map(ValueBoolean(_)))
-        case _ => throw new UnsupportedOperationException("TODO")
+        case _ => TODO()
       }
 
       // TODO
-      case _ => throw new UnsupportedOperationException("TODO")
+      case _ => TODO()
     }
   }
 }

@@ -18,7 +18,7 @@ final case class DebugStack(xs: List[DebugStackPosition]) extends WHNF {
 sealed trait DebugStackPosition extends WHNF
 
 final case class NamedPosition(name: Value) extends DebugStackPosition {
-  override def toCore() = throw new UnsupportedOperationException("TODO")
+  override def toCore() = TODO()
 }
 
 final case class FilePosition(file: String, start: LineColumn, end: LineColumn) extends DebugStackPosition {
@@ -43,7 +43,7 @@ private final object AsFilePositionCached {
       case _ => unapplyCore(x.toCore())
     }
 
-    def unapplyCore(x: CoreWHNF): Option[FilePosition] = throw new UnsupportedOperationException("TODO")
+    def unapplyCore(x: CoreWHNF): Option[FilePosition] = TODO()
   }
 
   private val unapply_v = Value.cached_option_as(NotCached.unapply)
