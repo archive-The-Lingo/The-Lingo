@@ -21,7 +21,7 @@ final case class InterpretedClosure(args: List[Value], vararg: Option[Value], co
 
   override def feature_app(xs: List[Value], stack: DebugStack) = InterpretedClosure.match_args(args, vararg, context, xs) match {
     case Some(context) => exp.eval(context, stack)
-    case None => CoreException(stack, Symbols.Exceptions.ArgsMismatch, TODO(), TODO())
+    case None => CoreException(stack, Symbols.Exceptions.ArgsMismatch, Mapping.Empty, ApplyFunc(Quote(this), xs.map(Quote(_))))
   }
 }
 
