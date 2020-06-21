@@ -107,6 +107,12 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
     def cons2[A <: WHNF](cons: (Value, Value) => A, x: Value, y: Value): Value =
       cons(x.eval(context, stack), y.eval(context, stack))
 
+    def elim2[A <: WHNF](elim: CoreWHNF => Option[(Value, Value)], v: Value, idx: Value, idy: Value, exp: Value): Value =
+      elim(v.eval(context, stack).reduce_rec_toCore()) match {
+        case Some((x, y)) => exp.eval(context.updated(idx, x).updated(idy, y), stack)
+        case None => throw new UnsupportedOperationException("TODO")
+      }
+
     (f, xs) match {
       case (Symbols.Builtins.IsPair, x :: Nil) => evalIs(
         _ match {
@@ -114,6 +120,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.ConsPair, head :: tail :: Nil) => cons2(Pair, head, tail)
+      case (Symbols.Builtins.ElimPair, v :: RemoveComment(Id(idx)) :: RemoveComment(Id(idy)) :: exp :: Nil) =>
+        elim2(_ match {
+          case Pair(x, y) => Some(x, y)
+          case _ => None
+        }, v, idx, idy, exp)
 
       case (Symbols.Builtins.IsTagged, x :: Nil) => evalIs(
         _ match {
@@ -121,6 +132,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.ConsTagged, tag :: xs :: Nil) => cons2(Tagged, tag, xs)
+      case (Symbols.Builtins.ElimTagged, v :: RemoveComment(Id(idx)) :: RemoveComment(Id(idy)) :: exp :: Nil) =>
+        elim2(_ match {
+          case Tagged(x, y) => Some(x, y)
+          case _ => None
+        }, v, idx, idy, exp)
 
       case (Symbols.Builtins.IsException, x :: Nil) => evalIs(
         _ match {
@@ -128,6 +144,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.ConsException, tag :: xs :: Nil) => cons2(ValueException, tag, xs)
+      case (Symbols.Builtins.ElimException, v :: RemoveComment(Id(idx)) :: RemoveComment(Id(idy)) :: exp :: Nil) =>
+        elim2(_ match {
+          case ValueException(x, y) => Some(x, y)
+          case _ => None
+        }, v, idx, idy, exp)
 
       case (Symbols.Builtins.Rec, RemoveComment(Id(id)) :: exp :: Nil) => {
         lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
