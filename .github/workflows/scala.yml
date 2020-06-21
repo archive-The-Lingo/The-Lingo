@@ -7,7 +7,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-16.04, ubuntu-18.04, windows-2019]
+        os: [ubuntu-16.04, ubuntu-18.04, ubuntu-20.04, windows-2019]
         jdk: [8, 11, 15-ea]
     runs-on: ${{ matrix.os }}
     steps:
