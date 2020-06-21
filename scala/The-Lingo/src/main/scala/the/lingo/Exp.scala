@@ -104,27 +104,30 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
     def evalIs[A](predicate: CoreWHNF => Boolean, x: Value): Value =
       ValueBoolean(predicate(x.eval(context, stack).reduce_rec_toCore()))
 
+    def cons2[A <: WHNF](cons: (Value, Value) => A, x: Value, y: Value): Value =
+      cons(x.eval(context, stack), y.eval(context, stack))
+
     (f, xs) match {
       case (Symbols.Builtins.IsPair, x :: Nil) => evalIs(
         _ match {
           case _: Pair => true
           case _ => false
         }, x)
-      case (Symbols.Builtins.ConsPair, head :: tail :: Nil) => Pair(head.eval(context, stack), tail.eval(context, stack))
+      case (Symbols.Builtins.ConsPair, head :: tail :: Nil) => cons2(Pair, head, tail)
 
       case (Symbols.Builtins.IsTagged, x :: Nil) => evalIs(
         _ match {
           case _: Tagged => true
           case _ => false
         }, x)
-      case (Symbols.Builtins.ConsTagged, tag :: xs :: Nil) => Tagged(tag.eval(context, stack), xs.eval(context, stack))
+      case (Symbols.Builtins.ConsTagged, tag :: xs :: Nil) => cons2(Tagged, tag, xs)
 
       case (Symbols.Builtins.IsException, x :: Nil) => evalIs(
         _ match {
           case _: ValueException => true
           case _ => false
         }, x)
-      case (Symbols.Builtins.ConsException, tag :: xs :: Nil) => ValueException(tag.eval(context, stack), xs.eval(context, stack))
+      case (Symbols.Builtins.ConsException, tag :: xs :: Nil) => cons2(ValueException, tag, xs)
 
       case (Symbols.Builtins.Rec, RemoveComment(Id(id)) :: exp :: Nil) => {
         lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
