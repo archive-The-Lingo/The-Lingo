@@ -65,6 +65,16 @@ final case class Comment(comment: Value, x: Value) extends Exp {
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, stack)
 }
 
+final private object RemoveComment {
+  def unapply(x: Value): Option[Exp] = x match {
+    case AsExpCached(e) => e match {
+      case Comment(_, x) => unapply(x)
+      case x => Some(x)
+    }
+    case _ => None
+  }
+}
+
 final case class Positioned(pos: DebugStackPosition, x: Value) extends Exp {
   override def toCore() =
     Exp.consExp(Symbols.Positioned, List(pos, x))
@@ -102,7 +112,10 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
     }
     case (Symbols.Builtins.ConsTagged, tag :: xs :: Nil) => Tagged(tag.eval(context, stack), xs.eval(context, stack))
     case (Symbols.Builtins.ConsException, tag :: xs :: Nil) => ValueException(tag.eval(context, stack), xs.eval(context, stack))
-    case (Symbols.Builtins.Rec, id :: v :: Nil) => throw new UnsupportedOperationException("TODO")
+    case (Symbols.Builtins.Rec, RemoveComment(Id(id)) :: exp :: Nil) => {
+      lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
+      result
+    }
     // TODO
     case _ => throw new UnsupportedOperationException("TODO")
   }
