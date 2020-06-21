@@ -46,9 +46,9 @@ final object AsSym {
 }
 
 final object Sym {
-  implicit def apply(x: Symbol): Sym = Sym(x)
+  implicit def apply(x: Symbol): Sym = new Sym(x)
 
-  def apply(x: String): Sym = Sym(Symbol(x))
+  def apply(x: String): Sym = new Sym(Symbol(x))
 }
 
 final case class Pair(x: Value, y: Value) extends CoreWHNF {

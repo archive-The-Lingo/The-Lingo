@@ -107,10 +107,10 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
     def cons2[A <: WHNF](cons: (Value, Value) => A, x: Value, y: Value): Value =
       cons(x.eval(context, stack), y.eval(context, stack))
 
-    def elim2[A <: WHNF](elim: CoreWHNF => Option[(Value, Value)], v: Value, idx: Value, idy: Value, exp: Value): Value =
+    def elim2[A <: WHNF](elim: CoreWHNF => Option[(Value, Value)], exception: Sym, v: Value, idx: Value, idy: Value, exp: Value): Value =
       elim(v.eval(context, stack).reduce_rec_toCore()) match {
         case Some((x, y)) => exp.eval(context.updated(idx, x).updated(idy, y), stack)
-        case None => TODO()
+        case None => CoreException(stack, exception, context, this)
       }
 
     (f, xs) match {
@@ -124,7 +124,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         elim2(_ match {
           case Pair(x, y) => Some(x, y)
           case _ => None
-        }, v, idx, idy, exp)
+        }, Symbols.CoreExceptions.TypeMismatch_Pair, v, idx, idy, exp)
 
       case (Symbols.Builtins.IsTagged, x :: Nil) => evalIs(
         _ match {
@@ -136,7 +136,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         elim2(_ match {
           case Tagged(x, y) => Some(x, y)
           case _ => None
-        }, v, idx, idy, exp)
+        }, Symbols.CoreExceptions.TypeMismatch_Tagged, v, idx, idy, exp)
 
       case (Symbols.Builtins.IsException, x :: Nil) => evalIs(
         _ match {
@@ -148,7 +148,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         elim2(_ match {
           case ValueException(x, y) => Some(x, y)
           case _ => None
-        }, v, idx, idy, exp)
+        }, Symbols.CoreExceptions.TypeMismatch_Exception, v, idx, idy, exp)
 
       case (Symbols.Builtins.Rec, RemoveComment(Id(id)) :: exp :: Nil) => {
         lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
