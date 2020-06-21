@@ -37,6 +37,7 @@ final object Symbols {
     val SymbolToString: Sym = Sym("符號→字串")
     val StringToSymbol: Sym = Sym("字串→符號")
     val Rec: Sym = Sym("遞歸")
+    val NatToBinary:Sym = Sym("自然數→二進位")
   }
 
   final object Tags {

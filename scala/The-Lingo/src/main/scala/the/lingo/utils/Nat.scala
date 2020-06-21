@@ -133,8 +133,6 @@ final class Nat(val bigInt: BigInt)
 
   def bitLength = bigInt.bitLength
 
-  def bitCount = bigInt.bitCount
-
   def isProbablePrime(certainty: Int) = bigInt.isProbablePrime(certainty)
 
   override def byteValue: Byte = bigInt.byteValue

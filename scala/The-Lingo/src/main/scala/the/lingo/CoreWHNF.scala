@@ -79,6 +79,11 @@ final case class ValueNat(x: Nat) extends CoreWHNF {
   }
 }
 
+private final object NatUtils {
+  def nat2booleanList(x: Nat): List[Boolean] =
+    (0 until x.bitLength).toList.map(x.testBit)
+}
+
 private final object AsValueNatCached {
   private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
     case x: ValueNat => Some(x)

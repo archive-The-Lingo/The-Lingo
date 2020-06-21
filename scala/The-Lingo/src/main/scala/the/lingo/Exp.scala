@@ -154,6 +154,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
         result
       }
+      case (Symbols.Builtins.NatToBinary, x :: Nil) => x.eval(context, stack) match {
+        case AsCoreWHNF(ValueNat(x)) => ValueList(NatUtils.nat2booleanList(x).map(ValueBoolean(_)))
+        case _ => throw new UnsupportedOperationException("TODO")
+      }
+
       // TODO
       case _ => throw new UnsupportedOperationException("TODO")
     }
