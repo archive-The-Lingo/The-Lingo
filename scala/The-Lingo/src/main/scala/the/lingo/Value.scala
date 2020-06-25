@@ -159,7 +159,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     Builtin(Symbols.Eval, List(Quote(context), Quote(this)))
   })
 
-  def eval_callByName(context0: =>Mapping, stack0: =>DebugStack): Value = Delay({
+  def eval_callByName(context0: => Mapping, stack0: => DebugStack): Value = Delay({
     lazy val context = context0
     lazy val stack = stack0
     this match {
@@ -189,10 +189,7 @@ trait MayNotWHNF {
 
   final def reduce_rec_toCore(): CoreWHNF = this.reduce_rec().toCore()
 
-  /**
-   * Exp cannot fully describe the type here.
-   * It is required that there can be no non-WHNF that takes time to reduce in specific places (such as identifiers).
-   * Non-WHNF that takes time to reduce can only appear where straightforward implementations use recursive eval to reduce. */
+  /** only for non-WHNF */
   def readback(): Exp
 
   final def unpack_rec(): MayNotWHNF = this match {

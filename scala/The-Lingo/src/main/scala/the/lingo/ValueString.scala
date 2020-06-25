@@ -12,8 +12,26 @@ final case class ValueString(x: String) extends WHNF {
 private final object AsValueStringCached {
   private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
     case x: ValueString => Some(x)
-    case _ => throw new UnsupportedOperationException("TODO")
+    case _ => arg.toCore() match {
+      case Tagged(AsSym(Symbols.Tags.Char), ListUtils.ConsList(List(AsCharListCached(xs)))) => Some(ValueString(xs.mkString))
+      case _ => None
+    }
   })
 
   def unapply(x: Value): Option[ValueString] = unapply_v.apply(x)
+}
+
+private final object AsCharListCached {
+
+  import ListHelpers._
+
+  private final object AsValueCharCachedForList {
+    def unapply(xs: List[Value]): Option[List[ValueChar]] = xs.flatMapOption(AsValueCharCached.unapply(_))
+  }
+
+  def unapply(xs: Value): Option[List[Char]] = xs match {
+    case ListUtils.ConsList(AsValueCharCachedForList(xs)) => Some(xs.map(_.x))
+    case _ => None
+  }
+
 }
