@@ -156,7 +156,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
       }
       case (Symbols.Builtins.NatToBinary, x :: Nil) => x.eval(context, stack) match {
         case AsCoreWHNF(ValueNat(x)) => ValueList(NatUtils.nat2booleanList(x).map(ValueBoolean(_)))
-        case _ => TODO()
+        case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Nat, context, this)
       }
 
       // TODO
