@@ -15,9 +15,7 @@ private final object ListUtils {
 
     def apply(xs: List[Value]): Value = ValueList(xs)
 
-    def unapply(arg: Value): Option[List[Value]] = AsListValueCached.unapply(arg).map({
-      _.xs
-    })
+    def unapply(arg: Value): Option[List[Value]] = AsListValueCached.unapply(arg).map(_.xs)
   }
 
   final object ConsListMaybeWithTail {

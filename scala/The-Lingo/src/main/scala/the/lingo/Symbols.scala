@@ -37,7 +37,8 @@ final object Symbols {
     val SymbolToString: Sym = Sym("符號→字串")
     val StringToSymbol: Sym = Sym("字串→符號")
     val Rec: Sym = Sym("遞歸")
-    val NatToBinary:Sym = Sym("自然數→二進位")
+    val NatToBinary: Sym = Sym("自然數→二進位")
+    val BinaryToNat: Sym = Sym("二進位→自然數")
   }
 
   final object Tags {
@@ -61,6 +62,7 @@ final object Symbols {
     val TypeMismatch_Tagged: Sym = Sym("型別不匹配/具型別")
     val TypeMismatch_Exception: Sym = Sym("型別不匹配/異常")
     val TypeMismatch_Nat: Sym = Sym("型別不匹配/自然數")
+    val TypeMismatch_Binary: Sym = Sym("型別不匹配/二進位")
   }
 
 }

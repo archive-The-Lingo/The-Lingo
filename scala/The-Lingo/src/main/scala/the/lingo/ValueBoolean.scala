@@ -25,7 +25,7 @@ final object ValueBoolean {
 }
 
 private final object AsValueBooleanCached {
-  private val unapply = Value.cached_option_as((arg: WHNF) => arg match {
+  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
     case x: ValueBoolean => Some(x)
     case _ => arg.toCore() match {
       case Tagged(AsSym(Symbols.Tags.True), AsCoreWHNF(Null())) => Some(ValueBoolean.True)
@@ -34,5 +34,5 @@ private final object AsValueBooleanCached {
     }
   })
 
-  def unapply(x: Value): Option[ValueBoolean] = unapply.apply(x)
+  def unapply(x: Value): Option[ValueBoolean] = unapply_v.apply(x)
 }

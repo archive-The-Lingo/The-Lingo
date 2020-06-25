@@ -158,9 +158,41 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         case AsCoreWHNF(ValueNat(x)) => ValueList(NatUtils.nat2booleanList(x).map(ValueBoolean(_)))
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Nat, context, this)
       }
+      case (Symbols.Builtins.BinaryToNat, x :: Nil) => x.eval(context, stack) match {
+        case AsBooleanListCached(xs) => ValueNat(NatUtils.booleanList2nat(xs))
+        case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Binary, context, this)
+      }
 
       // TODO
       case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
     }
   }
+}
+
+private object ListHelpers {
+
+  implicit final class ListWithFlatMapOption[A](xs: List[A]) {
+    def flatMapOption[B](f: A => Option[B]): Option[List[B]] = xs match {
+      case Nil => Some(Nil)
+      case x :: xs => for {
+        head <- f(x)
+        tail <- xs.flatMapOption(f)
+      } yield head :: tail
+    }
+  }
+
+}
+
+private final object AsBooleanListCached {
+  import ListHelpers._
+
+  private final object AsValueBooleanCachedForList {
+    def unapply(xs: List[Value]): Option[List[ValueBoolean]] = xs.flatMapOption(AsValueBooleanCached.unapply(_))
+  }
+
+  def unapply(xs:Value): Option[List[Boolean]] = xs match {
+    case ListUtils.ConsList(AsValueBooleanCachedForList(xs)) => Some(xs.map(_.x))
+    case _ => None
+  }
+
 }

@@ -82,6 +82,9 @@ final case class ValueNat(x: Nat) extends CoreWHNF {
 private final object NatUtils {
   def nat2booleanList(x: Nat): List[Boolean] =
     (0 until x.bitLength).toList.map(x.testBit)
+
+  def booleanList2nat(xs: List[Boolean]): Nat =
+    xs.zipWithIndex.foldLeft(Nat(0))((n, x) => if (x._1) n.setBit(x._2) else n)
 }
 
 private final object AsValueNatCached {
