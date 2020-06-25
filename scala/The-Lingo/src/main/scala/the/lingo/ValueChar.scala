@@ -8,13 +8,16 @@ package the.lingo
 import the.lingo.utils.Nat
 
 final case class ValueChar(x: Char) extends WHNF {
-  override def toCore() = Tagged(Symbols.Nat, ListUtils.list(ValueNat(Nat(x.toInt))))
+  override def toCore() = Tagged(Symbols.Tags.Char, ListUtils.list(ValueNat(Nat(x.toInt))))
 }
 
 private final object AsValueCharCached {
   private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
     case x: ValueChar => Some(x)
-    case _ => throw new UnsupportedOperationException("TODO")
+    case _ => arg.toCore() match {
+      case Tagged(AsSym(Symbols.Tags.Char), ListUtils.ConsList(List(AsCoreWHNF(ValueNat(x))))) => Some(ValueChar(x.toChar))
+      case _ => None
+    }
   })
 
   def unapply(x: Value): Option[ValueChar] = unapply_v.apply(x)

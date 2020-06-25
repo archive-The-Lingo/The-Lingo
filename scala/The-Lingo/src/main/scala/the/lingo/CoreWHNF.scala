@@ -86,12 +86,3 @@ private final object NatUtils {
   def booleanList2nat(xs: List[Boolean]): Nat =
     xs.zipWithIndex.foldLeft(Nat(0))((n, x) => if (x._1) n.setBit(x._2) else n)
 }
-
-private final object AsValueNatCached {
-  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
-    case x: ValueNat => Some(x)
-    case _ => TODO()
-  })
-
-  def unapply(x: Value): Option[ValueNat] = unapply_v.apply(x)
-}
