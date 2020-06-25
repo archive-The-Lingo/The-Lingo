@@ -150,6 +150,20 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => None
         }, Symbols.CoreExceptions.TypeMismatch_Exception, v, idx, idy, exp)
 
+      case (Symbols.Builtins.IsSymbol, x :: Nil) => evalIs(
+        _ match {
+          case _: Sym => true
+          case _ => false
+        }, x)
+      case (Symbols.Builtins.SymbolToString, x :: Nil) => x.eval(context, stack) match {
+        case AsCoreWHNF(Sym(x)) => ValueString(x.toString())
+        case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Symbol, context, this)
+      }
+      case (Symbols.Builtins.StringToSymbol, x :: Nil) => x.eval(context, stack) match {
+        case AsValueStringCached(x) => Sym(x.x)
+        case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_String, context, this)
+      }
+
       case (Symbols.Builtins.Rec, RemoveComment(Id(id)) :: exp :: Nil) => {
         lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
         result
@@ -162,6 +176,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         case AsBooleanListCached(xs) => ValueNat(NatUtils.booleanList2nat(xs))
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Binary, context, this)
       }
+      case (Symbols.Builtins.IsNull, x :: Nil) => evalIs(
+        _ match {
+          case _: Null => true
+          case _ => false
+        }, x)
 
       // TODO
       case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
@@ -184,13 +203,14 @@ private object ListHelpers {
 }
 
 private final object AsBooleanListCached {
+
   import ListHelpers._
 
   private final object AsValueBooleanCachedForList {
     def unapply(xs: List[Value]): Option[List[ValueBoolean]] = xs.flatMapOption(AsValueBooleanCached.unapply(_))
   }
 
-  def unapply(xs:Value): Option[List[Boolean]] = xs match {
+  def unapply(xs: Value): Option[List[Boolean]] = xs match {
     case ListUtils.ConsList(AsValueBooleanCachedForList(xs)) => Some(xs.map(_.x))
     case _ => None
   }

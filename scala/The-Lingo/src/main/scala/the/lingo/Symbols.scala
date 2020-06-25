@@ -21,8 +21,8 @@ final object Symbols {
   val Positioned: Sym = Sym("具座標")
 
   final object Builtins {
-    val NatZero: Sym = Sym("自然數/零")
-    val NatSucc: Sym = Sym("自然數/增一")
+    //val NatZero: Sym = Sym("自然數/零")
+    //val NatSucc: Sym = Sym("自然數/增一")
     val IsPair: Sym = Sym("序列/連結？")
     val ConsPair: Sym = Sym("構造-序列/連結")
     val ElimPair: Sym = Sym("解構-序列/連結")
@@ -63,6 +63,8 @@ final object Symbols {
     val TypeMismatch_Exception: Sym = Sym("型別不匹配/異常")
     val TypeMismatch_Nat: Sym = Sym("型別不匹配/自然數")
     val TypeMismatch_Binary: Sym = Sym("型別不匹配/二進位")
+    val TypeMismatch_Symbol: Sym = Sym("型別不匹配/符號")
+    val TypeMismatch_String: Sym = Sym("型別不匹配/字串")
   }
 
 }
