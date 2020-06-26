@@ -11,7 +11,13 @@ import Value.Implicits._
 final class Tests extends AnyFunSpec {
   describe("equals") {
     it("booleans") {
-      assert(Tagged(Sym("陽"), Null()).equal_reduce_rec(ValueBoolean.True))
+      assert(Tagged(Symbols.Tags.True, Null()).equal_reduce_rec(ValueBoolean.True))
+      assert(!Tagged(Symbols.Tags.False, Null()).equal_reduce_rec(ValueBoolean.True))
+    }
+  }
+  describe("parser") {
+    it("list") {
+      assert(LangParser("file").parseValueAsOption(" (    x   y  )").get.equal_reduce_rec(ValueList(List(Sym("x"), Sym("y")))))
     }
   }
 }

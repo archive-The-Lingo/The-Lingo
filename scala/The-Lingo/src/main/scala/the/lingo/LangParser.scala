@@ -11,9 +11,17 @@ import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.Positional
 
 final case class LangParser(file: String) extends RegexParsers {
+  override def skipWhitespace = false
+
   private def space_regex: Parser[String] = whiteSpace
 
-  private def sym_regex = """(\w|[-？?/])+""".r
+  private def skipSpace: Parser[String] = space_regex | ""
+
+  private def skipSpace[A](x: Parser[A]): Parser[A] = skipSpace ~ x ^^ {
+    case _ ~ x => x
+  }
+
+  private def sym_regex: Parser[String] = """(\w|[-？?/])+""".r
 
   private def sym: Parser[Sym] =
     sym_regex ^^ {
@@ -21,13 +29,13 @@ final case class LangParser(file: String) extends RegexParsers {
     }
 
   private def list: Parser[Value] =
-    "(" ~> repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ ")" ^^ {
+    "(" ~> repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ skipSpace(")") ^^ {
       case xs ~ Some(tail) => ListUtils.ConsList(xs, tail)
       case xs ~ None => ListUtils.ConsList(xs)
     }
 
   private def tagged: Parser[Value] =
-    "&(" ~> value ~ space_regex ~ repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ ")" ^^ {
+    "&(" ~> value ~ space_regex ~ repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ skipSpace(")") ^^ {
       case x ~ sp ~ xs ~ Some(tail) => Tagged(x, ListUtils.ConsList(xs, tail))
       case x ~ sp ~ xs ~ None => Tagged(x, ListUtils.ConsList(xs))
     }
@@ -38,12 +46,12 @@ final case class LangParser(file: String) extends RegexParsers {
     }
 
   private def applyFunc: Parser[Exp] =
-    "[" ~> exp ~ rep(space_regex ~> exp) <~ "]" ^^ {
+    "[" ~> exp ~ rep(space_regex ~> exp) <~ skipSpace("]") ^^ {
       case f ~ xs => ApplyFunc(f, xs)
     }
 
   private def applyMacro: Parser[Exp] =
-    "{" ~> exp ~ rep(space_regex ~> exp) <~ "}" ^^ {
+    "{" ~> exp ~ rep(space_regex ~> exp) <~ skipSpace("}") ^^ {
       case f ~ xs => ApplyMacro(f, xs)
     }
 
@@ -53,21 +61,31 @@ final case class LangParser(file: String) extends RegexParsers {
     }
 
   private def comment: Parser[Exp] =
-    "#(" ~> exp ~ space_regex ~ exp <~ ")" ^^ {
+    "#(" ~> exp ~ space_regex ~ exp <~ skipSpace(")") ^^ {
       case cmt ~ sp ~ x => Comment(cmt, x)
     }
 
   private def builtin: Parser[Exp] =
-    "!(" ~> sym ~ rep(space_regex ~> exp) <~ ")" ^^ {
+    "!(" ~> sym ~ rep(space_regex ~> exp) <~ skipSpace(")") ^^ {
       case f ~ xs => Builtin(f, xs)
     }
 
-  def exp: Parser[Exp] = posed(id | applyFunc | applyMacro | quote)
+  private def exp: Parser[Exp] = skipSpace(posed(id | applyFunc | applyMacro | quote))
 
-  def value: Parser[Value] = sym ^^ {
+  def parseExpAsOption(x: String): Option[Exp] = parseAll(exp, x) match {
+    case Success(result, _) => Some(result)
+    case _: NoSuccess => None
+  }
+
+  def value: Parser[Value] = skipSpace(sym ^^ {
     Value(_)
   } | list | tagged | exp ^^ {
     Value(_)
+  })
+
+  def parseValueAsOption(x: String): Option[Value] = parseAll(value, x) match {
+    case Success(result, _) => Some(result)
+    case _: NoSuccess => None
   }
 
   private def pos: Parser[Positional] = positioned(success(new Positional {}))
