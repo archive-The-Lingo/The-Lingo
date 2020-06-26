@@ -27,6 +27,7 @@ final case class LangParser(file: String) extends RegexParsers {
 
   //private def skipBeginAndEndSpace[A](x: Parser[A]): Parser[A] = skipSpace(skipEndSpace(x))
 
+  // same as SimpleCoreNormalFormPrinter's
   private val sym_regex: Parser[String] = """(\w|[-？?/])+""".r
 
   private def sym: Parser[Sym] =
@@ -44,6 +45,12 @@ final case class LangParser(file: String) extends RegexParsers {
     "&(" ~> value ~ space_regex ~ repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ skipSpace(")") ^^ {
       case x ~ sp ~ xs ~ Some(tail) => Tagged(x, ListUtils.ConsList(xs, tail))
       case x ~ sp ~ xs ~ None => Tagged(x, ListUtils.ConsList(xs))
+    }
+
+  private def exception: Parser[Value] =
+    "^(" ~> value ~ space_regex ~ repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ skipSpace(")") ^^ {
+      case x ~ sp ~ xs ~ Some(tail) => ValueException(x, ListUtils.ConsList(xs, tail))
+      case x ~ sp ~ xs ~ None => ValueException(x, ListUtils.ConsList(xs))
     }
 
   private def id: Parser[Exp] =
@@ -97,7 +104,7 @@ final case class LangParser(file: String) extends RegexParsers {
 
   private val value: Parser[Value] = skipSpace(sym ^^ {
     Value(_)
-  } | list | tagged | exp ^^ {
+  } | list | tagged | exception | exp ^^ {
     Value(_)
   })
 
