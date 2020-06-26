@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.Value.Implicits._
+
 final case class ValueString(x: String) extends WHNF {
   override def toCore() = Tagged(Symbols.Tags.String, ListUtils.list(ValueList(x.toList.map(ValueChar.apply))))
 }

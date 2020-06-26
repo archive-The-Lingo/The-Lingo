@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.Value.Implicits._
+
 final object Exp {
   private[lingo] def consExp(tag: Value, xs: List[Value]): CoreWHNF =
     Tagged(Symbols.Exp, ListUtils.list(tag, ListUtils.ConsList(xs)))

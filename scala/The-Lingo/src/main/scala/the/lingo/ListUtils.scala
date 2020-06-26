@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.Value.Implicits._
+
 private final object ListUtils {
 
   final object ConsList {

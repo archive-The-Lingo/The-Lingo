@@ -26,6 +26,12 @@ final case class Null() extends CoreWHNF {
   }
 }
 
+final object Null {
+  private val NullInstance: Null = new Null()
+
+  def apply(): Null = NullInstance
+}
+
 final case class Sym(x: Symbol) extends CoreWHNF {
   private[lingo] override def equal_core(y: CoreWHNF) = y match {
     case Sym(y) => x == y

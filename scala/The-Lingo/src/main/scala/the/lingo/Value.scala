@@ -7,14 +7,17 @@ package the.lingo
 
 import scala.collection.mutable
 
-private final object Value {
-  implicit def implicitPackWHNF[A <: WHNF](x: A): Value = Value(x)
+final object Value {
 
-  implicit def implicitPackWHNFList[A <: WHNF](xs: List[A]): List[Value] = xs.map {
-    Value(_)
+  final object Implicits {
+    implicit def implicitPackWHNF[A <: WHNF](x: A): Value = Value(x)
+
+    implicit def implicitPackWHNFList[A <: WHNF](xs: List[A]): List[Value] = xs.map {
+      Value(_)
+    }
   }
 
-  def cached_option_as[A <: WHNF](f: WHNF => Option[A]): Value => Option[A] =
+  private[lingo] def cached_option_as[A <: WHNF](f: WHNF => Option[A]): Value => Option[A] =
     (x: Value) => {
       val ptr = x.unpack_rec_to_single_pack()
       val result = f(ptr.reduce_rec())
@@ -29,6 +32,9 @@ private final object Value {
 }
 
 final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
+
+  import Value.Implicits._
+
   // writing requires synchronized. reading doesn't
   private def notsynced_unsafe_write(v: MayNotWHNF) = {
     x = v
@@ -203,6 +209,9 @@ private[lingo] final object AsWHNF {
 }
 
 trait WHNF extends MayNotWHNF {
+
+  import Value.Implicits._
+
   final override def reduce_rec(): WHNF = this
 
   final override def readback() = Quote(this)

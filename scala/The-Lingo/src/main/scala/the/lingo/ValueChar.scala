@@ -5,6 +5,7 @@
 */
 package the.lingo
 
+import the.lingo.Value.Implicits._
 import the.lingo.utils.Nat
 
 final case class ValueChar(x: Char) extends WHNF {

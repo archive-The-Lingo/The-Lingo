@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.Value.Implicits._
+
 final case class ValueList(xs: List[Value]) extends WHNF {
   override def toCore() = xs match {
     case head :: tail => Pair(head, ValueList(tail))

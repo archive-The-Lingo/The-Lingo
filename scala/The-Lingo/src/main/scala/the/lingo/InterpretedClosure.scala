@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.Value.Implicits._
+
 final case class InterpretedClosure(args: List[Value], vararg: Option[Value], context: Mapping, exp: Value) extends FeaturedWHNF_app {
   override def toCore() = Tagged(
     Symbols.Tags.Func,

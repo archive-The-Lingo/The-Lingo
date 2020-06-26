@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.Value.Implicits._
+
 final case class ValueBoolean(x: Boolean) extends WHNF {
   override def toCore() = if (x) {
     Tagged(Symbols.Tags.True, Null())

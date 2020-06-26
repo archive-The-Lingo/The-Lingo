@@ -5,6 +5,7 @@
 */
 package the.lingo
 
+import the.lingo.Value.Implicits._
 import the.lingo.utils.Nat
 
 import scala.util.parsing.input.Position

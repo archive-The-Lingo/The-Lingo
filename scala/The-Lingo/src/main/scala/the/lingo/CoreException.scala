@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.Value.Implicits._
+
 final case class CoreException(stack: DebugStack, kind: Sym, context: Mapping, exp: Exp) extends WHNF {
   override def toCore() = ValueException(Symbols.Core, ListUtils.list(kind, context, exp, stack))
 }
