@@ -13,15 +13,21 @@ import scala.util.parsing.input.Positional
 final case class LangParser(file: String) extends RegexParsers {
   override def skipWhitespace = false
 
-  private def space_regex: Parser[String] = whiteSpace
+  private val space_regex: Parser[String] = whiteSpace
 
-  private def skipSpace: Parser[String] = space_regex | ""
+  private val skipSpace: Parser[String] = space_regex | ""
 
   private def skipSpace[A](x: Parser[A]): Parser[A] = skipSpace ~ x ^^ {
     case _ ~ x => x
   }
 
-  private def sym_regex: Parser[String] = """(\w|[-？?/])+""".r
+  private def skipEndSpace[A](x: Parser[A]): Parser[A] = x ~ skipSpace ^^ {
+    case x ~ _ => x
+  }
+
+  //private def skipBeginAndEndSpace[A](x: Parser[A]): Parser[A] = skipSpace(skipEndSpace(x))
+
+  private val sym_regex: Parser[String] = """(\w|[-？?/])+""".r
 
   private def sym: Parser[Sym] =
     sym_regex ^^ {
@@ -70,22 +76,46 @@ final case class LangParser(file: String) extends RegexParsers {
       case f ~ xs => Builtin(f, xs)
     }
 
-  private def exp: Parser[Exp] = skipSpace(posed(id | applyFunc | applyMacro | quote))
+  private val exp: Parser[Exp] = skipSpace(posed(id | applyFunc | applyMacro | quote | comment | builtin))
 
-  def parseExpAsOption(x: String): Option[Exp] = parseAll(exp, x) match {
+  private val topExp = skipEndSpace(exp)
+
+  def parseExpAsOption(x: String): Option[Exp] = parseAll(topExp, x) match {
     case Success(result, _) => Some(result)
     case _: NoSuccess => None
   }
 
-  def value: Parser[Value] = skipSpace(sym ^^ {
+  def parseExpAsEither(x: String): Either[NoSuccess, Exp] = parseAll(topExp, x) match {
+    case Success(result, _) => Right(result)
+    case x: NoSuccess => Left(x)
+  }
+
+  def parseExp(x: String): Exp = parseAll(topExp, x) match {
+    case Success(result, _) => result
+    case x: NoSuccess => throw new RuntimeException(x.msg)
+  }
+
+  private val value: Parser[Value] = skipSpace(sym ^^ {
     Value(_)
   } | list | tagged | exp ^^ {
     Value(_)
   })
 
-  def parseValueAsOption(x: String): Option[Value] = parseAll(value, x) match {
+  private val topValue = skipEndSpace(value)
+
+  def parseValueAsOption(x: String): Option[Value] = parseAll(topValue, x) match {
     case Success(result, _) => Some(result)
     case _: NoSuccess => None
+  }
+
+  def parseValueAsEither(x: String): Either[NoSuccess, Value] = parseAll(topValue, x) match {
+    case Success(result, _) => Right(result)
+    case x: NoSuccess => Left(x)
+  }
+
+  def parseValue(x: String): Value = parseAll(topValue, x) match {
+    case Success(result, _) => result
+    case x: NoSuccess => throw new RuntimeException(x.msg)
   }
 
   private def pos: Parser[Positional] = positioned(success(new Positional {}))

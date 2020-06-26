@@ -17,7 +17,12 @@ final class Tests extends AnyFunSpec {
   }
   describe("parser") {
     it("list") {
-      assert(LangParser("file").parseValueAsOption(" (    x   y  )").get.equal_reduce_rec(ValueList(List(Sym("x"), Sym("y")))))
+      assert(LangParser("file").parseValue(" (    x   y  )")
+        .equal_reduce_rec(ValueList(List(Sym("x"), Sym("y")))))
+      assert(LangParser("file").parseValue("(x y . z)")
+        .equal_reduce_rec(ListUtils.ConsListMaybeWithTail(List(Sym("x"), Sym("y")), Sym("z"))))
+      assert(LangParser("file").parseValue(" (    x   y z a   b  . c )   ")
+        .equal_reduce_rec(LangParser("file").parseValue("(x y z a b . c)")))
     }
   }
 }
