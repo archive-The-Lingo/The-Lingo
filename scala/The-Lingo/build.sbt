@@ -9,4 +9,6 @@ libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % 
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.0"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.0" % "test"
 
+libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.1" % "test"
+
 scalacOptions := Seq("-language:implicitConversions", "-unchecked", "-deprecation", "-feature")

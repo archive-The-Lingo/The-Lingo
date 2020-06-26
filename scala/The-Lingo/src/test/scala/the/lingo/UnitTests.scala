@@ -8,7 +8,7 @@ package the.lingo
 import org.scalatest.funspec.AnyFunSpec
 import Value.Implicits._
 
-final class Tests extends AnyFunSpec {
+final class UnitTests extends AnyFunSpec {
   describe("equals") {
     it("booleans") {
       assert(Tagged(Symbols.Tags.True, Null()).equal_reduce_rec(ValueBoolean.True))
