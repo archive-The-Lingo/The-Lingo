@@ -127,6 +127,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     throw new Exception()
   }
 
+  /** opaqueFlag only make sense when the result is true  */
   def equal_reduce_rec(arg: Value, opaqueFlag: OnewayWriteFlag = new OnewayWriteFlag): Boolean = {
     // TODO: cache
     val (self, x) = (this.unpack_rec(), arg.unpack_rec())
@@ -138,6 +139,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
       return true
     }
 
+    opaqueFlag.or(v0.isInstanceOf[OpaqueWHNF] || v1.isInstanceOf[OpaqueWHNF])
     v0 match {
       case v0: FeaturedWHNF_equal =>
         v0.feature_equal(v1, opaqueFlag) match {
@@ -154,12 +156,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
         }
       case _ => {}
     }
-    if (v0.toCore().equal_core(v1.toCore(), opaqueFlag)) {
-      opaqueFlag.or(v0.isInstanceOf[OpaqueWHNF] || v1.isInstanceOf[OpaqueWHNF])
-      true
-    } else {
-      false
-    }
+    v0.toCore().equal_core(v1.toCore(), opaqueFlag)
   }
 
   def eval(context: Mapping, stack: DebugStack): Value = Delay({
