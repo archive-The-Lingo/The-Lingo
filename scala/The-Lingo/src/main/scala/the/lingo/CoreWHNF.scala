@@ -5,12 +5,12 @@
 */
 package the.lingo
 
-import the.lingo.utils.Nat
+import the.lingo.utils.{Nat, OnewayWriteFlag}
 
 sealed trait CoreWHNF extends WHNF {
   final override def toCore() = this
 
-  private[lingo] def equal_core(x: CoreWHNF): Boolean
+  private[lingo] def equal_core(x: CoreWHNF, opaqueFlag: OnewayWriteFlag): Boolean
 }
 
 private[lingo] final object AsCoreWHNF {
@@ -20,7 +20,7 @@ private[lingo] final object AsCoreWHNF {
 }
 
 final case class Null() extends CoreWHNF {
-  private[lingo] override def equal_core(x: CoreWHNF) = x match {
+  private[lingo] override def equal_core(x: CoreWHNF, opaqueFlag: OnewayWriteFlag) = x match {
     case Null() => true
     case _ => false
   }
@@ -33,7 +33,7 @@ final object Null {
 }
 
 final case class Sym(x: Symbol) extends CoreWHNF {
-  private[lingo] override def equal_core(y: CoreWHNF) = y match {
+  private[lingo] override def equal_core(y: CoreWHNF, opaqueFlag: OnewayWriteFlag) = y match {
     case Sym(y) => x == y
     case _ => false
   }
@@ -58,28 +58,28 @@ final object Sym {
 }
 
 final case class Pair(x: Value, y: Value) extends CoreWHNF {
-  private[lingo] override def equal_core(ab: CoreWHNF) = ab match {
-    case Pair(a, b) => a.equal_reduce_rec(x) && b.equal_reduce_rec(y)
+  private[lingo] override def equal_core(ab: CoreWHNF, opaqueFlag: OnewayWriteFlag) = ab match {
+    case Pair(a, b) => a.equal_reduce_rec(x, opaqueFlag) && b.equal_reduce_rec(y, opaqueFlag)
     case _ => false
   }
 }
 
 final case class Tagged(tag: Value, xs: Value) extends CoreWHNF {
-  private[lingo] override def equal_core(ab: CoreWHNF) = ab match {
-    case Tagged(a, b) => a.equal_reduce_rec(tag) && b.equal_reduce_rec(xs)
+  private[lingo] override def equal_core(ab: CoreWHNF, opaqueFlag: OnewayWriteFlag) = ab match {
+    case Tagged(a, b) => a.equal_reduce_rec(tag, opaqueFlag) && b.equal_reduce_rec(xs, opaqueFlag)
     case _ => false
   }
 }
 
 final case class ValueException(tag: Value, xs: Value) extends CoreWHNF {
-  private[lingo] override def equal_core(ab: CoreWHNF) = ab match {
-    case ValueException(a, b) => a.equal_reduce_rec(tag) && b.equal_reduce_rec(xs)
+  private[lingo] override def equal_core(ab: CoreWHNF, opaqueFlag: OnewayWriteFlag) = ab match {
+    case ValueException(a, b) => a.equal_reduce_rec(tag, opaqueFlag) && b.equal_reduce_rec(xs, opaqueFlag)
     case _ => false
   }
 }
 
 final case class ValueNat(x: Nat) extends CoreWHNF {
-  private[lingo] override def equal_core(y: CoreWHNF) = y match {
+  private[lingo] override def equal_core(y: CoreWHNF, opaqueFlag: OnewayWriteFlag) = y match {
     case ValueNat(y) => x == y
     case _ => false
   }

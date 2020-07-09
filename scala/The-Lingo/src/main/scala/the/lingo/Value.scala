@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import the.lingo.utils.OnewayWriteFlag
+
 import scala.collection.mutable
 
 final object Value {
@@ -125,7 +127,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     throw new Exception()
   }
 
-  def equal_reduce_rec(arg: Value): Boolean = {
+  def equal_reduce_rec(arg: Value, opaqueFlag: OnewayWriteFlag = new OnewayWriteFlag): Boolean = {
     // TODO: cache
     val (self, x) = (this.unpack_rec(), arg.unpack_rec())
     if (self eq x) {
@@ -138,7 +140,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
 
     v0 match {
       case v0: FeaturedWHNF_equal =>
-        v0.feature_equal(v1) match {
+        v0.feature_equal(v1, opaqueFlag) match {
           case Some(result) => return result
           case None => {}
         }
@@ -146,13 +148,18 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     }
     v1 match {
       case v1: FeaturedWHNF_equal =>
-        v1.feature_equal(v0) match {
+        v1.feature_equal(v0, opaqueFlag) match {
           case Some(result) => return result
           case None => {}
         }
       case _ => {}
     }
-    v0.toCore().equal_core(v1.toCore())
+    if (v0.toCore().equal_core(v1.toCore(), opaqueFlag)) {
+      opaqueFlag.or(v0.isInstanceOf[OpaqueWHNF] || v1.isInstanceOf[OpaqueWHNF])
+      true
+    } else {
+      false
+    }
   }
 
   def eval(context: Mapping, stack: DebugStack): Value = Delay({
@@ -220,7 +227,7 @@ trait WHNF extends MayNotWHNF {
 }
 
 trait FeaturedWHNF_equal extends WHNF {
-  def feature_equal(x: Value): Option[Boolean] = None
+  def feature_equal(x: Value, opaqueFlag: OnewayWriteFlag): Option[Boolean] = None
 }
 
 trait FeaturedWHN_eval extends WHNF {
