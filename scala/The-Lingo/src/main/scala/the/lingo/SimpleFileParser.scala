@@ -12,7 +12,7 @@ import scala.io.Source
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.Positional
 
-final case class LangParser(file: String) extends RegexParsers {
+final case class SimpleFileParser(file: String) extends RegexParsers {
   override def skipWhitespace = false
 
   private val space_regex: Parser[String] = whiteSpace
@@ -30,7 +30,7 @@ final case class LangParser(file: String) extends RegexParsers {
   //private def skipBeginAndEndSpace[A](x: Parser[A]): Parser[A] = skipSpace(skipEndSpace(x))
 
   private def includeValue: Parser[Value] = "~|" ~> """[^|]""".r <~ "|" ^^ {
-    case x => LangParser(x).parseValue(Source.fromFile(x).toString()) // TODO: fix Exception
+    case x => SimpleFileParser(x).parseValue(Source.fromFile(x).toString()) // TODO: fix Exception
   }
 
   private def nat: Parser[Value] =

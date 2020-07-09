@@ -17,12 +17,12 @@ final class UnitTests extends AnyFunSpec {
   }
   describe("parser") {
     it("list") {
-      assert(LangParser("file").parseValue(" (    x   y  )")
+      assert(SimpleFileParser("file").parseValue(" (    x   y  )")
         .equal_reduce_rec(ValueList(List(Sym("x"), Sym("y")))))
-      assert(LangParser("file").parseValue("(x y . z)")
+      assert(SimpleFileParser("file").parseValue("(x y . z)")
         .equal_reduce_rec(ListUtils.ConsListMaybeWithTail(List(Sym("x"), Sym("y")), Sym("z"))))
-      assert(LangParser("file").parseValue(" (    x   y z a   b  . c )   ")
-        .equal_reduce_rec(LangParser("file").parseValue("(x y z a b . c)")))
+      assert(SimpleFileParser("file").parseValue(" (    x   y z a   b  . c )   ")
+        .equal_reduce_rec(SimpleFileParser("file").parseValue("(x y z a b . c)")))
     }
   }
 }
