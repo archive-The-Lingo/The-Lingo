@@ -24,7 +24,7 @@ final object SimpleCoreNormalFormPrinter {
       }
       case Tagged(x, xs) => "&" + apply(Pair(x, xs))
       case ValueException(x, xs) => "^" + apply(Pair(x, xs))
-      case ValueNat(x) => TODO()
+      case ValueNat(x) => x.toString()
     }
   }
 }

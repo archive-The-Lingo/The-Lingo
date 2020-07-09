@@ -6,6 +6,7 @@
 package the.lingo
 
 import the.lingo.Value.Implicits._
+import the.lingo.utils.Nat
 
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.Positional
@@ -26,6 +27,11 @@ final case class LangParser(file: String) extends RegexParsers {
   }
 
   //private def skipBeginAndEndSpace[A](x: Parser[A]): Parser[A] = skipSpace(skipEndSpace(x))
+
+  private def nat: Parser[Value] =
+    """\d+""".r ^^ {
+      case x => ValueNat(Nat(x))
+    }
 
   // same as SimpleCoreNormalFormPrinter's
   private val sym_regex: Parser[String] = """(\w|[-？?/])+""".r
@@ -104,7 +110,7 @@ final case class LangParser(file: String) extends RegexParsers {
 
   private val value: Parser[Value] = skipSpace(sym ^^ {
     Value(_)
-  } | list | tagged | exception | exp ^^ {
+  } | list | tagged | exception | nat | exp ^^ {
     Value(_)
   })
 
