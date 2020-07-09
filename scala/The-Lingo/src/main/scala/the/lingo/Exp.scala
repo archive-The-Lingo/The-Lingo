@@ -180,7 +180,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
       }
       case (Symbols.Builtins.IsNull, x :: Nil) => evalIs(
         _ match {
-          case _: Null => true
+          case Null => true
           case _ => false
         }, x)
 

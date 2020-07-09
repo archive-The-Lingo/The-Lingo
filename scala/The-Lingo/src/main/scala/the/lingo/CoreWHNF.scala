@@ -19,17 +19,11 @@ private[lingo] final object AsCoreWHNF {
   def unapply(x: MayNotWHNF): Option[CoreWHNF] = unapply(x.reduce_rec())
 }
 
-final case class Null() extends CoreWHNF {
+final case object Null extends CoreWHNF {
   private[lingo] override def equal_core(x: CoreWHNF, opaqueFlag: OnewayWriteFlag) = x match {
-    case Null() => true
+    case Null => true
     case _ => false
   }
-}
-
-final object Null {
-  private val NullInstance: Null = new Null()
-
-  def apply(): Null = NullInstance
 }
 
 final case class Sym(x: Symbol) extends CoreWHNF {

@@ -51,7 +51,7 @@ private final object AsInterpretedClosureCached {
         Some(InterpretedClosure(
           args,
           maybeTail match {
-            case AsCoreWHNF(Null()) => None
+            case AsCoreWHNF(Null) => None
             case x => Some(x)
           },
           Mapping.Empty,

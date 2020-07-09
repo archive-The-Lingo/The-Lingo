@@ -15,7 +15,7 @@ final object SimpleCoreNormalFormPrinter {
     case ListUtils.ConsList(xs) => s"(${xs.map(apply).mkString(" ")})"
     case ListUtils.ConsListMaybeWithTail(xs, tail) => s"(${xs.map(apply).mkString(" ")} . ${apply(tail)})"
     case _ => x.reduce_rec_toCore() match {
-      case Null() | Pair(_, _) => throw new IllegalStateException()
+      case Null | Pair(_, _) => throw new IllegalStateException()
       case Sym(x) => {
         val s = x.toString()
         assert(sym_regex.matches(s))

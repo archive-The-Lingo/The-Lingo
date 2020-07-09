@@ -11,8 +11,8 @@ import Value.Implicits._
 final class UnitTests extends AnyFunSpec {
   describe("equals") {
     it("booleans") {
-      assert(Tagged(Symbols.Tags.True, Null()).equal_reduce_rec(ValueBoolean.True))
-      assert(!Tagged(Symbols.Tags.False, Null()).equal_reduce_rec(ValueBoolean.True))
+      assert(Tagged(Symbols.Tags.True, Null).equal_reduce_rec(ValueBoolean.True))
+      assert(!Tagged(Symbols.Tags.False, Null).equal_reduce_rec(ValueBoolean.True))
     }
   }
   describe("parser") {

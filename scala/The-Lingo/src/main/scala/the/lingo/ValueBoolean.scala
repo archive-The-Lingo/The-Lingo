@@ -9,9 +9,9 @@ import the.lingo.Value.Implicits._
 
 final case class ValueBoolean(x: Boolean) extends WHNF {
   override def toCore() = if (x) {
-    Tagged(Symbols.Tags.True, Null())
+    Tagged(Symbols.Tags.True, Null)
   } else {
-    Tagged(Symbols.Tags.False, Null())
+    Tagged(Symbols.Tags.False, Null)
   }
 }
 
@@ -30,8 +30,8 @@ private final object AsValueBooleanCached {
   private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
     case x: ValueBoolean => Some(x)
     case _ => arg.toCore() match {
-      case Tagged(AsSym(Symbols.Tags.True), AsCoreWHNF(Null())) => Some(ValueBoolean.True)
-      case Tagged(AsSym(Symbols.Tags.False), AsCoreWHNF(Null())) => Some(ValueBoolean.False)
+      case Tagged(AsSym(Symbols.Tags.True), AsCoreWHNF(Null)) => Some(ValueBoolean.True)
+      case Tagged(AsSym(Symbols.Tags.False), AsCoreWHNF(Null)) => Some(ValueBoolean.False)
       case _ => None
     }
   })

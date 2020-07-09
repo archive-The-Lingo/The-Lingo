@@ -10,7 +10,7 @@ import the.lingo.Value.Implicits._
 final case class ValueList(xs: List[Value]) extends WHNF {
   override def toCore() = xs match {
     case head :: tail => Pair(head, ValueList(tail))
-    case Nil => Null()
+    case Nil => Null
   }
 }
 
@@ -19,7 +19,7 @@ private final object AsListValueCached {
     case x: ValueList => Some(x)
     case _ => arg.toCore() match {
       case Pair(head, AsListValueCached(tail)) => Some(ValueList(head :: tail.xs))
-      case Null() => Some(ValueList(Nil))
+      case Null => Some(ValueList(Nil))
       case _ => None
     }
   })
