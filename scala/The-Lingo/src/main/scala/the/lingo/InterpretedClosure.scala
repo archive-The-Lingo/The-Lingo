@@ -18,7 +18,7 @@ final case class InterpretedClosure(args: List[Value], vararg: Option[Value], co
       if (context.isEmpty) {
         exp
       } else {
-        Builtin(Symbols.Eval, List(Quote(context), Quote(exp)))
+        Builtin(Symbols.Builtins.Eval, List(Quote(context), Quote(exp)))
       }))
 
   override def feature_app(xs: List[Value], stack: DebugStack) = InterpretedClosure.match_args(args, vararg, context, xs) match {

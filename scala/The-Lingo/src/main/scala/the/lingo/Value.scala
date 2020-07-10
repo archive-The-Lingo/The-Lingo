@@ -163,10 +163,10 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     this match {
       case AsWHNF(x: FeaturedWHN_eval) => x.feature_eval(context, stack)
       case AsExpCached(x) => x.feature_eval(context, stack)
-      case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Exp, context, Builtin(Symbols.Eval, List(Quote(context), Quote(this))))
+      case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Exp, context, Builtin(Symbols.Builtins.Eval, List(Quote(context), Quote(this))))
     }
   }, {
-    Builtin(Symbols.Eval, List(Quote(context), Quote(this)))
+    Builtin(Symbols.Builtins.Eval, List(Quote(context), Quote(this)))
   })
 
   def eval_callByName(context0: => Mapping, stack0: => DebugStack): Value = Delay({
@@ -175,10 +175,10 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     this match {
       case AsWHNF(x: FeaturedWHN_eval) => x.feature_eval(context, stack)
       case AsExpCached(x) => x.feature_eval(context, stack)
-      case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Exp, context, Builtin(Symbols.Eval, List(Quote(context), Quote(this))))
+      case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Exp, context, Builtin(Symbols.Builtins.Eval, List(Quote(context), Quote(this))))
     }
   }, {
-    Builtin(Symbols.Eval, List(Quote(context0), Quote(this)))
+    Builtin(Symbols.Builtins.Eval, List(Quote(context0), Quote(this)))
   })
 
   def app(xs: List[Value], stack: DebugStack): Value = Delay({

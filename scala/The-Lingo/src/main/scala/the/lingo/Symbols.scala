@@ -15,7 +15,6 @@ final object Symbols {
   val ApplyMacro: Sym = Sym("用-構式子")
   val Comment: Sym = Sym("注釋")
   val Exception: Sym = Sym("異常")
-  val Eval: Sym = Sym("解算")
   val Builtin: Sym = Sym("內建")
   val Nat: Sym = Sym("自然數")
   val Positioned: Sym = Sym("具座標")
@@ -39,6 +38,7 @@ final object Symbols {
     val Rec: Sym = Sym("遞歸")
     val NatToBinary: Sym = Sym("自然數→二進位")
     val BinaryToNat: Sym = Sym("二進位→自然數")
+    val Eval: Sym = Sym("解算")
   }
 
   final object Tags {
