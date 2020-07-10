@@ -187,6 +187,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         case AsMappingCached(env) => exp.eval(env, stack)
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Mapping, context, this)
       }
+      case (Symbols.ApplyFunc, List(f, ListUtils.ConsList(xs))) => f.eval(context, stack).app(xs.map(_.eval(context, stack)), stack)
 
       // TODO
       case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
