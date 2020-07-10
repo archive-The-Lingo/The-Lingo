@@ -26,5 +26,27 @@ final case class Mapping private(private val xs: List[(Value, Value)]) extends W
 }
 
 final object Mapping {
-  val Empty = new Mapping(List())
+  val Empty = Mapping(Nil)
+}
+
+// Attention to immutability
+private final object AsMappingCached {
+
+  private final object AsTupleList {
+    def unapply(xs: List[Value]): Option[List[(Value, Value)]] = xs match {
+      case ListUtils.ConsList(List(a, b)) :: tail => unapply(tail).map(tail => (a, b) :: tail)
+      case Nil => Some(Nil)
+      case _ => None
+    }
+  }
+
+  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
+    case x: Mapping => Some(x)
+    case _ => arg.toCore() match {
+      case Tagged(AsSym(Symbols.Tags.Mapping), ListUtils.ConsList(AsTupleList(xs))) => Some(Mapping(xs))
+      case _ => None
+    }
+  })
+
+  def unapply(x: Value): Option[Mapping] = unapply_v.apply(x)
 }
