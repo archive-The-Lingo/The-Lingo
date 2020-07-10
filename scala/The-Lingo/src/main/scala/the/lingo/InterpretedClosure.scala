@@ -7,7 +7,7 @@ package the.lingo
 
 import the.lingo.Value.Implicits._
 
-final case class InterpretedClosure(args: List[Value], vararg: Option[Value], context: Mapping, exp: Value) extends FeaturedWHNF_app {
+final case class InterpretedClosure(args: List[Id], vararg: Option[Id], context: Mapping, exp: Value) extends FeaturedWHNF_app {
   override def toCore() = Tagged(
     Symbols.Func,
     ListUtils.list(
@@ -28,39 +28,49 @@ final case class InterpretedClosure(args: List[Value], vararg: Option[Value], co
 }
 
 private final object InterpretedClosure {
-  private[InterpretedClosure] def match_args(args: List[Value], vararg: Option[Value], context: Mapping, xs: List[Value]): Option[Mapping] = (args, vararg, xs) match {
-    case (Nil, Some(vararg), xs) => Some(context.updated(vararg, ValueList(xs)))
+  private[InterpretedClosure] def match_args(args: List[Id], vararg: Option[Id], context: Mapping, xs: List[Value]): Option[Mapping] = (args, vararg, xs) match {
+    case (Nil, Some(Id(vararg)), xs) => Some(context.updated(vararg, ValueList(xs)))
     case (Nil, None, Nil) => Some(context)
-    case (id :: args, vararg, x :: xs) => match_args(args, vararg, context.updated(id, x), xs)
+    case (Id(id) :: args, vararg, x :: xs) => match_args(args, vararg, context.updated(id, x), xs)
     case _ => None
   }
 }
 
 private final object AsInterpretedClosureCached {
 
-  private final object NotCached {
-    def unapply(x: WHNF): Option[InterpretedClosure] = x match {
-      case x: InterpretedClosure => Some(x)
-      case _ => unapplyCore(x.toCore())
-    }
+  private[lingo] final object AsIdList {
 
-    def unapplyCore(x: CoreWHNF): Option[InterpretedClosure] = x match {
+    import ListHelpers._
+
+    def unapply(xs: List[Value]): Option[List[Id]] = xs.flatMapOption(
+      _ match {
+        case RemoveComment(x: Id) => Some(x)
+        case _ => None
+      })
+  }
+
+  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
+    case x: InterpretedClosure => Some(x)
+    case _ => arg.toCore() match {
       case Tagged(
       AsSym(Symbols.Func),
-      ListUtils.ConsList(List(ListUtils.ConsListMaybeWithTail(args, maybeTail), exp))) =>
+      ListUtils.ConsList(List(ListUtils.ConsList(AsIdList(args)), exp))) =>
         Some(InterpretedClosure(
           args,
-          maybeTail match {
-            case AsCoreWHNF(Null) => None
-            case x => Some(x)
-          },
+          None,
+          Mapping.Empty,
+          exp))
+      case Tagged(
+      AsSym(Symbols.Func),
+      ListUtils.ConsList(List(ListUtils.ConsListMaybeWithTail(AsIdList(args), RemoveComment(tail: Id)), exp))) =>
+        Some(InterpretedClosure(
+          args,
+          Some(tail),
           Mapping.Empty,
           exp))
       case _ => None
     }
-  }
-
-  private val unapply_v = Value.cached_option_as(NotCached.unapply)
+  })
 
   def unapply(x: Value): Option[InterpretedClosure] = unapply_v.apply(x)
 }

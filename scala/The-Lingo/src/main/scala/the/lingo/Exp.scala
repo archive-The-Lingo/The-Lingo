@@ -203,11 +203,10 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_List, context, this)
       }
       case (Symbols.Func, List(args, exp)) => args match {
-        case ListUtils.ConsListMaybeWithTail(args, maybeTail) =>
-          InterpretedClosure(args, maybeTail match { // fix me: id
-            case AsCoreWHNF(Null) => None
-            case x => Some(x)
-          }, context, exp)
+        case ListUtils.ConsList(AsInterpretedClosureCached.AsIdList(args)) =>
+          InterpretedClosure(args, None, context, exp)
+        case ListUtils.ConsListMaybeWithTail(AsInterpretedClosureCached.AsIdList(args), RemoveComment(tail: Id)) =>
+          InterpretedClosure(args, Some(tail), context, exp)
         case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
       }
 

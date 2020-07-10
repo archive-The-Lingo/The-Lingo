@@ -33,11 +33,13 @@ final object Mapping {
 private final object AsMappingCached {
 
   private final object AsTupleList {
-    def unapply(xs: List[Value]): Option[List[(Value, Value)]] = xs match {
-      case ListUtils.ConsList(List(a, b)) :: tail => unapply(tail).map(tail => (a, b) :: tail)
-      case Nil => Some(Nil)
+
+    import ListHelpers._
+
+    def unapply(xs: List[Value]): Option[List[(Value, Value)]] = xs.flatMapOption(_ match {
+      case ListUtils.ConsList(List(a, b)) => Some((a, b))
       case _ => None
-    }
+    })
   }
 
   private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
