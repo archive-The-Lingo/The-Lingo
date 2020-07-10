@@ -116,73 +116,77 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
       }
 
     (f, xs) match {
-      case (Symbols.Builtins.IsPair, x :: Nil) => evalIs(
+      case (Symbols.Builtins.IsPair, List(x)) => evalIs(
         _ match {
           case _: Pair => true
           case _ => false
         }, x)
-      case (Symbols.Builtins.ConsPair, head :: tail :: Nil) => cons2(Pair, head, tail)
-      case (Symbols.Builtins.ElimPair, v :: RemoveComment(Id(idx)) :: RemoveComment(Id(idy)) :: exp :: Nil) =>
+      case (Symbols.Builtins.ConsPair, List(head, tail)) => cons2(Pair, head, tail)
+      case (Symbols.Builtins.ElimPair, List(v, RemoveComment(Id(idx)), RemoveComment(Id(idy)), exp)) =>
         elim2(_ match {
           case Pair(x, y) => Some(x, y)
           case _ => None
         }, Symbols.CoreExceptions.TypeMismatch_Pair, v, idx, idy, exp)
 
-      case (Symbols.Builtins.IsTagged, x :: Nil) => evalIs(
+      case (Symbols.Builtins.IsTagged, List(x)) => evalIs(
         _ match {
           case _: Tagged => true
           case _ => false
         }, x)
-      case (Symbols.Builtins.ConsTagged, tag :: xs :: Nil) => cons2(Tagged, tag, xs)
-      case (Symbols.Builtins.ElimTagged, v :: RemoveComment(Id(idx)) :: RemoveComment(Id(idy)) :: exp :: Nil) =>
+      case (Symbols.Builtins.ConsTagged, List(tag, xs)) => cons2(Tagged, tag, xs)
+      case (Symbols.Builtins.ElimTagged, List(v, RemoveComment(Id(idx)), RemoveComment(Id(idy)), exp)) =>
         elim2(_ match {
           case Tagged(x, y) => Some(x, y)
           case _ => None
         }, Symbols.CoreExceptions.TypeMismatch_Tagged, v, idx, idy, exp)
 
-      case (Symbols.Builtins.IsException, x :: Nil) => evalIs(
+      case (Symbols.Builtins.IsException, List(x)) => evalIs(
         _ match {
           case _: ValueException => true
           case _ => false
         }, x)
-      case (Symbols.Builtins.ConsException, tag :: xs :: Nil) => cons2(ValueException, tag, xs)
-      case (Symbols.Builtins.ElimException, v :: RemoveComment(Id(idx)) :: RemoveComment(Id(idy)) :: exp :: Nil) =>
+      case (Symbols.Builtins.ConsException, List(tag, xs)) => cons2(ValueException, tag, xs)
+      case (Symbols.Builtins.ElimException, List(v, RemoveComment(Id(idx)), RemoveComment(Id(idy)), exp)) =>
         elim2(_ match {
           case ValueException(x, y) => Some(x, y)
           case _ => None
         }, Symbols.CoreExceptions.TypeMismatch_Exception, v, idx, idy, exp)
 
-      case (Symbols.Builtins.IsSymbol, x :: Nil) => evalIs(
+      case (Symbols.Builtins.IsSymbol, List(x)) => evalIs(
         _ match {
           case _: Sym => true
           case _ => false
         }, x)
-      case (Symbols.Builtins.SymbolToString, x :: Nil) => x.eval(context, stack) match {
+      case (Symbols.Builtins.SymbolToString, List(x)) => x.eval(context, stack) match {
         case AsCoreWHNF(Sym(x)) => ValueString(x.toString())
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Symbol, context, this)
       }
-      case (Symbols.Builtins.StringToSymbol, x :: Nil) => x.eval(context, stack) match {
+      case (Symbols.Builtins.StringToSymbol, List(x)) => x.eval(context, stack) match {
         case AsValueStringCached(x) => Sym(x.x)
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_String, context, this)
       }
 
-      case (Symbols.Builtins.Rec, RemoveComment(Id(id)) :: exp :: Nil) => {
+      case (Symbols.Builtins.Rec, List(RemoveComment(Id(id)), exp)) => {
         lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
         result
       }
-      case (Symbols.Builtins.NatToBinary, x :: Nil) => x.eval(context, stack) match {
+      case (Symbols.Builtins.NatToBinary, List(x)) => x.eval(context, stack) match {
         case AsCoreWHNF(ValueNat(x)) => ValueList(NatUtils.nat2booleanList(x).map(ValueBoolean(_)))
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Nat, context, this)
       }
-      case (Symbols.Builtins.BinaryToNat, x :: Nil) => x.eval(context, stack) match {
+      case (Symbols.Builtins.BinaryToNat, List(x)) => x.eval(context, stack) match {
         case AsBooleanListCached(xs) => ValueNat(NatUtils.booleanList2nat(xs))
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Binary, context, this)
       }
-      case (Symbols.Builtins.IsNull, x :: Nil) => evalIs(
+      case (Symbols.Builtins.IsNull, List(x)) => evalIs(
         _ match {
           case Null => true
           case _ => false
         }, x)
+      case (Symbols.Builtins.Eval, List(env, exp)) => env.eval(context, stack) match {
+        case AsMappingCached(env) => exp.eval(env, stack)
+        case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Mapping, context, this)
+      }
 
       // TODO
       case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)

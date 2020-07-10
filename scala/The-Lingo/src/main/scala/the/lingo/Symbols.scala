@@ -65,6 +65,7 @@ final object Symbols {
     val TypeMismatch_Binary: Sym = Sym("型別不匹配/二進位")
     val TypeMismatch_Symbol: Sym = Sym("型別不匹配/符號")
     val TypeMismatch_String: Sym = Sym("型別不匹配/字串")
+    val TypeMismatch_Mapping: Sym = Sym("型別不匹配/映射")
   }
 
 }
