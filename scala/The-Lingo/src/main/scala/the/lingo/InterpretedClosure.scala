@@ -9,7 +9,7 @@ import the.lingo.Value.Implicits._
 
 final case class InterpretedClosure(args: List[Value], vararg: Option[Value], context: Mapping, exp: Value) extends FeaturedWHNF_app {
   override def toCore() = Tagged(
-    Symbols.Tags.Func,
+    Symbols.Func,
     ListUtils.list(
       vararg match {
         case Some(vararg) => ListUtils.ConsList(args, vararg)
@@ -46,8 +46,8 @@ private final object AsInterpretedClosureCached {
 
     def unapplyCore(x: CoreWHNF): Option[InterpretedClosure] = x match {
       case Tagged(
-      AsSym(Symbols.Tags.Func),
-      ListUtils.ConsList(ListUtils.ConsListMaybeWithTail(args, maybeTail) :: exp :: Nil)) =>
+      AsSym(Symbols.Func),
+      ListUtils.ConsList(List(ListUtils.ConsListMaybeWithTail(args, maybeTail), exp))) =>
         Some(InterpretedClosure(
           args,
           maybeTail match {

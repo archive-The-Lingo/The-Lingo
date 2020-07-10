@@ -18,6 +18,7 @@ final object Symbols {
   val Builtin: Sym = Sym("內建")
   val Nat: Sym = Sym("自然數")
   val Positioned: Sym = Sym("具座標")
+  val Func: Sym = Sym("函式")
 
   final object Builtins {
     //val NatZero: Sym = Sym("自然數/零")
@@ -49,7 +50,6 @@ final object Symbols {
     val Char: Sym = Sym("字符")
     val String: Sym = Sym("字串")
     val Mapping: Sym = Sym("映射")
-    val Func: Sym = Sym("函式")
   }
 
   final object CoreExceptions {
@@ -66,6 +66,7 @@ final object Symbols {
     val TypeMismatch_Symbol: Sym = Sym("型別不匹配/符號")
     val TypeMismatch_String: Sym = Sym("型別不匹配/字串")
     val TypeMismatch_Mapping: Sym = Sym("型別不匹配/映射")
+    val TypeMismatch_List: Sym = Sym("型別不匹配/序列")
   }
 
 }

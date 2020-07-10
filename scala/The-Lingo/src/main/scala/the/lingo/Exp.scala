@@ -198,9 +198,19 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         case AsMappingCached(env) => exp.eval(context, stack).eval(env, stack)
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Mapping, context, this)
       }
-      case (Symbols.ApplyFunc, List(f, ListUtils.ConsList(xs))) => f.eval(context, stack).app(xs.map(_.eval(context, stack)), stack)
+      case (Symbols.ApplyFunc, List(f, xs)) => xs.eval(context, stack) match {
+        case ListUtils.ConsList(xs) => f.eval(context, stack).app(xs, stack)
+        case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_List, context, this)
+      }
+      case (Symbols.Func, List(args, exp)) => args match {
+        case ListUtils.ConsListMaybeWithTail(args, maybeTail) =>
+          InterpretedClosure(args, maybeTail match { // fix me: id
+            case AsCoreWHNF(Null) => None
+            case x => Some(x)
+          }, context, exp)
+        case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
+      }
 
-      // TODO
       case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
     }
   }
