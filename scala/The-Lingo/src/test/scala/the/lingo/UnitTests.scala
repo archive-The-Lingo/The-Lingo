@@ -25,9 +25,22 @@ final class UnitTests extends AnyFunSpec {
         .equal_reduce_rec(SimpleFileParser("file").parseValue("(x y z a b . c)")))
     }
   }
-  describe("eval"){
-    it("is"){
-      assert(Builtin(Symbols.Builtins.IsNull, List(Quote(Null))).eval().equal_reduce_rec(ValueBoolean.True))
+  describe("eval") {
+    val xs = List(
+      (Builtin(Symbols.Builtins.IsNull, List(Quote(Null))), ValueBoolean.True),
+      (Builtin(Symbols.Builtins.IsNull, List(Quote(Quote(Null)))), ValueBoolean.False)
+    )
+    it("is") {
+      xs.foreach(x => {
+        assert(x._1.eval().equal_reduce_rec(x._2))
+      })
+    }
+    it("eval") {
+      xs.foreach(x => {
+        val e = Builtin(Symbols.Builtins.Eval, List(Quote(Mapping.Empty.toCore()), Quote(x._1)))
+        val result = e.eval()
+        assert(result.equal_reduce_rec(x._2))
+      })
     }
   }
 }

@@ -195,7 +195,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.Eval, List(env, exp)) => env.eval(context, stack) match {
-        case AsMappingCached(env) => exp.eval(env, stack)
+        case AsMappingCached(env) => exp.eval(context, stack).eval(env, stack)
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Mapping, context, this)
       }
       case (Symbols.ApplyFunc, List(f, ListUtils.ConsList(xs))) => f.eval(context, stack).app(xs.map(_.eval(context, stack)), stack)
