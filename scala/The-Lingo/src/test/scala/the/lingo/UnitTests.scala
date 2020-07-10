@@ -30,16 +30,24 @@ final class UnitTests extends AnyFunSpec {
       (Builtin(Symbols.Builtins.IsNull, List(Quote(Null))), ValueBoolean.True),
       (Builtin(Symbols.Builtins.IsNull, List(Quote(Quote(Null)))), ValueBoolean.False)
     )
-    it("is") {
+    it("1") {
       xs.foreach(x => {
         assert(x._1.eval().equal_reduce_rec(x._2))
       })
     }
-    it("eval") {
+    it("meta") {
       xs.foreach(x => {
-        val e = Builtin(Symbols.Builtins.Eval, List(Quote(Mapping.Empty.toCore()), Quote(x._1)))
-        val result = e.eval()
-        assert(result.equal_reduce_rec(x._2))
+        assert(Builtin(Symbols.Builtins.Eval, List(Quote(Mapping.Empty.toCore()), Quote(x._1))).eval().equal_reduce_rec(x._2))
+      })
+    }
+    it("meta2") {
+      xs.foreach(x => {
+        assert(Builtin(Symbols.Builtins.Eval, List(Quote(Mapping.Empty), Quote(x._1))).eval().equal_reduce_rec(x._2))
+      })
+    }
+    it("meta^2") {
+      xs.foreach(x => {
+        assert(Builtin(Symbols.Builtins.Eval, List(Quote(Mapping.Empty), Quote(Builtin(Symbols.Builtins.Eval, List(Quote(Mapping.Empty), Quote(x._1)))))).eval().equal_reduce_rec(x._2))
       })
     }
   }
