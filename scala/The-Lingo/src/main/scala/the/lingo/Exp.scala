@@ -85,10 +85,21 @@ final case class Positioned(pos: DebugStackPosition, x: Value) extends Exp {
 }
 
 final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
+  private lazy val fAsId = f match {
+    case RemoveComment(Id(x)) => Some(x)
+    case _ => None
+  }
+
   override def toCore() =
     Exp.consExp(Symbols.ApplyFunc, List(f, ListUtils.ConsList(xs)))
 
-  private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = f.eval(context, stack).app(xs.map((x: Value) => x.eval(context, stack)), stack)
+  private[lingo] override def real_eval(context: Mapping, rawStack: DebugStack) = {
+    val stack = fAsId match {
+      case Some(s) => rawStack.push(NamedPosition(s))
+      case None => rawStack
+    }
+    f.eval(context, stack).app(xs.map((x: Value) => x.eval(context, stack)), stack)
+  }
 }
 
 final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {

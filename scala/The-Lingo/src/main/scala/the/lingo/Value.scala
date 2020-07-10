@@ -159,7 +159,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     v0.toCore().equal_core(v1.toCore(), opaqueFlag)
   }
 
-  def eval(context: Mapping, stack: DebugStack): Value = Delay({
+  def eval(context: Mapping = Mapping.Empty, stack: DebugStack = DebugStack.Empty): Value = Delay({
     this match {
       case AsWHNF(x: FeaturedWHN_eval) => x.feature_eval(context, stack)
       case AsExpCached(x) => x.feature_eval(context, stack)
@@ -169,7 +169,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     Builtin(Symbols.Builtins.Eval, List(Quote(context), Quote(this)))
   })
 
-  def eval_callByName(context0: => Mapping, stack0: => DebugStack): Value = Delay({
+  def eval_callByName(context0: => Mapping = Mapping.Empty, stack0: => DebugStack = DebugStack.Empty): Value = Delay({
     lazy val context = context0
     lazy val stack = stack0
     this match {
@@ -181,7 +181,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
     Builtin(Symbols.Builtins.Eval, List(Quote(context0), Quote(this)))
   })
 
-  def app(xs: List[Value], stack: DebugStack): Value = Delay({
+  def app(xs: List[Value], stack: DebugStack = DebugStack.Empty): Value = Delay({
     this match {
       case AsWHNF(x: FeaturedWHNF_app) => x.feature_app(xs, stack)
       case AsInterpretedClosureCached(x) => x.feature_app(xs, stack)

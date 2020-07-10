@@ -16,6 +16,10 @@ final case class DebugStack(xs: List[DebugStackPosition]) extends WHNF {
   override def toCore() = Tagged(Symbols.Tags.UNIXFilePositionStack, ListUtils.list(ValueList(xs)))
 }
 
+final object DebugStack {
+  val Empty = DebugStack(Nil)
+}
+
 sealed trait DebugStackPosition extends WHNF
 
 final case class NamedPosition(name: Value) extends DebugStackPosition {
