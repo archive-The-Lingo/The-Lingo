@@ -25,4 +25,9 @@ final class UnitTests extends AnyFunSpec {
         .equal_reduce_rec(SimpleFileParser("file").parseValue("(x y z a b . c)")))
     }
   }
+  describe("eval"){
+    it("is"){
+      assert(Builtin(Symbols.Builtins.IsNull, List(Quote(Null))).eval().equal_reduce_rec(ValueBoolean.True))
+    }
+  }
 }

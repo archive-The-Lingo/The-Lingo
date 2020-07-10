@@ -229,7 +229,7 @@ private final object AsBooleanListCached {
   }
 
   def unapply(xs: Value): Option[List[Boolean]] = xs match {
-    case ListUtils.ConsList(AsValueBooleanCachedForList(xs)) => Some(xs.map(_.x))
+    case ListUtils.ConsList(AsValueBooleanCachedForList(xs)) => Some(xs.map(_.toBoolean))
     case _ => None
   }
 

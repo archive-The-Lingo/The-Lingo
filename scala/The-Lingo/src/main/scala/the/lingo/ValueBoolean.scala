@@ -7,17 +7,23 @@ package the.lingo
 
 import the.lingo.Value.Implicits._
 
-final case class ValueBoolean(x: Boolean) extends WHNF {
-  override def toCore() = if (x) {
-    Tagged(Symbols.Tags.True, Null)
-  } else {
-    Tagged(Symbols.Tags.False, Null)
-  }
+sealed trait ValueBoolean extends WHNF {
+  def toBoolean: Boolean
 }
 
 final object ValueBoolean {
-  val True = new ValueBoolean(true)
-  val False = new ValueBoolean(false)
+
+  final case object True extends ValueBoolean {
+    override def toCore() = Tagged(Symbols.Tags.True, Null)
+
+    override def toBoolean = true
+  }
+
+  final case object False extends ValueBoolean {
+    override def toCore() = Tagged(Symbols.Tags.False, Null)
+
+    override def toBoolean = false
+  }
 
   def apply(x: Boolean) = if (x) {
     True

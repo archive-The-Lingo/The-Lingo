@@ -72,14 +72,14 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
 
   override def reduce_rec() = {
     val ptr = this.unpack_rec_to_single_pack()
-    val result = ptr.reduce_rec()
+    val result = ptr.x.reduce_rec()
     ptr.smart_maybe_write(result)
     result
   }
 
   override def reduce() = {
     val ptr = this.unpack_rec_to_single_pack()
-    val result = ptr.reduce()
+    val result = ptr.x.reduce()
     assert(result.unpack_rec() ne ptr.unpack_rec()) // avoid loops. example: result = Value(ptr)
     ptr.smart_maybe_write(result)
     result
