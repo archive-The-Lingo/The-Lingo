@@ -43,8 +43,8 @@ final object Symbols {
   }
 
   final object Tags {
-    val UNIXFilePosition: Sym = Sym("UNIX文件座標")
-    val UNIXFilePositionStack: Sym = Sym("UNIX文件座標堆疊")
+    val UNIXFilePosition: Sym = Sym("座標/UNIX文件")
+    val NamedPosition: Sym = Sym("座標/識別子")
     val False: Sym = Sym("陰")
     val True: Sym = Sym("陽")
     val Char: Sym = Sym("字符")
