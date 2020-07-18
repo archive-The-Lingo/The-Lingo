@@ -12,7 +12,7 @@ final case class InterpretedClosure(args: List[Id], vararg: Option[Id], context:
     Symbols.Func,
     ListUtils.list(
       vararg match {
-        case Some(vararg) => ListUtils.ConsList(args, vararg)
+        case Some(vararg) => ListUtils.ConsListMaybeWithTail(args, vararg)
         case None => ListUtils.ConsList(args)
       },
       if (context.isEmpty) {

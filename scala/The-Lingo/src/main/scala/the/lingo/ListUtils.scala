@@ -10,18 +10,16 @@ import the.lingo.Value.Implicits._
 private final object ListUtils {
 
   final object ConsList {
-    def apply(xs: List[Value], tail: Value): Value = xs match {
-      case x :: xs => apply(xs, Pair(x, tail))
-      case Nil => tail
-    }
-
     def apply(xs: List[Value]): Value = ValueList(xs)
 
     def unapply(arg: Value): Option[List[Value]] = AsListValueCached.unapply(arg).map(_.xs)
   }
 
   final object ConsListMaybeWithTail {
-    def apply(xs: List[Value], tail: Value): Value = ConsList.apply(xs, tail)
+    def apply(xs: List[Value], tail: Value): Value = xs match {
+      case x :: xs => apply(xs, Pair(x, tail))
+      case Nil => tail
+    }
 
     def unapply(xs: Value): Option[(List[Value], Value)] = xs.reduce_rec_toCore() match {
       case Pair(head, tail) => unapply(tail).map({

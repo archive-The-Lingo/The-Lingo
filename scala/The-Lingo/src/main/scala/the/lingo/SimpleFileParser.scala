@@ -51,19 +51,19 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
 
   private def list: Parser[Value] =
     "(" ~> repsep(value, spaceRegex) ~ opt(spaceRegex ~ "." ~ spaceRegex ~> value) <~ skipSpace(")") ^^ {
-      case xs ~ Some(tail) => ListUtils.ConsList(xs, tail)
+      case xs ~ Some(tail) => ListUtils.ConsListMaybeWithTail(xs, tail)
       case xs ~ None => ListUtils.ConsList(xs)
     }
 
   private def tagged: Parser[Value] =
     "&(" ~> value ~ spaceRegex ~ repsep(value, spaceRegex) ~ opt(spaceRegex ~ "." ~ spaceRegex ~> value) <~ skipSpace(")") ^^ {
-      case x ~ sp ~ xs ~ Some(tail) => Tagged(x, ListUtils.ConsList(xs, tail))
+      case x ~ sp ~ xs ~ Some(tail) => Tagged(x, ListUtils.ConsListMaybeWithTail(xs, tail))
       case x ~ sp ~ xs ~ None => Tagged(x, ListUtils.ConsList(xs))
     }
 
   private def exception: Parser[Value] =
     "^(" ~> value ~ spaceRegex ~ repsep(value, spaceRegex) ~ opt(spaceRegex ~ "." ~ spaceRegex ~> value) <~ skipSpace(")") ^^ {
-      case x ~ sp ~ xs ~ Some(tail) => ValueException(x, ListUtils.ConsList(xs, tail))
+      case x ~ sp ~ xs ~ Some(tail) => ValueException(x, ListUtils.ConsListMaybeWithTail(xs, tail))
       case x ~ sp ~ xs ~ None => ValueException(x, ListUtils.ConsList(xs))
     }
 
