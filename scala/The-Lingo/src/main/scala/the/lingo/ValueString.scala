@@ -8,7 +8,7 @@ package the.lingo
 import the.lingo.Value.Implicits._
 
 final case class ValueString(x: String) extends WHNF {
-  override def toCore() = Tagged(Symbols.Tags.String, ListUtils.list(ValueList(x.toList.map(ValueChar.apply))))
+  override def toCore() = Tagged(Symbols.Tags.String, ListUtils.List(ValueList(x.toList.map(ValueChar.apply))))
 }
 
 private final object AsValueStringCached {

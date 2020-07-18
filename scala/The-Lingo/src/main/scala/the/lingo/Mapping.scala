@@ -10,7 +10,7 @@ import the.lingo.Value.Implicits._
 final case class Mapping private(private val xs: List[(Value, Value)]) extends WHNF {
   override def toCore() = Tagged(Symbols.Tags.Mapping, ListUtils.ConsList(xs.map(p => {
     val (p1, p2) = p
-    ListUtils.list(p1, p2)
+    ListUtils.List(p1, p2)
   })))
 
   def updated(key: Value, value: Value): Mapping = new Mapping(

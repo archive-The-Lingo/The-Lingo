@@ -34,5 +34,13 @@ private final object ListUtils {
     }
   }
 
-  def list(xs: Value*): Value = ConsList(xs.toList)
+  final object List {
+    def apply(xs: Value*): Value = ConsList(xs.toList)
+
+    def unapplySeq(x: Value): Option[Seq[Value]] = x match {
+      case ConsList(scala.List(xs@_*)) => Some(xs)
+      case _ => None
+    }
+  }
+
 }

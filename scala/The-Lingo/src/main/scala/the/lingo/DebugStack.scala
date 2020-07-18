@@ -23,37 +23,62 @@ final object DebugStack {
 sealed trait DebugStackPosition extends WHNF
 
 final case class NamedPosition(name: Value) extends DebugStackPosition {
-  override def toCore() = Tagged(Symbols.Tags.NamedPosition, ListUtils.list(name))
+  override def toCore() = Tagged(Symbols.Tags.NamedPosition, ListUtils.List(name))
 }
 
 final case class FilePosition(file: String, start: LineColumn, end: LineColumn) extends DebugStackPosition {
   override def toCore() =
     Tagged(
       Symbols.Tags.UNIXFilePosition,
-      ListUtils.list(
+      ListUtils.List(
         ValueString(file),
-        ListUtils.list(
+        ListUtils.List(
           ValueNat(start.line),
           ValueNat(start.column)),
-        ListUtils.list(
+        ListUtils.List(
           ValueNat(end.line),
           ValueNat(end.column))))
 }
 
 private final object AsFilePositionCached {
-
-  private final object NotCached {
-    def unapply(x: WHNF): Option[FilePosition] = x match {
-      case x: FilePosition => Some(x)
-      case _ => unapplyCore(x.toCore())
+  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
+    case x: FilePosition => Some(x)
+    case _ => arg.toCore() match {
+      case Tagged(
+      AsSym(Symbols.Tags.UNIXFilePosition),
+      ListUtils.List(
+      AsValueStringCached(ValueString(file)),
+      ListUtils.List(AsCoreWHNF(ValueNat(startLine)), AsCoreWHNF(ValueNat(startColumn))),
+      ListUtils.List(AsCoreWHNF(ValueNat(endLine)), AsCoreWHNF(ValueNat(endColumn))))) =>
+        Some(FilePosition(
+          file,
+          LineColumn(line = startLine, column = startColumn),
+          LineColumn(line = endLine, column = endColumn)))
+      case _ => None
     }
-
-    def unapplyCore(x: CoreWHNF): Option[FilePosition] = TODO()
-  }
-
-  private val unapply_v = Value.cached_option_as(NotCached.unapply)
+  })
 
   def unapply(x: Value): Option[FilePosition] = unapply_v.apply(x)
+}
+
+private final object AsNamedPositionCached {
+  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
+    case x: NamedPosition => Some(x)
+    case _ => arg.toCore() match {
+      case Tagged(AsSym(Symbols.Tags.NamedPosition), ListUtils.List(name)) => Some(NamedPosition(name))
+      case _ => None
+    }
+  })
+
+  def unapply(x: Value): Option[NamedPosition] = unapply_v.apply(x)
+}
+
+private final object AsDebugStackPositionCached {
+  def unapply(x: Value): Option[DebugStackPosition] = x match {
+    case AsNamedPositionCached(x) => Some(x)
+    case AsFilePositionCached(x) => Some(x)
+    case _ => None
+  }
 }
 
 final case class LineColumn(line: Nat, column: Nat)

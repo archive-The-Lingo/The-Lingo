@@ -9,7 +9,7 @@ import the.lingo.Value.Implicits._
 
 final object Exp {
   private[lingo] def consExp(tag: Value, xs: List[Value]): CoreWHNF =
-    Tagged(Symbols.Exp, ListUtils.list(tag, ListUtils.ConsList(xs)))
+    Tagged(Symbols.Exp, ListUtils.List(tag, ListUtils.ConsList(xs)))
 }
 
 private final object AsExpCached {
@@ -26,7 +26,7 @@ private final object AsExpCached {
           case (Symbols.Id, List(x)) => Some(Id(x))
           case (Symbols.Quote, List(x)) => Some(Quote(x))
           case (Symbols.Comment, List(comment, x)) => Some(Comment(comment, x))
-          case (Symbols.Positioned, List(AsFilePositionCached(pos), x)) => Some(Positioned(pos, x))
+          case (Symbols.Positioned, List(AsDebugStackPositionCached(pos), x)) => Some(Positioned(pos, x))
           case (Symbols.ApplyFunc, List(f, ListUtils.ConsList(xs))) => Some(ApplyFunc(f, xs))
           case (Symbols.ApplyMacro, List(f, ListUtils.ConsList(xs))) => Some(ApplyFunc(f, xs))
           case (Symbols.Builtin, List(AsSym(f), ListUtils.ConsList(xs))) => Some(Builtin(f, xs))

@@ -9,7 +9,7 @@ import the.lingo.Value.Implicits._
 import the.lingo.utils.Nat
 
 final case class ValueChar(x: Char) extends WHNF {
-  override def toCore() = Tagged(Symbols.Tags.Char, ListUtils.list(ValueNat(Nat(x.toInt))))
+  override def toCore() = Tagged(Symbols.Tags.Char, ListUtils.List(ValueNat(Nat(x.toInt))))
 }
 
 private final object AsValueCharCached {

@@ -10,7 +10,7 @@ import the.lingo.Value.Implicits._
 final case class InterpretedClosure(args: List[Id], vararg: Option[Id], context: Mapping, exp: Value) extends FeaturedWHNF_app {
   override def toCore() = Tagged(
     Symbols.Func,
-    ListUtils.list(
+    ListUtils.List(
       vararg match {
         case Some(vararg) => ListUtils.ConsListMaybeWithTail(args, vararg)
         case None => ListUtils.ConsList(args)
