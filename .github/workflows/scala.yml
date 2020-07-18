@@ -18,6 +18,9 @@ jobs:
       with:
         java-version: ${{ matrix.jdk }}
         architecture: ${{ matrix.jdkarch }}
+    - name: Install SBT
+      if: matrix.os == 'macos-latest'
+      run: curl -Ls https://git.io/sbt | sudo tee /usr/bin/sbt && sudo chmod 0755 /usr/bin/sbt # https://github.com/paulp/sbt-extras/
     - name: Cache SBT
       uses: actions/cache@v2
       with:
