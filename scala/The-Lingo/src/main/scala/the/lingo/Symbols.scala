@@ -10,7 +10,6 @@ final object Symbols {
   val Id: Sym = Sym("識別子")
   val Exp: Sym = Sym("式")
   val ApplyFunc: Sym = Sym("用-函式")
-  val Macro: Sym = Sym("構式子")
   val Quote: Sym = Sym("引")
   val ApplyMacro: Sym = Sym("用-構式子")
   val Comment: Sym = Sym("注釋")
@@ -50,6 +49,7 @@ final object Symbols {
     val Char: Sym = Sym("字符")
     val String: Sym = Sym("字串")
     val Mapping: Sym = Sym("映射")
+    val Macro: Sym = Sym("構式子")
   }
 
   final object CoreExceptions {
@@ -67,6 +67,7 @@ final object Symbols {
     val TypeMismatch_String: Sym = Sym("型別不匹配/字串")
     val TypeMismatch_Mapping: Sym = Sym("型別不匹配/映射")
     val TypeMismatch_List: Sym = Sym("型別不匹配/序列")
+    val TypeMismatch_Macro: Sym = Sym("型別不匹配/構式子")
   }
 
 }

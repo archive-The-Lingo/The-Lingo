@@ -106,7 +106,10 @@ final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
   override def toCore() =
     Exp.consExp(Symbols.ApplyMacro, List(f, ListUtils.ConsList(xs)))
 
-  private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = TODO()
+  private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = f.eval(context, stack) match {
+    case AsCoreWHNF(Tagged(AsSym(Symbols.Tags.Macro), ListUtils.ConsList(List(f)))) => f.app(context :: xs, stack)
+    case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Macro, context, this)
+  }
 }
 
 final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
