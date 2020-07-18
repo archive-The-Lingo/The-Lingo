@@ -9,6 +9,7 @@ jobs:
       matrix:
         os: [ubuntu-16.04, ubuntu-20.04, windows-latest]
         jdk: [8, 15-ea]
+        jdkarch: [x64, x86]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
@@ -16,12 +17,13 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: ${{ matrix.jdk }}
+        architecture: ${{ matrix.jdkarch }}
     - name: Cache SBT
       uses: actions/cache@v2
       with:
         path: |
           ~/.ivy2/cache
           ~/.sbt
-        key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
+        key: ${{ runner.os }}-${{ matrix.jdk }}-${{ matrix.jdkarch }}-sbt-${{ hashFiles('**/build.sbt') }}
     - name: Run tests
       run: cd scala/The-Lingo && sbt test
