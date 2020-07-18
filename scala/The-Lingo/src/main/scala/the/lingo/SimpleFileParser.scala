@@ -12,12 +12,16 @@ import scala.io.Source
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.Positional
 
+private final object SimpleFileParser {
+  val sym_regex = """(\w|[-？?/])+""".r
+}
+
 final case class SimpleFileParser(file: String) extends RegexParsers {
   override def skipWhitespace = false
 
-  private val space_regex: Parser[String] = whiteSpace
+  private val spaceRegex: Parser[String] = whiteSpace
 
-  private val skipSpace: Parser[String] = space_regex | ""
+  private val skipSpace: Parser[String] = spaceRegex | ""
 
   private def skipSpace[A](x: Parser[A]): Parser[A] = skipSpace ~ x ^^ {
     case _ ~ x => x
@@ -38,28 +42,27 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
       case x => ValueNat(Nat(x))
     }
 
-  // same as SimpleCoreNormalFormPrinter's
-  private val sym_regex: Parser[String] = """(\w|[-？?/])+""".r
+  private val symRegex: Parser[String] = SimpleFileParser.sym_regex
 
   private def sym: Parser[Sym] =
-    sym_regex ^^ {
+    symRegex ^^ {
       case x => Sym(Symbol(x))
     }
 
   private def list: Parser[Value] =
-    "(" ~> repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ skipSpace(")") ^^ {
+    "(" ~> repsep(value, spaceRegex) ~ opt(spaceRegex ~ "." ~ spaceRegex ~> value) <~ skipSpace(")") ^^ {
       case xs ~ Some(tail) => ListUtils.ConsList(xs, tail)
       case xs ~ None => ListUtils.ConsList(xs)
     }
 
   private def tagged: Parser[Value] =
-    "&(" ~> value ~ space_regex ~ repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ skipSpace(")") ^^ {
+    "&(" ~> value ~ spaceRegex ~ repsep(value, spaceRegex) ~ opt(spaceRegex ~ "." ~ spaceRegex ~> value) <~ skipSpace(")") ^^ {
       case x ~ sp ~ xs ~ Some(tail) => Tagged(x, ListUtils.ConsList(xs, tail))
       case x ~ sp ~ xs ~ None => Tagged(x, ListUtils.ConsList(xs))
     }
 
   private def exception: Parser[Value] =
-    "^(" ~> value ~ space_regex ~ repsep(value, space_regex) ~ opt(space_regex ~ "." ~ space_regex ~> value) <~ skipSpace(")") ^^ {
+    "^(" ~> value ~ spaceRegex ~ repsep(value, spaceRegex) ~ opt(spaceRegex ~ "." ~ spaceRegex ~> value) <~ skipSpace(")") ^^ {
       case x ~ sp ~ xs ~ Some(tail) => ValueException(x, ListUtils.ConsList(xs, tail))
       case x ~ sp ~ xs ~ None => ValueException(x, ListUtils.ConsList(xs))
     }
@@ -70,12 +73,12 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
     }
 
   private def applyFunc: Parser[Exp] =
-    "[" ~> exp ~ rep(space_regex ~> exp) <~ skipSpace("]") ^^ {
+    "[" ~> exp ~ rep(spaceRegex ~> exp) <~ skipSpace("]") ^^ {
       case f ~ xs => ApplyFunc(f, xs)
     }
 
   private def applyMacro: Parser[Exp] =
-    "{" ~> exp ~ rep(space_regex ~> exp) <~ skipSpace("}") ^^ {
+    "{" ~> exp ~ rep(spaceRegex ~> exp) <~ skipSpace("}") ^^ {
       case f ~ xs => ApplyMacro(f, xs)
     }
 
@@ -85,12 +88,12 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
     }
 
   private def comment: Parser[Exp] =
-    "#(" ~> exp ~ space_regex ~ exp <~ skipSpace(")") ^^ {
+    "#(" ~> exp ~ spaceRegex ~ exp <~ skipSpace(")") ^^ {
       case cmt ~ sp ~ x => Comment(cmt, x)
     }
 
   private def builtin: Parser[Exp] =
-    "!(" ~> sym ~ rep(space_regex ~> exp) <~ skipSpace(")") ^^ {
+    "!(" ~> sym ~ rep(spaceRegex ~> exp) <~ skipSpace(")") ^^ {
       case f ~ xs => Builtin(f, xs)
     }
 

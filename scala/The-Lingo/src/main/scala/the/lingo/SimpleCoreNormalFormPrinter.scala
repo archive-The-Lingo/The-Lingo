@@ -8,8 +8,7 @@ package the.lingo
 import the.lingo.Value.Implicits._
 
 final object SimpleCoreNormalFormPrinter {
-  // same as LangParser's
-  private val sym_regex = """(\w|[-？?/])+""".r
+  private val sym_regex = SimpleFileParser.sym_regex
 
   def apply(x: Value): String = x match {
     case ListUtils.ConsList(xs) => s"(${xs.map(apply).mkString(" ")})"

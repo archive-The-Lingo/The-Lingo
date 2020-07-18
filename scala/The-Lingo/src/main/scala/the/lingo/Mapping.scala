@@ -18,8 +18,8 @@ final case class Mapping private(private val xs: List[(Value, Value)]) extends W
   )
 
   def get(key: Value): Option[Value] = for {
-    (k, v) <- xs.find(_ match {
-      case (k, v) => k.equal_reduce_rec(key)
+    (_, v) <- xs.find(_ match {
+      case (k, _) => k.equal_reduce_rec(key)
     })} yield v
 
   def isEmpty: Boolean = xs.isEmpty
