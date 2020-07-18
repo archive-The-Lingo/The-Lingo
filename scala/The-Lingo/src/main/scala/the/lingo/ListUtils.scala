@@ -21,13 +21,16 @@ private final object ListUtils {
       case Nil => tail
     }
 
-    def unapply(xs: Value): Option[(List[Value], Value)] = xs.reduce_rec_toCore() match {
-      case Pair(head, tail) => unapply(tail).map({
-        _ match {
-          case (result, resultTail) => (head :: result, resultTail)
-        }
-      })
-      case _ => Some(Nil, xs)
+    def unapply(xs: Value): Option[(List[Value], Value)] = xs.reduce_rec() match {
+      case ValueList(xs) => Some(xs, Null)
+      case xs => xs.toCore() match {
+        case Pair(head, tail) => unapply(tail).map({
+          _ match {
+            case (result, resultTail) => (head :: result, resultTail)
+          }
+        })
+        case _ => Some(Nil, xs)
+      }
     }
   }
 
