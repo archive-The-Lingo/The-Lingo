@@ -21,6 +21,9 @@ jobs:
     - name: Install SBT
       if: matrix.os == 'macos-latest'
       run: curl -Ls https://git.io/sbt | sudo tee /usr/local/bin/sbt && sudo chmod 0755 /usr/local/bin/sbt # https://github.com/paulp/sbt-extras/
+    - name: Disaplay infos
+      run: |
+        java -version
     - name: Cache SBT
       uses: actions/cache@v2
       with:
