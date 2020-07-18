@@ -20,7 +20,7 @@ jobs:
         architecture: ${{ matrix.jdkarch }}
     - name: Install SBT
       if: matrix.os == 'macos-latest'
-      run: curl -Ls https://git.io/sbt | sudo tee /usr/bin/sbt && sudo chmod 0755 /usr/bin/sbt # https://github.com/paulp/sbt-extras/
+      run: curl -Ls https://git.io/sbt | sudo tee /usr/local/bin/sbt && sudo chmod 0755 /usr/local/bin/sbt # https://github.com/paulp/sbt-extras/
     - name: Cache SBT
       uses: actions/cache@v2
       with:
