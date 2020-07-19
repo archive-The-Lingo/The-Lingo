@@ -14,13 +14,13 @@ sealed trait ValueBoolean extends WHNF {
 final object ValueBoolean {
 
   final case object True extends ValueBoolean {
-    override def toCore() = Tagged(Symbols.Tags.True, Null)
+    override def impl_toCore() = Tagged(Symbols.Tags.True, Null)
 
     override def toBoolean = true
   }
 
   final case object False extends ValueBoolean {
-    override def toCore() = Tagged(Symbols.Tags.False, Null)
+    override def impl_toCore() = Tagged(Symbols.Tags.False, Null)
 
     override def toBoolean = false
   }

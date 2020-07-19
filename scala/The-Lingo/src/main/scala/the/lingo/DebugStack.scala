@@ -13,7 +13,7 @@ import scala.util.parsing.input.Position
 final case class DebugStack(xs: List[DebugStackPosition]) extends WHNF {
   def push(x: DebugStackPosition): DebugStack = DebugStack(x :: xs)
 
-  override def toCore() = ValueList(xs).toCore()
+  override def impl_toCore() = ValueList(xs).toCore()
 }
 
 final object DebugStack {
@@ -23,11 +23,11 @@ final object DebugStack {
 sealed trait DebugStackPosition extends WHNF
 
 final case class NamedPosition(name: Value) extends DebugStackPosition {
-  override def toCore() = Tagged(Symbols.Tags.NamedPosition, ListUtils.List(name))
+  override def impl_toCore() = Tagged(Symbols.Tags.NamedPosition, ListUtils.List(name))
 }
 
 final case class FilePosition(file: String, start: LineColumn, end: LineColumn) extends DebugStackPosition {
-  override def toCore() =
+  override def impl_toCore() =
     Tagged(
       Symbols.Tags.UNIXFilePosition,
       ListUtils.List(

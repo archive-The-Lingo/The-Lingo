@@ -8,7 +8,7 @@ package the.lingo
 import the.lingo.utils.{Nat, OnewayWriteFlag}
 
 sealed trait CoreWHNF extends WHNF {
-  final override def toCore() = this
+  final override def impl_toCore() = this
 
   private[lingo] def equal_core(x: CoreWHNF, opaqueFlag: OnewayWriteFlag): Boolean
 }

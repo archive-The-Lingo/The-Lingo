@@ -48,7 +48,7 @@ sealed trait Exp extends FeaturedWHN_eval {
 }
 
 final case class Id(x: Value) extends Exp {
-  override def toCore() = Exp.consExp(Symbols.Id, List(x))
+  override def impl_toCore() = Exp.consExp(Symbols.Id, List(x))
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = context.get(x).getOrElse {
     CoreException(stack, Symbols.CoreExceptions.NoDefinition, context, this)
@@ -56,13 +56,13 @@ final case class Id(x: Value) extends Exp {
 }
 
 final case class Quote(x: Value) extends Exp {
-  override def toCore() = Exp.consExp(Symbols.Quote, List(x))
+  override def impl_toCore() = Exp.consExp(Symbols.Quote, List(x))
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = x
 }
 
 final case class Comment(comment: Value, x: Value) extends Exp {
-  override def toCore() = Exp.consExp(Symbols.Comment, List(comment, x))
+  override def impl_toCore() = Exp.consExp(Symbols.Comment, List(comment, x))
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, stack)
 }
@@ -78,7 +78,7 @@ final private object RemoveComment {
 }
 
 final case class Positioned(pos: DebugStackPosition, x: Value) extends Exp {
-  override def toCore() =
+  override def impl_toCore() =
     Exp.consExp(Symbols.Positioned, List(pos, x))
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, stack.push(pos))
@@ -90,7 +90,7 @@ final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
     case _ => None
   }
 
-  override def toCore() =
+  override def impl_toCore() =
     Exp.consExp(Symbols.ApplyFunc, List(f, ListUtils.ConsList(xs)))
 
   private[lingo] override def real_eval(context: Mapping, rawStack: DebugStack) = {
@@ -103,7 +103,7 @@ final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
 }
 
 final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
-  override def toCore() =
+  override def impl_toCore() =
     Exp.consExp(Symbols.ApplyMacro, List(f, ListUtils.ConsList(xs)))
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = f.eval(context, stack) match {
@@ -113,7 +113,7 @@ final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
 }
 
 final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
-  override def toCore() =
+  override def impl_toCore() =
     Exp.consExp(Symbols.Builtin, List(f, ListUtils.ConsList(xs)))
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = {

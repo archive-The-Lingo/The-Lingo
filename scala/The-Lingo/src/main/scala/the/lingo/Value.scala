@@ -220,7 +220,11 @@ trait WHNF extends MayNotWHNF {
 
   final override def readback() = Quote(this)
 
-  def toCore(): CoreWHNF
+  def impl_toCore(): CoreWHNF
+
+  final private lazy val coreForm = this.impl_toCore()
+
+  final def toCore(): CoreWHNF = coreForm
 }
 
 trait FeaturedWHNF_equal extends WHNF {
