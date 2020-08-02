@@ -8,10 +8,10 @@ package the.lingo
 import the.lingo.Value.Implicits._
 
 final case class Mapping private(private val xs: List[(Value, Value)]) extends WHNF {
-  override def impl_toCore() = Tagged(Symbols.Tags.Mapping, ListUtils.ConsList(xs.map(p => {
+  override def impl_toCore() = Tagged(Symbols.Tags.Mapping, ListUtils.List(ListUtils.ConsList(xs.map(p => {
     val (p1, p2) = p
     ListUtils.List(p1, p2)
-  })))
+  }))))
 
   def updated(key: Value, value: Value): Mapping = new Mapping(
     (key, value) :: xs.filterNot(_ match { case (k, v) => k.equal_reduce_rec(key) })
@@ -45,7 +45,7 @@ private final object AsMappingCached {
   private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
     case x: Mapping => Some(x)
     case _ => arg.toCore() match {
-      case Tagged(AsSym(Symbols.Tags.Mapping), ListUtils.ConsList(AsTupleList(xs))) => Some(Mapping(xs))
+      case Tagged(AsSym(Symbols.Tags.Mapping), ListUtils.List(ListUtils.ConsList(AsTupleList(xs)))) => Some(Mapping(xs))
       case _ => None
     }
   })
