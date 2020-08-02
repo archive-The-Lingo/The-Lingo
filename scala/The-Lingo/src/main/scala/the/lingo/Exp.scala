@@ -142,6 +142,8 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => None
         }, Symbols.CoreExceptions.TypeMismatch_Pair, v, idx, idy, exp)
 
+      case (Symbols.Builtins.ConsList, xs) => ValueList(xs.map(_.eval(context, stack)))
+
       case (Symbols.Builtins.IsTagged, List(x)) => evalIs(
         _ match {
           case _: Tagged => true

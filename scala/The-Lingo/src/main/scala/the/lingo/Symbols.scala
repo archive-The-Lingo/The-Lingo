@@ -23,6 +23,7 @@ final object Symbols {
     //val NatZero: Sym = Sym("自然數/零")
     //val NatSucc: Sym = Sym("自然數/增一")
     val IsPair: Sym = Sym("序列/連結？")
+    val ConsList: Sym = Sym("構造-序列*")
     val ConsPair: Sym = Sym("構造-序列/連結")
     val ElimPair: Sym = Sym("解構-序列/連結")
     val IsTagged: Sym = Sym("具型別？")
