@@ -40,6 +40,7 @@ final object Symbols {
     val NatToBinary: Sym = Sym("自然數→二進位")
     val BinaryToNat: Sym = Sym("二進位→自然數")
     val Eval: Sym = Sym("解算")
+    val ElimBoolean: Sym = Sym("解構-陰陽")
   }
 
   final object Tags {
@@ -69,6 +70,7 @@ final object Symbols {
     val TypeMismatch_Mapping: Sym = Sym("型別不匹配/映射")
     val TypeMismatch_List: Sym = Sym("型別不匹配/序列")
     val TypeMismatch_Macro: Sym = Sym("型別不匹配/構式子")
+    val TypeMismatch_Boolean: Sym = Sym("型別不匹配/陰陽")
   }
 
 }

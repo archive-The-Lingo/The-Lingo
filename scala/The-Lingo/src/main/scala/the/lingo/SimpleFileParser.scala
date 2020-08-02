@@ -13,7 +13,7 @@ import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.Positional
 
 private final object SimpleFileParser {
-  val sym_regex = """(\w|[-？?/])+""".r
+  val sym_regex = """(\w|[-？?/*:])+""".r
 }
 
 final case class SimpleFileParser(file: String) extends RegexParsers {

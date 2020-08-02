@@ -142,8 +142,6 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => None
         }, Symbols.CoreExceptions.TypeMismatch_Pair, v, idx, idy, exp)
 
-      case (Symbols.Builtins.ConsList, xs) => ValueList(xs.map(_.eval(context, stack)))
-
       case (Symbols.Builtins.IsTagged, List(x)) => evalIs(
         _ match {
           case _: Tagged => true
@@ -214,6 +212,17 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           InterpretedClosure(args, Some(tail), context, exp)
         case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
       }
+
+      case (Symbols.Builtins.ConsList, xs) => ValueList(xs.map(_.eval(context, stack)))
+      case (Symbols.Builtins.ElimBoolean, List(v, expTrue, expFalse)) =>
+        v.eval(context, stack) match {
+          case AsValueBooleanCached(x) => (if (x.toBoolean) {
+            expTrue
+          } else {
+            expFalse
+          }).eval(context, stack)
+          case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Boolean, context, this)
+        }
 
       case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
     }
