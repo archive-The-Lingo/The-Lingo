@@ -67,10 +67,11 @@ final case class Comment(comment: Value, x: Value) extends Exp {
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, stack)
 }
 
-final private object RemoveComment {
+final private object RemoveWrapper {
   def unapply(x: Value): Option[Exp] = x match {
     case AsExpCached(e) => e match {
       case Comment(_, x) => unapply(x)
+      case Positioned(_, x) => unapply(x)
       case x => Some(x)
     }
     case _ => None
@@ -86,7 +87,7 @@ final case class Positioned(pos: DebugStackPosition, x: Value) extends Exp {
 
 final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
   private lazy val fAsId = f match {
-    case RemoveComment(Id(x)) => Some(x)
+    case RemoveWrapper(Id(x)) => Some(x)
     case _ => None
   }
 
@@ -136,7 +137,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.ConsPair, List(head, tail)) => cons2(Pair, head, tail)
-      case (Symbols.Builtins.ElimPair, List(v, RemoveComment(Id(idx)), RemoveComment(Id(idy)), exp)) =>
+      case (Symbols.Builtins.ElimPair, List(v, RemoveWrapper(Id(idx)), RemoveWrapper(Id(idy)), exp)) =>
         elim2(_ match {
           case Pair(x, y) => Some(x, y)
           case _ => None
@@ -148,7 +149,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.ConsTagged, List(tag, xs)) => cons2(Tagged, tag, xs)
-      case (Symbols.Builtins.ElimTagged, List(v, RemoveComment(Id(idx)), RemoveComment(Id(idy)), exp)) =>
+      case (Symbols.Builtins.ElimTagged, List(v, RemoveWrapper(Id(idx)), RemoveWrapper(Id(idy)), exp)) =>
         elim2(_ match {
           case Tagged(x, y) => Some(x, y)
           case _ => None
@@ -160,7 +161,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.ConsException, List(tag, xs)) => cons2(ValueException, tag, xs)
-      case (Symbols.Builtins.ElimException, List(v, RemoveComment(Id(idx)), RemoveComment(Id(idy)), exp)) =>
+      case (Symbols.Builtins.ElimException, List(v, RemoveWrapper(Id(idx)), RemoveWrapper(Id(idy)), exp)) =>
         elim2(_ match {
           case ValueException(x, y) => Some(x, y)
           case _ => None
@@ -180,8 +181,10 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_String, context, this)
       }
 
-      case (Symbols.Builtins.Rec, List(RemoveComment(Id(id)), exp)) => {
-        lazy val (innerContext: Mapping, result: Value) = (context.updated(id, result), exp.eval_callByName(innerContext, stack))
+      case (Symbols.Builtins.Rec, List(RemoveWrapper(Id(id)), exp)) => {
+        lazy val result: Value = exp.eval_callByName({
+          context.updated(id, result)
+        }, stack)
         result
       }
       case (Symbols.Builtins.NatToBinary, List(x)) => x.eval(context, stack) match {
@@ -208,7 +211,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
       case (Symbols.Func, List(args, exp)) => args match {
         case ListUtils.ConsList(AsInterpretedClosureCached.AsIdList(args)) =>
           InterpretedClosure(args, None, context, exp)
-        case ListUtils.ConsListMaybeWithTail(AsInterpretedClosureCached.AsIdList(args), RemoveComment(tail: Id)) =>
+        case ListUtils.ConsListMaybeWithTail(AsInterpretedClosureCached.AsIdList(args), RemoveWrapper(tail: Id)) =>
           InterpretedClosure(args, Some(tail), context, exp)
         case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
       }

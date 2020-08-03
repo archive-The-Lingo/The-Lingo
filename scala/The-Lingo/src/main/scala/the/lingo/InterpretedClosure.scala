@@ -44,7 +44,7 @@ private final object AsInterpretedClosureCached {
 
     def unapply(xs: List[Value]): Option[List[Id]] = xs.flatMapOption(
       _ match {
-        case RemoveComment(x: Id) => Some(x)
+        case RemoveWrapper(x: Id) => Some(x)
         case _ => None
       })
   }
@@ -62,7 +62,7 @@ private final object AsInterpretedClosureCached {
           exp))
       case Tagged(
       AsSym(Symbols.Func),
-      ListUtils.ConsList(List(ListUtils.ConsListMaybeWithTail(AsIdList(args), RemoveComment(tail: Id)), exp))) =>
+      ListUtils.ConsList(List(ListUtils.ConsListMaybeWithTail(AsIdList(args), RemoveWrapper(tail: Id)), exp))) =>
         Some(InterpretedClosure(
           args,
           Some(tail),
