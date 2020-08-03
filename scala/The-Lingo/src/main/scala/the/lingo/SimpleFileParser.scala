@@ -13,7 +13,8 @@ import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.Positional
 
 private final object SimpleFileParser {
-  val sym_regex = """(\w|[-？?/*:])+""".r
+  // [\u4e00-\u9fa5] is Chinese chars
+  val sym_regex = """(\w|[-？?/*:]|[\u4e00-\u9fa5])+""".r
 }
 
 final case class SimpleFileParser(file: String) extends RegexParsers {
@@ -101,17 +102,17 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
 
   private val topExp = skipEndSpace(exp)
 
-  def parseExpAsOption(x: String): Option[Exp] = parseAll(topExp, x) match {
+  def parseExpAsOption(x: String = Source.fromFile(file).mkString): Option[Exp] = parseAll(topExp, x) match {
     case Success(result, _) => Some(result)
     case _: NoSuccess => None
   }
 
-  def parseExpAsEither(x: String): Either[NoSuccess, Exp] = parseAll(topExp, x) match {
+  def parseExpAsEither(x: String = Source.fromFile(file).mkString): Either[NoSuccess, Exp] = parseAll(topExp, x) match {
     case Success(result, _) => Right(result)
     case x: NoSuccess => Left(x)
   }
 
-  def parseExp(x: String): Exp = parseAll(topExp, x) match {
+  def parseExp(x: String = Source.fromFile(file).mkString): Exp = parseAll(topExp, x) match {
     case Success(result, _) => result
     case x: NoSuccess => throw new RuntimeException(x.msg)
   }
@@ -124,17 +125,17 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
 
   private val topValue = skipEndSpace(value)
 
-  def parseValueAsOption(x: String): Option[Value] = parseAll(topValue, x) match {
+  def parseValueAsOption(x: String = Source.fromFile(file).mkString): Option[Value] = parseAll(topValue, x) match {
     case Success(result, _) => Some(result)
     case _: NoSuccess => None
   }
 
-  def parseValueAsEither(x: String): Either[NoSuccess, Value] = parseAll(topValue, x) match {
+  def parseValueAsEither(x: String = Source.fromFile(file).mkString): Either[NoSuccess, Value] = parseAll(topValue, x) match {
     case Success(result, _) => Right(result)
     case x: NoSuccess => Left(x)
   }
 
-  def parseValue(x: String): Value = parseAll(topValue, x) match {
+  def parseValue(x: String = Source.fromFile(file).mkString): Value = parseAll(topValue, x) match {
     case Success(result, _) => result
     case x: NoSuccess => throw new RuntimeException(x.msg)
   }
