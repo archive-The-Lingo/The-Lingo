@@ -5,9 +5,10 @@
 */
 package the.lingo
 
-import the.lingo.utils.OnewayWriteFlag
+import the.lingo.utils.{MutableBox, Nat, OnewayWriteFlag}
 
 import scala.collection.mutable
+import scala.collection.immutable
 
 final object Value {
 
@@ -37,7 +38,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
 
   import Value.Implicits._
 
-  override def toString(): String = x.toString()
+  override def show(implicit show: MayNotWHNF => String): String = x.show(show)
 
   // writing requires synchronized. reading doesn't
   private def notsynced_unsafe_write(v: MayNotWHNF) = {
@@ -194,7 +195,54 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   })
 }
 
-trait MayNotWHNF {
+private final case class ShowContext(val parents: immutable.HashSet[Showable], val context: immutable.HashMap[Showable, Nat], val count: MutableBox[Nat]) {
+  private[lingo] def newId: Nat = {
+    count.synchronized {
+      val x = count.get
+      count.update(x.succ)
+      x
+    }
+  }
+}
+
+private final object ShowContext {
+  def apply() = new ShowContext(new immutable.HashSet(), new immutable.HashMap(), new MutableBox(Nat.Zero))
+}
+
+trait Showable {
+  def show(implicit show: MayNotWHNF => String): String
+
+  private[lingo] def doShow(showContext: ShowContext): String =
+    this.show({
+      _.doShow(showContext)
+    })
+
+  final override def toString(): String = this.doShow(ShowContext())
+}
+
+trait MayNotWHNF extends Showable {
+
+  override private[lingo] def doShow(showContext: ShowContext): String = {
+    val parents = showContext.parents
+    val context = showContext.context
+    context.get(this) match {
+      case Some(x) => "#" + x.toString()
+      case None => {
+        val innerParents = parents.incl(this)
+        val innerContext = {
+          if (parents(this)) {
+            context.updated(this, showContext.newId)
+          } else {
+            context
+          }
+        }
+        this.show({
+          _.doShow(new ShowContext(innerParents, innerContext, showContext.count))
+        })
+      }
+    }
+  }
+
   def reduce_rec(): WHNF
 
   def reduce(): MayNotWHNF = this.reduce_rec()
@@ -208,6 +256,44 @@ trait MayNotWHNF {
     case x: Value => x.do_unpack_rec()
     case _ => this
   }
+
+}
+
+final object Showable {
+
+  def show(x: Showable)(implicit show: MayNotWHNF => String): String = x.show(show)
+
+  final object Implicits {
+
+    implicit class ShowImplicitApply[A <: Showable](x: A) {
+      def shoW()(implicit show: MayNotWHNF => String): String = x.show(show)
+    }
+
+    implicit class ShowXs[A <: Showable](xs: List[A]) {
+      def showXs(implicit show: MayNotWHNF => String): String = xs.map(_.shoW()).mkString(",")
+    }
+
+    implicit class ShowList[A <: Showable](x: List[A]) extends Showable {
+      def show(implicit show: MayNotWHNF => String): String = s"List(${x.showXs})"
+    }
+
+    implicit class ShowOption[A <: Showable](x: Option[A]) extends Showable {
+      def show(implicit show: MayNotWHNF => String): String = x match {
+        case Some(x) => s"Some(${x.shoW()})"
+        case None => "None"
+      }
+    }
+
+    implicit class ShowTuple2[A <: Showable, B <: Showable](x: (A, B)) extends Showable {
+      def show(implicit show: MayNotWHNF => String): String = s"(${x._1.show},${x._2.show})"
+    }
+
+    implicit class ShowTuple2List[A <: Showable, B <: Showable](xs: List[(A, B)]) extends Showable {
+      def show(implicit show: MayNotWHNF => String): String = s"List(${xs.map(_.show).mkString(",")})"
+    }
+
+  }
+
 }
 
 private[lingo] final object AsWHNF {

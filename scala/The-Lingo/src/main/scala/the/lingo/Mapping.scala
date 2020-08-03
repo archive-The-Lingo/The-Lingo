@@ -6,6 +6,7 @@
 package the.lingo
 
 import the.lingo.Value.Implicits._
+import the.lingo.Showable.Implicits._
 
 final case class Mapping private(private val xs: List[(Value, Value)]) extends WHNF {
   override def impl_toCore() = Tagged(Symbols.Tags.Mapping, ListUtils.List(ListUtils.ConsList(xs.map(p => {
@@ -23,6 +24,8 @@ final case class Mapping private(private val xs: List[(Value, Value)]) extends W
     })} yield v
 
   def isEmpty: Boolean = xs.isEmpty
+
+  override def show(implicit show: MayNotWHNF => String): String = s"Mapping(${xs.show})"
 }
 
 final object Mapping {

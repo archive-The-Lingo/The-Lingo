@@ -8,6 +8,8 @@ package the.lingo
 import the.lingo.Value.Implicits._
 
 final case class ValueString(x: String) extends WHNF {
+  override def show(implicit show: MayNotWHNF => String): String = s"ValueString(${"\""}$x${"\""})"
+
   override def impl_toCore() = Tagged(Symbols.Tags.String, ListUtils.List(ValueList(x.toList.map(ValueChar.apply))))
 }
 

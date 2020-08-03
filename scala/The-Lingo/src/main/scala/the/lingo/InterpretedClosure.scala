@@ -6,6 +6,7 @@
 package the.lingo
 
 import the.lingo.Value.Implicits._
+import the.lingo.Showable.Implicits._
 
 final case class InterpretedClosure(args: List[Id], vararg: Option[Id], context: Mapping, exp: Value) extends FeaturedWHNF_app {
   override def impl_toCore() = Tagged(
@@ -25,6 +26,8 @@ final case class InterpretedClosure(args: List[Id], vararg: Option[Id], context:
     case Some(context) => exp.eval(context, stack)
     case None => CoreException(stack, Symbols.CoreExceptions.ArgsMismatch, Mapping.Empty, ApplyFunc(Quote(this), xs.map(Quote(_))))
   }
+
+  override def show(implicit show: MayNotWHNF => String): String = s"InterpretedClosure(${Showable.show(args)},${Showable.show(vararg)},${context.shoW()},${exp.shoW()})"
 }
 
 private final object InterpretedClosure {

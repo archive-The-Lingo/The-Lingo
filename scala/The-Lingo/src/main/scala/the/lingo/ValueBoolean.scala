@@ -17,12 +17,16 @@ final object ValueBoolean {
     override def impl_toCore() = Tagged(Symbols.Tags.True, Null)
 
     override def toBoolean = true
+
+    override def show(implicit show: MayNotWHNF => String): String = "True"
   }
 
   final case object False extends ValueBoolean {
     override def impl_toCore() = Tagged(Symbols.Tags.False, Null)
 
     override def toBoolean = false
+
+    override def show(implicit show: MayNotWHNF => String): String = "False"
   }
 
   def apply(x: Boolean) = if (x) {

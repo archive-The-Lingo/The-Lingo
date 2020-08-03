@@ -33,6 +33,9 @@ final object Nat {
   def apply(x: BigInteger) = bigInt2nat(BigInt.apply(x))
 
   def probablePrime(bitLength: Int, rnd: scala.util.Random) = bigInt2nat(BigInt.probablePrime(bitLength, rnd))
+
+  val One = Nat(1)
+  val Zero = Nat(0)
 }
 
 final class Nat(val bigInt: BigInt)
@@ -156,4 +159,6 @@ final class Nat(val bigInt: BigInt)
   def toString(radix: Int) = bigInt.toString(radix)
 
   def toByteArray: Array[Byte] = bigInt.toByteArray
+
+  def succ: Nat = this + Nat.One
 }

@@ -9,4 +9,7 @@ import the.lingo.Value.Implicits._
 
 final case class CoreException(stack: DebugStack, kind: Sym, context: Mapping, exp: Exp) extends WHNF {
   override def impl_toCore() = ValueException(Symbols.Core, ListUtils.List(kind, context, exp, stack))
+
+  override def show(implicit show: MayNotWHNF => String): String =
+    s"CoreException(${show(stack)},${show(kind)},${show(context)},${show(exp)})"
 }

@@ -5,6 +5,7 @@
 */
 package the.lingo
 
+import the.lingo.Showable.Implicits._
 import the.lingo.Value.Implicits._
 import the.lingo.utils.Nat
 
@@ -14,6 +15,8 @@ final case class DebugStack(xs: List[DebugStackPosition]) extends WHNF {
   def push(x: DebugStackPosition): DebugStack = DebugStack(x :: xs)
 
   override def impl_toCore() = ValueList(xs).toCore()
+
+  override def show(implicit show: MayNotWHNF => String): String = s"DebugStack(${xs.show})"
 }
 
 final object DebugStack {
@@ -24,6 +27,8 @@ sealed trait DebugStackPosition extends WHNF
 
 final case class NamedPosition(name: Value) extends DebugStackPosition {
   override def impl_toCore() = Tagged(Symbols.Tags.NamedPosition, ListUtils.List(name))
+
+  override def show(implicit show: MayNotWHNF => String): String = s"NamedPosition(${show(name)})"
 }
 
 final case class FilePosition(file: String, start: LineColumn, end: LineColumn) extends DebugStackPosition {
@@ -38,6 +43,8 @@ final case class FilePosition(file: String, start: LineColumn, end: LineColumn) 
         ListUtils.List(
           ValueNat(end.line),
           ValueNat(end.column))))
+
+  override def show(implicit show: MayNotWHNF => String): String = s"FilePosition(${"\""}${file}${"\""},${start.toString},${end.toString})"
 }
 
 private final object AsFilePositionCached {

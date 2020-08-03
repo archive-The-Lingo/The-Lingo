@@ -24,10 +24,12 @@ final case object Null extends CoreWHNF {
     case Null => true
     case _ => false
   }
+
+  override def show(implicit show: MayNotWHNF => String): String = "Null"
 }
 
 final case class Sym(x: Symbol) extends CoreWHNF {
-  override def toString(): String = "Sym('" + x.name + ")"
+  override def show(implicit show: MayNotWHNF => String): String = s"Sym('${x.name})"
 
   private[lingo] override def equal_core(y: CoreWHNF, opaqueFlag: OnewayWriteFlag) = y match {
     case Sym(y) => x == y
@@ -58,6 +60,8 @@ final case class Pair(x: Value, y: Value) extends CoreWHNF {
     case Pair(a, b) => a.equal_reduce_rec(x, opaqueFlag) && b.equal_reduce_rec(y, opaqueFlag)
     case _ => false
   }
+
+  override def show(implicit show: MayNotWHNF => String): String = s"Pair(${show(x)},${show(y)})"
 }
 
 final case class Tagged(tag: Value, xs: Value) extends CoreWHNF {
@@ -65,6 +69,8 @@ final case class Tagged(tag: Value, xs: Value) extends CoreWHNF {
     case Tagged(a, b) => a.equal_reduce_rec(tag, opaqueFlag) && b.equal_reduce_rec(xs, opaqueFlag)
     case _ => false
   }
+
+  override def show(implicit show: MayNotWHNF => String): String = s"Tagged(${show(tag)},${show(xs)})"
 }
 
 final case class ValueException(tag: Value, xs: Value) extends CoreWHNF {
@@ -72,6 +78,8 @@ final case class ValueException(tag: Value, xs: Value) extends CoreWHNF {
     case ValueException(a, b) => a.equal_reduce_rec(tag, opaqueFlag) && b.equal_reduce_rec(xs, opaqueFlag)
     case _ => false
   }
+
+  override def show(implicit show: MayNotWHNF => String): String = s"ValueException(${show(tag)},${show(xs)})"
 }
 
 final case class ValueNat(x: Nat) extends CoreWHNF {
@@ -79,6 +87,8 @@ final case class ValueNat(x: Nat) extends CoreWHNF {
     case ValueNat(y) => x == y
     case _ => false
   }
+
+  override def show(implicit show: MayNotWHNF => String): String = s"Nat(${x.toString()})"
 }
 
 private final object NatUtils {
