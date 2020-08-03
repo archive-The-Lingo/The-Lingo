@@ -94,7 +94,7 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
     }
 
   private def builtin: Parser[Exp] =
-    "!(" ~> sym ~ rep(spaceRegex ~> exp) <~ skipSpace(")") ^^ {
+    "!(" ~> sym ~ rep(spaceRegex ~> value) <~ skipSpace(")") ^^ {
       case f ~ xs => Builtin(f, xs)
     }
 
@@ -114,7 +114,7 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
 
   def parseExp(x: String = Source.fromFile(file).mkString): Exp = parseAll(topExp, x) match {
     case Success(result, _) => result
-    case x: NoSuccess => throw new RuntimeException(x.msg)
+    case x: NoSuccess => throw new RuntimeException(x.toString)
   }
 
   private val value: Parser[Value] = skipSpace(sym ^^ {
@@ -137,7 +137,7 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
 
   def parseValue(x: String = Source.fromFile(file).mkString): Value = parseAll(topValue, x) match {
     case Success(result, _) => result
-    case x: NoSuccess => throw new RuntimeException(x.msg)
+    case x: NoSuccess => throw new RuntimeException(x.toString)
   }
 
   private def pos: Parser[Positional] = positioned(success(new Positional {}))

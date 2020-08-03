@@ -17,5 +17,14 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
     it("parses!") {
       SimpleFileParser(libDir("序列.包")).parseExp()
     }
+    it("map works!") {
+      val mod = SimpleFileParser(libDir("序列.包")).parseExp().eval() match {
+        case AsMappingCached(x) => x
+        case x => throw new AssertionError("not a mapping " + x.toString)
+      }
+      val id = InterpretedClosure(List(Id(Sym("甲"))), None, Mapping.Empty, Id(Sym("甲")))
+      val testList = ListUtils.List(Id(Id(Id(Id(Id(Sym("甲")))))))
+      // TODO
+    }
   }
 }

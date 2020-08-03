@@ -37,7 +37,7 @@ private final object AsMappingCached {
     import ListHelpers._
 
     def unapply(xs: List[Value]): Option[List[(Value, Value)]] = xs.flatMapOption(_ match {
-      case ListUtils.ConsList(List(a, b)) => Some((a, b))
+      case ListUtils.List(a, b) => Some((a, b))
       case _ => None
     })
   }

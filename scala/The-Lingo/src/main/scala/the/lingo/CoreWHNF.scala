@@ -27,6 +27,8 @@ final case object Null extends CoreWHNF {
 }
 
 final case class Sym(x: Symbol) extends CoreWHNF {
+  override def toString(): String = "Sym('" + x.name + ")"
+
   private[lingo] override def equal_core(y: CoreWHNF, opaqueFlag: OnewayWriteFlag) = y match {
     case Sym(y) => x == y
     case _ => false

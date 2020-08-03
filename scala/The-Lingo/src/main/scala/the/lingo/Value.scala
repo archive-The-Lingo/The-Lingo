@@ -37,6 +37,8 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
 
   import Value.Implicits._
 
+  override def toString(): String = x.toString()
+
   // writing requires synchronized. reading doesn't
   private def notsynced_unsafe_write(v: MayNotWHNF) = {
     x = v
