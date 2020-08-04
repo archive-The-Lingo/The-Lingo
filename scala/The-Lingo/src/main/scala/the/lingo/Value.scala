@@ -257,16 +257,10 @@ trait MayNotWHNF extends Showable {
 
 final object Showable {
 
-  def show(x: Showable)(implicit showContext: ShowContext): String = x.show(showContext)
-
   final object Implicits {
 
-    implicit class ShowImplicitApply[A <: Showable](x: A) {
-      def shoW()(implicit showContext: ShowContext): String = x.show(showContext)
-    }
-
     implicit class ShowXs[A <: Showable](xs: List[A]) {
-      def showXs(implicit showContext: ShowContext): String = xs.map(_.shoW()).mkString(",")
+      def showXs(implicit showContext: ShowContext): String = xs.map(_.show).mkString(",")
     }
 
     implicit class ShowList[A <: Showable](x: List[A]) extends Showable {
@@ -275,7 +269,7 @@ final object Showable {
 
     implicit class ShowOption[A <: Showable](x: Option[A]) extends Showable {
       override def impl_show(implicit showContext: ShowContext): String = x match {
-        case Some(x) => s"Some(${x.shoW()})"
+        case Some(x) => s"Some(${x.show})"
         case None => "None"
       }
     }

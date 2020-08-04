@@ -111,7 +111,7 @@ final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
     f.eval(context, stack).app(xs.map((x: Value) => x.eval(context, stack)), stack)
   }
 
-  override def impl_show(implicit showContext: ShowContext): String = s"ApplyFunc(${f.shoW()},${Showable.show(xs)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"ApplyFunc(${f.show},${xs.show})"
 }
 
 final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
@@ -124,12 +124,12 @@ final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
   }
 
   override def impl_show(implicit showContext: ShowContext): String =
-    s"ApplyMacro(${f.shoW()},${Showable.show(xs)})"
+    s"ApplyMacro(${f.show},${xs.show})"
 }
 
 final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
   override def impl_show(implicit showContext: ShowContext): String =
-    s"Builtin(${f.shoW()},${Showable.show(xs)})"
+    s"Builtin(${f.show},${xs.show})"
 
   override def impl_toCore() =
     Exp.consExp(Symbols.Builtin, List(f, ListUtils.ConsList(xs)))

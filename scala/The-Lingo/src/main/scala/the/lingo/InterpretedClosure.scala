@@ -27,7 +27,7 @@ final case class InterpretedClosure(args: List[Id], vararg: Option[Id], context:
     case None => CoreException(stack, Symbols.CoreExceptions.ArgsMismatch, Mapping.Empty, ApplyFunc(Quote(this), xs.map(Quote(_))))
   }
 
-  override def impl_show(implicit showContext: ShowContext): String = s"InterpretedClosure(${Showable.show(args)},${Showable.show(vararg)},${context.shoW()},${exp.shoW()})"
+  override def impl_show(implicit showContext: ShowContext): String = s"InterpretedClosure(${args.show},${vararg.show},${context.show},${exp.show})"
 }
 
 private final object InterpretedClosure {
