@@ -15,7 +15,7 @@ final class Delay(continue: => Value, stop: => Exp) extends MayNotWHNF {
 
   override def readback() = readbck
 
-  override def show(implicit show: MayNotWHNF => String): String = s"Delay(...)"
+  override def impl_show(implicit showContext: ShowContext): String = s"Delay(...)"
 }
 
 final object Delay {

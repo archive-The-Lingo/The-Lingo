@@ -25,11 +25,11 @@ final case object Null extends CoreWHNF {
     case _ => false
   }
 
-  override def show(implicit show: MayNotWHNF => String): String = "Null"
+  override def impl_show(implicit showContext: ShowContext): String = "Null"
 }
 
 final case class Sym(x: Symbol) extends CoreWHNF {
-  override def show(implicit show: MayNotWHNF => String): String = s"Sym('${x.name})"
+  override def impl_show(implicit showContext: ShowContext): String = s"Sym('${x.name})"
 
   private[lingo] override def equal_core(y: CoreWHNF, opaqueFlag: OnewayWriteFlag) = y match {
     case Sym(y) => x == y
@@ -61,7 +61,7 @@ final case class Pair(x: Value, y: Value) extends CoreWHNF {
     case _ => false
   }
 
-  override def show(implicit show: MayNotWHNF => String): String = s"Pair(${show(x)},${show(y)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"Pair(${x.show},${y.show})"
 }
 
 final case class Tagged(tag: Value, xs: Value) extends CoreWHNF {
@@ -70,7 +70,7 @@ final case class Tagged(tag: Value, xs: Value) extends CoreWHNF {
     case _ => false
   }
 
-  override def show(implicit show: MayNotWHNF => String): String = s"Tagged(${show(tag)},${show(xs)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"Tagged(${tag.show},${xs.show})"
 }
 
 final case class ValueException(tag: Value, xs: Value) extends CoreWHNF {
@@ -79,7 +79,7 @@ final case class ValueException(tag: Value, xs: Value) extends CoreWHNF {
     case _ => false
   }
 
-  override def show(implicit show: MayNotWHNF => String): String = s"ValueException(${show(tag)},${show(xs)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"ValueException(${tag.show},${xs.show})"
 }
 
 final case class ValueNat(x: Nat) extends CoreWHNF {
@@ -88,7 +88,7 @@ final case class ValueNat(x: Nat) extends CoreWHNF {
     case _ => false
   }
 
-  override def show(implicit show: MayNotWHNF => String): String = s"Nat(${x.toString()})"
+  override def impl_show(implicit showContext: ShowContext): String = s"Nat(${x.toString()})"
 }
 
 private final object NatUtils {

@@ -9,7 +9,7 @@ import the.lingo.Value.Implicits._
 import the.lingo.Showable.Implicits._
 
 final case class ValueList(xs: List[Value]) extends WHNF {
-  override def show(implicit show: MayNotWHNF => String): String = s"ListUtils.List(${xs.showXs})"
+  override def impl_show(implicit showContext: ShowContext): String = s"ListUtils.List(${xs.showXs})"
 
   override def impl_toCore() = xs match {
     case head :: tail => Pair(head, ValueList(tail))

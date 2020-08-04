@@ -11,7 +11,7 @@ import the.lingo.utils.Nat
 final case class ValueChar(x: Char) extends WHNF {
   override def impl_toCore() = Tagged(Symbols.Tags.Char, ListUtils.List(ValueNat(Nat(x.toInt))))
 
-  override def show(implicit show: MayNotWHNF => String): String =s"ValueChar(${x.toString()})"
+  override def impl_show(implicit showContext: ShowContext): String = s"ValueChar(${x.toString()})"
 }
 
 private final object AsValueCharCached {

@@ -38,7 +38,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
 
   import Value.Implicits._
 
-  override def show(implicit show: MayNotWHNF => String): String = x.show(show)
+  override def impl_show(implicit showContext: ShowContext): String = x.show(showContext)
 
   // writing requires synchronized. reading doesn't
   private def notsynced_unsafe_write(v: MayNotWHNF) = {
@@ -195,7 +195,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   })
 }
 
-private final case class ShowContext(val parents: immutable.HashSet[Showable], val context: immutable.HashMap[Showable, Nat], val count: MutableBox[Nat]) {
+final case class ShowContext private[lingo](val parents: immutable.HashSet[Showable], val context: immutable.HashMap[Showable, Nat], val count: MutableBox[Nat]) {
   private[lingo] def newId: Nat = {
     count.synchronized {
       val x = count.get
@@ -210,38 +210,34 @@ private final object ShowContext {
 }
 
 trait Showable {
-  def show(implicit show: MayNotWHNF => String): String
+  private[lingo] def impl_show(implicit showContext: ShowContext): String
 
-  private[lingo] def doShow(showContext: ShowContext): String =
-    this.show({
-      _.doShow(showContext)
-    })
+  final def show(implicit showContext: ShowContext): String = this match {
+    case self:MayNotWHNF => {
+      val parents = showContext.parents
+      val context = showContext.context
+      context.get(self) match {
+        case Some(x) => "#" + x.toString()
+        case None => {
+          val innerParents = parents.incl(self)
+          val innerContext = {
+            if (parents(self)) {
+              context.updated(self, showContext.newId)
+            } else {
+              context
+            }
+          }
+          self.impl_show(new ShowContext(innerParents, innerContext, showContext.count))
+        }
+      }
+    }
+    case _ => this.impl_show(showContext)
+  }
 
-  final override def toString(): String = this.doShow(ShowContext())
+  final override def toString(): String = this.show(ShowContext())
 }
 
 trait MayNotWHNF extends Showable {
-
-  override private[lingo] def doShow(showContext: ShowContext): String = {
-    val parents = showContext.parents
-    val context = showContext.context
-    context.get(this) match {
-      case Some(x) => "#" + x.toString()
-      case None => {
-        val innerParents = parents.incl(this)
-        val innerContext = {
-          if (parents(this)) {
-            context.updated(this, showContext.newId)
-          } else {
-            context
-          }
-        }
-        this.show({
-          _.doShow(new ShowContext(innerParents, innerContext, showContext.count))
-        })
-      }
-    }
-  }
 
   def reduce_rec(): WHNF
 
@@ -261,35 +257,35 @@ trait MayNotWHNF extends Showable {
 
 final object Showable {
 
-  def show(x: Showable)(implicit show: MayNotWHNF => String): String = x.show(show)
+  def show(x: Showable)(implicit showContext: ShowContext): String = x.show(showContext)
 
   final object Implicits {
 
     implicit class ShowImplicitApply[A <: Showable](x: A) {
-      def shoW()(implicit show: MayNotWHNF => String): String = x.show(show)
+      def shoW()(implicit showContext: ShowContext): String = x.show(showContext)
     }
 
     implicit class ShowXs[A <: Showable](xs: List[A]) {
-      def showXs(implicit show: MayNotWHNF => String): String = xs.map(_.shoW()).mkString(",")
+      def showXs(implicit showContext: ShowContext): String = xs.map(_.shoW()).mkString(",")
     }
 
     implicit class ShowList[A <: Showable](x: List[A]) extends Showable {
-      def show(implicit show: MayNotWHNF => String): String = s"List(${x.showXs})"
+      override def impl_show(implicit showContext: ShowContext): String = s"List(${x.showXs})"
     }
 
     implicit class ShowOption[A <: Showable](x: Option[A]) extends Showable {
-      def show(implicit show: MayNotWHNF => String): String = x match {
+      override def impl_show(implicit showContext: ShowContext): String = x match {
         case Some(x) => s"Some(${x.shoW()})"
         case None => "None"
       }
     }
 
     implicit class ShowTuple2[A <: Showable, B <: Showable](x: (A, B)) extends Showable {
-      def show(implicit show: MayNotWHNF => String): String = s"(${x._1.show},${x._2.show})"
+      override def impl_show(implicit showContext: ShowContext): String = s"(${x._1.show},${x._2.show})"
     }
 
     implicit class ShowTuple2List[A <: Showable, B <: Showable](xs: List[(A, B)]) extends Showable {
-      def show(implicit show: MayNotWHNF => String): String = s"List(${xs.map(_.show).mkString(",")})"
+      override def impl_show(implicit showContext: ShowContext): String = s"List(${xs.map(_.show).mkString(",")})"
     }
 
   }
@@ -308,7 +304,7 @@ trait WHNF extends MayNotWHNF {
 
   final override def readback() = Quote(this)
 
-  def impl_toCore(): CoreWHNF
+  private[lingo] def impl_toCore(): CoreWHNF
 
   final private lazy val coreForm = this.impl_toCore()
 

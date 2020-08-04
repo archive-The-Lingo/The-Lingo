@@ -25,7 +25,7 @@ final case class Mapping private(private val xs: List[(Value, Value)]) extends W
 
   def isEmpty: Boolean = xs.isEmpty
 
-  override def show(implicit show: MayNotWHNF => String): String = s"Mapping(${xs.show})"
+  override def impl_show(implicit showContext: ShowContext): String = s"Mapping(${xs.show})"
 }
 
 final object Mapping {

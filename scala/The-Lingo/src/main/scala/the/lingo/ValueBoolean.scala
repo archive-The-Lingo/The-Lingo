@@ -18,7 +18,7 @@ final object ValueBoolean {
 
     override def toBoolean = true
 
-    override def show(implicit show: MayNotWHNF => String): String = "True"
+    override def impl_show(implicit showContext: ShowContext): String = "True"
   }
 
   final case object False extends ValueBoolean {
@@ -26,7 +26,7 @@ final object ValueBoolean {
 
     override def toBoolean = false
 
-    override def show(implicit show: MayNotWHNF => String): String = "False"
+    override def impl_show(implicit showContext: ShowContext): String = "False"
   }
 
   def apply(x: Boolean) = if (x) {

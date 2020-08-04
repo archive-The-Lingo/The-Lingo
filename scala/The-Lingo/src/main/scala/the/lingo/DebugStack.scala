@@ -16,7 +16,7 @@ final case class DebugStack(xs: List[DebugStackPosition]) extends WHNF {
 
   override def impl_toCore() = ValueList(xs).toCore()
 
-  override def show(implicit show: MayNotWHNF => String): String = s"DebugStack(${xs.show})"
+  override def impl_show(implicit showContext: ShowContext): String = s"DebugStack(${xs.show})"
 }
 
 final object DebugStack {
@@ -28,7 +28,7 @@ sealed trait DebugStackPosition extends WHNF
 final case class NamedPosition(name: Value) extends DebugStackPosition {
   override def impl_toCore() = Tagged(Symbols.Tags.NamedPosition, ListUtils.List(name))
 
-  override def show(implicit show: MayNotWHNF => String): String = s"NamedPosition(${show(name)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"NamedPosition(${name.show})"
 }
 
 final case class FilePosition(file: String, start: LineColumn, end: LineColumn) extends DebugStackPosition {
@@ -44,7 +44,7 @@ final case class FilePosition(file: String, start: LineColumn, end: LineColumn) 
           ValueNat(end.line),
           ValueNat(end.column))))
 
-  override def show(implicit show: MayNotWHNF => String): String = s"FilePosition(${"\""}${file}${"\""},${start.toString},${end.toString})"
+  override def impl_show(implicit showContext: ShowContext): String = s"FilePosition(${"\""}${file}${"\""},${start.toString},${end.toString})"
 }
 
 private final object AsFilePositionCached {

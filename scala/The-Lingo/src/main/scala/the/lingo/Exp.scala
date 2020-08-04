@@ -55,7 +55,7 @@ final case class Id(x: Value) extends Exp {
     CoreException(stack, Symbols.CoreExceptions.NoDefinition, context, this)
   }
 
-  override def show(implicit show: MayNotWHNF => String): String = s"Id(${show(x)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"Id(${x.show})"
 }
 
 final case class Quote(x: Value) extends Exp {
@@ -63,7 +63,7 @@ final case class Quote(x: Value) extends Exp {
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = x
 
-  override def show(implicit show: MayNotWHNF => String): String = s"Quote(${show(x)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"Quote(${x.show})"
 }
 
 final case class Comment(comment: Value, x: Value) extends Exp {
@@ -71,7 +71,7 @@ final case class Comment(comment: Value, x: Value) extends Exp {
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, stack)
 
-  override def show(implicit show: MayNotWHNF => String): String = s"Comment(${show(comment)},${show(x)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"Comment(${comment.show},${x.show})"
 }
 
 final private object RemoveWrapper {
@@ -91,7 +91,7 @@ final case class Positioned(pos: DebugStackPosition, x: Value) extends Exp {
 
   private[lingo] override def real_eval(context: Mapping, stack: DebugStack) = x.eval(context, stack.push(pos))
 
-  override def show(implicit show: MayNotWHNF => String): String = s"Positioned(${show(pos)},${show(x)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"Positioned(${pos.show},${x.show})"
 }
 
 final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
@@ -111,7 +111,7 @@ final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
     f.eval(context, stack).app(xs.map((x: Value) => x.eval(context, stack)), stack)
   }
 
-  override def show(implicit show: MayNotWHNF => String): String = s"ApplyFunc(${f.shoW()},${Showable.show(xs)})"
+  override def impl_show(implicit showContext: ShowContext): String = s"ApplyFunc(${f.shoW()},${Showable.show(xs)})"
 }
 
 final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
@@ -123,12 +123,12 @@ final case class ApplyMacro(f: Value, xs: List[Value]) extends Exp {
     case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Macro, context, this)
   }
 
-  override def show(implicit show: MayNotWHNF => String): String =
+  override def impl_show(implicit showContext: ShowContext): String =
     s"ApplyMacro(${f.shoW()},${Showable.show(xs)})"
 }
 
 final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
-  override def show(implicit show: MayNotWHNF => String): String =
+  override def impl_show(implicit showContext: ShowContext): String =
     s"Builtin(${f.shoW()},${Showable.show(xs)})"
 
   override def impl_toCore() =
