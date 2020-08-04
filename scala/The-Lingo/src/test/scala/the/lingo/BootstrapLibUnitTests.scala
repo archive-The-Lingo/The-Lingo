@@ -27,8 +27,8 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
       val map = mod.get(Sym("序列-內用")).get
       val result = map.app(List(testList, id)).reduce_rec()
       // TODO
-      //result.equal_reduce_rec(testList)
-      //println(result.toString())
+      result.equal_reduce_rec(testList)
+      println(result.toString())
       //assert(result.equal_reduce_rec(testList))
     }
   }

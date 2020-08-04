@@ -5,8 +5,7 @@
 */
 package the.lingo
 
-import the.lingo.utils.ByReferenceWrapper.Implicits._
-import the.lingo.utils.{ByReferenceWrapper, MutableBox, Nat, OnewayWriteFlag}
+import the.lingo.utils.{MutableBox, Nat, OnewayWriteFlag}
 
 import scala.collection.{immutable, mutable}
 
@@ -35,6 +34,7 @@ final object Value {
 }
 
 final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
+  override def hashCode(): Int = System.identityHashCode(this) // avoid StackOverflow when calculating hashCode
 
   import Value.Implicits._
 
@@ -107,7 +107,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   }
 
   private def unpack_rec_to_single_pack(): Value = {
-    val history: mutable.HashSet[ByReferenceWrapper[Value]] = new mutable.HashSet()
+    val history: mutable.HashSet[Value] = new mutable.HashSet()
     this.synchronized {
       while (true) {
         x match {
@@ -203,7 +203,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   })
 }
 
-final case class ShowContext private[lingo](val parents: immutable.HashSet[ByReferenceWrapper[Showable]], val context: immutable.HashMap[ByReferenceWrapper[Showable], Nat], val count: MutableBox[Nat]) {
+final case class ShowContext private[lingo](val parents: immutable.HashSet[Showable], val context: immutable.HashMap[Showable, Nat], val count: MutableBox[Nat]) {
   private[lingo] def newId: Nat = {
     count.synchronized {
       val x = count.get
