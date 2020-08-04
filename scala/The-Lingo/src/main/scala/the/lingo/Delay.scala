@@ -6,7 +6,11 @@
 package the.lingo
 
 final class Delay(continue: => Value, stop: => Exp) extends MayNotWHNF {
-  private lazy val cont = continue
+  private lazy val cont = {
+    counted = true
+    continue
+  }
+  private var counted = false
   private lazy val readbck = stop
 
   override def reduce_rec() = cont.reduce_rec()
@@ -15,7 +19,11 @@ final class Delay(continue: => Value, stop: => Exp) extends MayNotWHNF {
 
   override def readback() = readbck
 
-  override def impl_show(implicit showContext: ShowContext): String = s"Delay(...)"
+  override def impl_show(implicit showContext: ShowContext): String = if (counted) {
+    cont.show(showContext)
+  } else {
+    s"Delay(...)"
+  }
 }
 
 final object Delay {

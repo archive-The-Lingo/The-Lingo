@@ -5,10 +5,10 @@
 */
 package the.lingo
 
-import the.lingo.utils.{MutableBox, Nat, OnewayWriteFlag}
+import the.lingo.utils.ByReference.Implicits._
+import the.lingo.utils.{ByReference, MutableBox, Nat, OnewayWriteFlag}
 
-import scala.collection.mutable
-import scala.collection.immutable
+import scala.collection.{immutable, mutable}
 
 final object Value {
 
@@ -107,7 +107,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   }
 
   private def unpack_rec_to_single_pack(): Value = {
-    val history: mutable.HashSet[Value] = new mutable.HashSet() // TODO: check the equality HashSet using (should be ref)
+    val history: mutable.HashSet[ByReference[Value]] = new mutable.HashSet()
     this.synchronized {
       while (true) {
         x match {
@@ -132,7 +132,6 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
 
   /** opaqueFlag only make sense when the result is true  */
   def equal_reduce_rec(arg: Value, opaqueFlag: OnewayWriteFlag = new OnewayWriteFlag): Boolean = {
-    // TODO: cache
     val (self, x) = (this.unpack_rec(), arg.unpack_rec())
     if (self eq x) {
       return true
@@ -142,24 +141,33 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
       return true
     }
 
-    opaqueFlag.or(v0.isInstanceOf[OpaqueWHNF] || v1.isInstanceOf[OpaqueWHNF])
-    v0 match {
+    val innerOpaqueFlag = new OnewayWriteFlag
+    innerOpaqueFlag.or(v0.isInstanceOf[OpaqueWHNF] || v1.isInstanceOf[OpaqueWHNF])
+    val finalResult = (v0 match {
       case v0: FeaturedWHNF_equal =>
-        v0.feature_equal(v1, opaqueFlag) match {
-          case Some(result) => return result
-          case None => {}
+        v0.feature_equal(v1, innerOpaqueFlag) match {
+          case Some(result) => Some(result)
+          case None => None
         }
-      case _ => {}
+      case _ => None
+    }) orElse {
+      v1 match {
+        case v1: FeaturedWHNF_equal =>
+          v1.feature_equal(v0, innerOpaqueFlag) match {
+            case Some(result) => Some(result)
+            case None => None
+          }
+        case _ => None
+      }
+    } getOrElse {
+      v0.toCore().equal_core(v1.toCore(), innerOpaqueFlag)
     }
-    v1 match {
-      case v1: FeaturedWHNF_equal =>
-        v1.feature_equal(v0, opaqueFlag) match {
-          case Some(result) => return result
-          case None => {}
-        }
-      case _ => {}
+    opaqueFlag.or(innerOpaqueFlag.get)
+    if (finalResult && innerOpaqueFlag.get) {
+      // TODO: write Value instead of WHNF
+      arg.smart_maybe_write(v0)
     }
-    v0.toCore().equal_core(v1.toCore(), opaqueFlag)
+    finalResult
   }
 
   def eval(context: Mapping = Mapping.Empty, stack: DebugStack = DebugStack.Empty): Value = Delay({
@@ -195,7 +203,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   })
 }
 
-final case class ShowContext private[lingo](val parents: immutable.HashSet[Showable], val context: immutable.HashMap[Showable, Nat], val count: MutableBox[Nat]) {
+final case class ShowContext private[lingo](val parents: immutable.HashSet[ByReference[Showable]], val context: immutable.HashMap[ByReference[Showable], Nat], val count: MutableBox[Nat]) {
   private[lingo] def newId: Nat = {
     count.synchronized {
       val x = count.get
@@ -213,7 +221,7 @@ trait Showable {
   private[lingo] def impl_show(implicit showContext: ShowContext): String
 
   final def show(implicit showContext: ShowContext): String = this match {
-    case self:MayNotWHNF => {
+    case self: MayNotWHNF => {
       val parents = showContext.parents
       val context = showContext.context
       context.get(self) match {
