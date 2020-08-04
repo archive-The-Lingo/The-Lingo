@@ -5,8 +5,8 @@
 */
 package the.lingo
 
-import the.lingo.utils.ByReference.Implicits._
-import the.lingo.utils.{ByReference, MutableBox, Nat, OnewayWriteFlag}
+import the.lingo.utils.ByReferenceWrapper.Implicits._
+import the.lingo.utils.{ByReferenceWrapper, MutableBox, Nat, OnewayWriteFlag}
 
 import scala.collection.{immutable, mutable}
 
@@ -107,7 +107,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   }
 
   private def unpack_rec_to_single_pack(): Value = {
-    val history: mutable.HashSet[ByReference[Value]] = new mutable.HashSet()
+    val history: mutable.HashSet[ByReferenceWrapper[Value]] = new mutable.HashSet()
     this.synchronized {
       while (true) {
         x match {
@@ -203,7 +203,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   })
 }
 
-final case class ShowContext private[lingo](val parents: immutable.HashSet[ByReference[Showable]], val context: immutable.HashMap[ByReference[Showable], Nat], val count: MutableBox[Nat]) {
+final case class ShowContext private[lingo](val parents: immutable.HashSet[ByReferenceWrapper[Showable]], val context: immutable.HashMap[ByReferenceWrapper[Showable], Nat], val count: MutableBox[Nat]) {
   private[lingo] def newId: Nat = {
     count.synchronized {
       val x = count.get
@@ -235,6 +235,7 @@ trait Showable {
               context
             }
           }
+          assert(innerParents(self)) // TODO: FIX ME
           self.impl_show(new ShowContext(innerParents, innerContext, showContext.count))
         }
       }
