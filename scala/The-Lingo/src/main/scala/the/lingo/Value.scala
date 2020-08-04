@@ -235,7 +235,6 @@ trait Showable {
               context
             }
           }
-          assert(innerParents(self)) // TODO: FIX ME
           self.impl_show(new ShowContext(innerParents, innerContext, showContext.count))
         }
       }
