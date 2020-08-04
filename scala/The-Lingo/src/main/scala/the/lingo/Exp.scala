@@ -200,8 +200,9 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
 
       case (Symbols.Builtins.Rec, List(RemoveWrapper(Id(id)), exp)) => {
         lazy val result: Value = exp.eval_callByName({
-          context.updated(id, result)
+          innerContext
         }, stack)
+        lazy val innerContext = context.updated(id, result)
         result
       }
       case (Symbols.Builtins.NatToBinary, List(x)) => x.eval(context, stack) match {
