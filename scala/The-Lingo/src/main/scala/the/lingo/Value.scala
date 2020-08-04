@@ -279,7 +279,7 @@ final object Showable {
     }
 
     implicit class ShowTuple2List[A <: Showable, B <: Showable](xs: List[(A, B)]) extends Showable {
-      override def impl_show(implicit showContext: ShowContext): String = s"List(${xs.map(_.show).mkString(",")})"
+      override def impl_show(implicit showContext: ShowContext): String = xs.map(ShowTuple2).show
     }
 
   }
