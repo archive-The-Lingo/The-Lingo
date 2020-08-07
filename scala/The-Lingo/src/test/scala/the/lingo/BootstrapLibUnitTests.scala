@@ -40,5 +40,15 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
       println(modStr)
       assert(modStr.contains("構造-序列/連結"))
     }
+    it("append woeks!") {
+      def testList1 = ListUtils.List(Id(Id(Id(Id(Id(Sym("甲")))))), Sym("甲"))
+
+      def testList2 = ListUtils.List(Id(Id(Id(Id(Id(Sym("乙")))))), Sym("乙"))
+
+      def result = ListUtils.List(Id(Id(Id(Id(Id(Sym("甲")))))), Sym("甲"), Id(Id(Id(Id(Id(Sym("乙")))))), Sym("乙"))
+
+      val append = mod.get(Sym("連")).get
+      assert(append.app(List(testList1, testList2)).equal_reduce_rec(result))
+    }
   }
 }
