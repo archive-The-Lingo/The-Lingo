@@ -203,7 +203,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   })
 }
 
-final case class ShowContext private[lingo](val parents: immutable.HashSet[Showable], val context: immutable.HashMap[Showable, Nat], val count: MutableBox[Nat]) {
+final case class ShowContext private[lingo](val parents: immutable.HashSet[WHNF], val context: immutable.HashMap[WHNF, Nat], val count: MutableBox[Nat]) {
   private[lingo] def newId: Nat = {
     count.synchronized {
       val x = count.get
@@ -221,7 +221,7 @@ trait Showable {
   private[lingo] def impl_show(implicit showContext: ShowContext): String
 
   final def show(implicit showContext: ShowContext): String = this match {
-    case self: MayNotWHNF => {
+    case self: WHNF => {
       val parents = showContext.parents
       val context = showContext.context
       context.get(self) match {
