@@ -24,7 +24,7 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
       }
       val id = InterpretedClosure(List(Id(Sym("甲"))), None, Mapping.Empty, Id(Sym("甲")))
       def testList = ListUtils.List(Id(Id(Id(Id(Id(Sym("甲")))))))
-      val map = mod.get(Sym("序列-內用")).get
+      val map = mod.get(Sym("內用")).get
       val result = map.app(List(testList, id)).reduce_rec()
       assert(result.equal_reduce_rec(testList))
     }
