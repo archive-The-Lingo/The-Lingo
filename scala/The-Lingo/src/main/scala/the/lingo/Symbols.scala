@@ -41,6 +41,7 @@ final object Symbols {
     val BinaryToNat: Sym = Sym("二進位→自然數")
     val Eval: Sym = Sym("解算")
     val ElimBoolean: Sym = Sym("解構-陰陽")
+    val AppendMapping: Sym = Sym("連-映射")
   }
 
   final object Tags {

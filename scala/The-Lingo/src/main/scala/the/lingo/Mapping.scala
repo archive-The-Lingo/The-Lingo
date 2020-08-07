@@ -8,6 +8,7 @@ package the.lingo
 import the.lingo.Value.Implicits._
 import the.lingo.Showable.Implicits._
 
+// TODO: optimize me
 final case class Mapping private(private val xs: List[(Value, Value)]) extends WHNF {
   override def impl_toCore() = Tagged(Symbols.Tags.Mapping, ListUtils.List(ListUtils.ConsList(xs.map(p => {
     val (p1, p2) = p
@@ -24,6 +25,11 @@ final case class Mapping private(private val xs: List[(Value, Value)]) extends W
     })} yield v
 
   def isEmpty: Boolean = xs.isEmpty
+
+  def merged(other: Mapping): Mapping = xs match {
+    case Nil => other
+    case (key, value) :: rest => Mapping(rest).merged(other).updated(key, value)
+  }
 
   override def impl_show(implicit showContext: ShowContext): String = s"Mapping(${xs.show})"
 }

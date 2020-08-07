@@ -244,6 +244,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           }).eval(context, stack)
           case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Boolean, context, this)
         }
+      case (Symbols.Builtins.AppendMapping, List(xs, ys)) =>
+        (xs.eval(context, stack), ys.eval(context, stack)) match {
+          case (AsMappingCached(x), AsMappingCached(y)) => x.merged(y)
+          case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_Mapping, context, this)
+        }
 
       case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
     }
