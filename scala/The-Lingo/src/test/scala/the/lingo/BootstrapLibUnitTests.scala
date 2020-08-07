@@ -37,7 +37,7 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
     it("prints!") {
       mapTestResult
       val modStr = mod.toString()
-      println(modStr)
+      //println(modStr)
       assert(modStr.contains("構造-序列/連結"))
     }
     it("append woeks!") {
