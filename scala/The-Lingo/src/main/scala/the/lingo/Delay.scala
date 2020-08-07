@@ -5,24 +5,27 @@
 */
 package the.lingo
 
+import the.lingo.utils.Thunk
+
 final class Delay(continue: => Value, stop: => Exp) extends MayNotWHNF {
-  private lazy val cont = {
-    counted = true
+  private val valueThunk = new Thunk({
     continue
-  }
-  private var counted = false
-  private lazy val readbck = stop
+  })
+  private val readbackThunk = new Thunk({
+    stop
+  })
 
-  override def reduce_rec() = cont.reduce_rec()
+  override def reduce_rec() = valueThunk().reduce_rec()
 
-  override def reduce() = cont.reduce()
+  override def reduce() = valueThunk().reduce()
 
-  override def readback() = readbck
+  override def readback() = readbackThunk()
 
-  override def impl_show(implicit showContext: ShowContext): String = if (counted) {
-    cont.show(showContext)
-  } else {
-    s"Delay(...)"
+  override def impl_show(implicit showContext: ShowContext): String = valueThunk.synchronized {
+    valueThunk.snapshotState match {
+      case Thunk.StateDone => valueThunk().show(showContext)
+      case Thunk.StateEvaluating | Thunk.StateNone => "Delay(...)"
+    }
   }
 }
 
