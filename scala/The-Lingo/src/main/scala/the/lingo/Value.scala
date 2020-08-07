@@ -228,14 +228,14 @@ trait Showable {
         case Some(x) => "#" + x.toString()
         case None => {
           val innerParents = parents.incl(self)
-          val innerContext = {
-            if (parents(self)) {
-              context.updated(self, showContext.newId)
-            } else {
-              context
-            }
+          if (parents(self)) {
+            val id = showContext.newId
+            val innerContext = context.updated(self, id)
+            "#" + id.toString() + "=" + self.impl_show(new ShowContext(innerParents, innerContext, showContext.count))
+          } else {
+            val innerContext = context
+            self.impl_show(new ShowContext(innerParents, innerContext, showContext.count))
           }
-          self.impl_show(new ShowContext(innerParents, innerContext, showContext.count))
         }
       }
     }
