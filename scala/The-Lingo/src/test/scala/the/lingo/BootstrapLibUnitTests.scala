@@ -17,7 +17,7 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
     it("parses!") {
       SimpleFileParser(libDir("序列.包")).parseExp()
     }
-    it("map works!") {
+    it("prints and map works!") {
       val mod = SimpleFileParser(libDir("序列.包")).parseExp().eval() match {
         case AsMappingCached(x) => x
         case x => throw new AssertionError("not a mapping " + x.toString)
@@ -26,6 +26,9 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
       def testList = ListUtils.List(Id(Id(Id(Id(Id(Sym("甲")))))))
       val map = mod.get(Sym("內用")).get
       val result = map.app(List(testList, id)).reduce_rec()
+      val modStr = mod.toString()
+      println(modStr)
+      assert(modStr.contains("構造-序列/連結"))
       assert(result.equal_reduce_rec(testList))
     }
   }
