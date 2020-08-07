@@ -14,22 +14,31 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
   private def libDir(x: String): String = libDir + x
 
   describe("序列") {
-    it("parses!") {
-      SimpleFileParser(libDir("序列.包")).parseExp()
+    lazy val mod = SimpleFileParser(libDir("序列.包")).parseExp().eval() match {
+      case AsMappingCached(x) => x
+      case x => throw new AssertionError("not a mapping " + x.toString)
     }
-    it("prints and map works!") {
-      val mod = SimpleFileParser(libDir("序列.包")).parseExp().eval() match {
-        case AsMappingCached(x) => x
-        case x => throw new AssertionError("not a mapping " + x.toString)
-      }
+    it("parses!") {
+      mod
+    }
+
+    def testList = ListUtils.List(Id(Id(Id(Id(Id(Sym("甲")))))))
+
+    lazy val mapTestResult = {
       val id = InterpretedClosure(List(Id(Sym("甲"))), None, Mapping.Empty, Id(Sym("甲")))
-      def testList = ListUtils.List(Id(Id(Id(Id(Id(Sym("甲")))))))
+
       val map = mod.get(Sym("內用")).get
       val result = map.app(List(testList, id)).reduce_rec()
+      result
+    }
+    it("map works!") {
+      assert(testList.equal_reduce_rec(mapTestResult))
+    }
+    it("prints!") {
+      mapTestResult
       val modStr = mod.toString()
       println(modStr)
       assert(modStr.contains("構造-序列/連結"))
-      assert(result.equal_reduce_rec(testList))
     }
   }
 }
