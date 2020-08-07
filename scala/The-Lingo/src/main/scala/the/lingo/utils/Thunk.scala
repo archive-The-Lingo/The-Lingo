@@ -26,7 +26,7 @@ final class Thunk[T](calc: => T) {
     this.synchronized {
       state match {
         case StateEvaluating => {
-          throw SelfReferenceChunk(this)
+          throw SelfReferenceThunk(this)
         }
         case StateDone => {
           return value.get.get
@@ -65,7 +65,7 @@ object Thunk {
 
 }
 
-final case class SelfReferenceChunk[T](causeObject: Thunk[T],
-                                       private val message: String = "Self-reference found",
+final case class SelfReferenceThunk[T](causeObject: Thunk[T],
+                                       private val message: String = "Self-reference thunk found",
                                        private val cause: Throwable = None.orNull)
   extends Exception(message, cause)

@@ -7,6 +7,7 @@ package the.lingo
 
 import the.lingo.utils.Thunk
 
+// TODO: handle SelfReferenceThunk
 final class Delay(continue: => Value, stop: => Exp) extends MayNotWHNF {
   private val valueThunk = new Thunk({
     continue
