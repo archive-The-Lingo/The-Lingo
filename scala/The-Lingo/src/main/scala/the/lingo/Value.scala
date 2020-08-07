@@ -5,7 +5,8 @@
 */
 package the.lingo
 
-import the.lingo.utils.{MutableBox, Nat, OnewayWriteFlag}
+import the.lingo.utils.Thunk.{StateDone, StateEvaluating, StateNone}
+import the.lingo.utils.{MutableBox, Nat, OnewayWriteFlag, Thunk}
 
 import scala.collection.{immutable, mutable}
 
@@ -203,7 +204,7 @@ final case class Value(private var x: MayNotWHNF) extends MayNotWHNF {
   })
 }
 
-final case class ShowContext private[lingo](val parents: immutable.HashSet[WHNF], val context: immutable.HashMap[WHNF, Nat], val count: MutableBox[Nat]) {
+final case class ShowContext private[lingo](map: mutable.HashMap[WHNF, (Thunk[Nat], Thunk[String])], count: MutableBox[Nat]) {
   private[lingo] def newId: Nat = {
     count.synchronized {
       val x = count.get
@@ -214,31 +215,49 @@ final case class ShowContext private[lingo](val parents: immutable.HashSet[WHNF]
 }
 
 private final object ShowContext {
-  def apply() = new ShowContext(new immutable.HashSet(), new immutable.HashMap(), new MutableBox(Nat.Zero))
+  def apply() = new ShowContext(new mutable.HashMap(), new MutableBox(Nat.Zero))
 }
 
 trait Showable {
   private[lingo] def impl_show(implicit showContext: ShowContext): String
 
   final def show(implicit showContext: ShowContext): String = this match {
-    case self: WHNF => {
-      val parents = showContext.parents
-      val context = showContext.context
-      context.get(self) match {
-        case Some(x) => "#" + x.toString()
-        case None => {
-          val innerParents = parents.incl(self)
-          if (parents(self)) {
-            val id = showContext.newId
-            val innerContext = context.updated(self, id)
-            "#" + id.toString() + "=" + self.impl_show(new ShowContext(innerParents, innerContext, showContext.count))
-          } else {
-            val innerContext = context
-            self.impl_show(new ShowContext(innerParents, innerContext, showContext.count))
+    case self: WHNF =>
+      showContext.map.synchronized {
+        showContext.map.get(self) match {
+          case None => {
+            val id = new Thunk({
+              showContext.newId
+            })
+            val thunk = new Thunk({
+              val result = self.impl_show(showContext)
+              id.synchronized {
+                id.snapshotState match {
+                  case StateEvaluating => throw new IllegalStateException()
+                  case StateNone => {
+                    id.ban()
+                    result
+                  }
+                  case StateDone => s"#${id()}=${result}"
+                }
+              }
+            })
+            val mustBeNone = showContext.map.put(self, (id, thunk))
+            assert(mustBeNone.isEmpty)
+            thunk
+          }
+          case Some((id, thunk)) => {
+            thunk.synchronized {
+              thunk.snapshotState match {
+                case StateEvaluating => {
+                  return s"#${id()}"
+                }
+                case StateNone | StateDone => thunk
+              }
+            }
           }
         }
-      }
-    }
+      }()
     case _ => this.impl_show(showContext)
   }
 
