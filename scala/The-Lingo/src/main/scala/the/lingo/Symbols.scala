@@ -10,7 +10,7 @@ final object Symbols {
   val Id: Sym = Sym("識別子")
   val Exp: Sym = Sym("式")
   val ApplyFunc: Sym = Sym("用-函式")
-  val Quote: Sym = Sym("引")
+  val Quote: Sym = Sym("引用")
   val ApplyMacro: Sym = Sym("用-構式子")
   val Comment: Sym = Sym("注釋")
   val Exception: Sym = Sym("異常")
