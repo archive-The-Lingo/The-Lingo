@@ -13,11 +13,13 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
 
   private def libDir(x: String): String = libDir + x
 
+  private def parseEval(file: String) = SimpleFileParser(libDir(file)).parseExp().eval() match {
+    case AsMappingCached(x) => x
+    case x => throw new AssertionError("not a mapping " + x.toString)
+  }
+
   describe("序列") {
-    lazy val mod = SimpleFileParser(libDir("序列.包")).parseExp().eval() match {
-      case AsMappingCached(x) => x
-      case x => throw new AssertionError("not a mapping " + x.toString)
-    }
+    lazy val mod = parseEval("序列.包")
     it("parses!") {
       mod
     }
@@ -49,6 +51,18 @@ final class BootstrapLibUnitTests extends AnyFunSpec {
 
       val append = mod.get(Sym("連")).get
       assert(append.app(List(testList1, testList2)).equal_reduce_rec(result))
+    }
+  }
+  describe("映射") {
+    lazy val mod = parseEval("映射.包")
+    it("parses!") {
+      mod
+    }
+  }
+  describe("包") {
+    lazy val mod = parseEval("包.包")
+    it("parses!") {
+      mod
     }
   }
 }

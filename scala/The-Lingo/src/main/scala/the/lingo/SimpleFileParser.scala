@@ -5,6 +5,8 @@
 */
 package the.lingo
 
+import java.io.File
+
 import the.lingo.Value.Implicits._
 import the.lingo.utils.Nat
 
@@ -34,8 +36,14 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
 
   //private def skipBeginAndEndSpace[A](x: Parser[A]): Parser[A] = skipSpace(skipEndSpace(x))
 
-  private def includeValue: Parser[Value] = "~|" ~> """[^|]""".r <~ "|" ^^ {
-    case x => SimpleFileParser(x).parseValue(Source.fromFile(x).toString()) // TODO: fix Exception
+  private lazy val dir = new File(file).getParentFile()
+
+  private def includeValue: Parser[Value] = "{" ~> """[^{}]+""".r <~ "}" ^^ {
+    case fileToIncludeRaw => {
+      val fileToInclude = new File(dir, fileToIncludeRaw).getCanonicalPath()
+      // TODO: fix Exception and close the file
+      SimpleFileParser(fileToInclude).parseValue(Source.fromFile(fileToInclude).getLines.mkString)
+    }
   }
 
   private def nat: Parser[Value] =
