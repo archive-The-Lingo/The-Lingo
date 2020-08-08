@@ -10,7 +10,7 @@ final class Thunk[T](calc: => T) {
   import Thunk._
 
   private var state: State = StateNone
-  private val value: Init[T] = new Init()
+  private val value: Init[Either[Throwable, T]] = new Init()
 
   //only for debug
   private var banned = false
@@ -29,14 +29,21 @@ final class Thunk[T](calc: => T) {
           throw SelfReferenceThunk(this)
         }
         case StateDone => {
-          return value.get.get
+          return value.get.get match {
+            case Right(x) => x
+            case Left(e) => throw e
+          }
         }
         case StateNone => {
           state = StateEvaluating
         }
       }
     }
-    val result = calc
+    val result = try {
+      Right(calc)
+    } catch {
+      case e: Throwable => Left(e)
+    }
     val mustTrue = value.set(result)
     assert(mustTrue)
     this.synchronized {
@@ -49,7 +56,10 @@ final class Thunk[T](calc: => T) {
         }
       }
     }
-    result
+    result match {
+      case Right(x) => x
+      case Left(e) => throw e
+    }
   }
 }
 
