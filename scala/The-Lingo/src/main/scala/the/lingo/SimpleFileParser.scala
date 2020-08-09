@@ -38,7 +38,7 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
 
   private lazy val dir = new File(file).getParentFile()
 
-  private def includeValue: Parser[Value] = "{" ~> """[^{}]+""".r <~ "}" ^^ {
+  private def includeValue: Parser[Value] = "~|" ~> """[^|]+""".r <~ "|~" ^^ {
     case fileToIncludeRaw => {
       val fileToInclude = new File(dir, fileToIncludeRaw).getCanonicalPath()
       // TODO: fix Exception and close the file
@@ -106,7 +106,8 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
       case f ~ xs => Builtin(f, xs)
     }
 
-  private val exp: Parser[Exp] = skipSpace(posed(id | applyFunc | applyMacro | quote | comment | builtin))
+  private val exp: Parser[Exp] =
+    skipSpace(posed(id | applyFunc | applyMacro | quote | comment | builtin))
 
   private val topExp = skipEndSpace(exp)
 
@@ -125,11 +126,12 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
     case x: NoSuccess => throw new RuntimeException(x.toString)
   }
 
-  private val value: Parser[Value] = skipSpace(sym ^^ {
+  private implicit def packParser[A <: MayNotWHNF](x: Parser[A]): Parser[Value] = x ^^ {
     Value(_)
-  } | list | tagged | exception | nat | includeValue | exp ^^ {
-    Value(_)
-  })
+  }
+
+  private val value: Parser[Value] =
+    skipSpace(sym | list | tagged | exception | nat | includeValue | exp)
 
   private val topValue = skipEndSpace(value)
 
