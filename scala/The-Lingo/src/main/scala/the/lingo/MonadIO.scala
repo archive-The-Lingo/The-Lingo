@@ -87,3 +87,9 @@ final class IOVar(private var value: Value) extends OpaqueWHNF {
     }
   }
 }
+
+final object IOSymbols {
+  val Return: Sym = Sym("返回")
+  val Bind: Sym = Sym(">>=")
+  val Op: Sym = Sym("算子")
+}
