@@ -64,13 +64,31 @@ final case class Pair(x: Value, y: Value) extends CoreWHNF {
   override def impl_show(implicit showContext: ShowContext): String = s"Pair(${x.show},${y.show})"
 }
 
-final case class Tagged(tag: Value, xs: Value) extends CoreWHNF {
+// stack is for code-like data
+final case class Tagged(tag: Value, xs: Value, stack: Option[DebugStack] = None) extends CoreWHNF {
   private[lingo] override def equal_core(ab: CoreWHNF, opaqueFlag: OnewayWriteFlag) = ab match {
     case Tagged(a, b) => a.equal_reduce_rec(tag, opaqueFlag) && b.equal_reduce_rec(xs, opaqueFlag)
     case _ => false
   }
 
-  override def impl_show(implicit showContext: ShowContext): String = s"Tagged(${tag.show},${xs.show})"
+  override def impl_show(implicit showContext: ShowContext): String =
+    s"Tagged(${tag.show},${xs.show}${
+      stack match {
+        case Some(x) => s",${x.show}"
+        case None => ""
+      }
+    })"
+}
+
+final object Tagged {
+  def unapply(x: Tagged): Option[(Value, Value)] = x match {
+    case x: Tagged => Some((x.tag, x.xs))
+  }
+
+  def unapply(x: CoreWHNF): Option[(Value, Value)] = x match {
+    case Tagged(a, b) => Some((a, b))
+    case _ => None
+  }
 }
 
 final case class ValueException(tag: Value, xs: Value) extends CoreWHNF {

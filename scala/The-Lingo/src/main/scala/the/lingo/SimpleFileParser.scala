@@ -42,7 +42,7 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
     case fileToIncludeRaw => {
       val fileToInclude = new File(dir, fileToIncludeRaw).getCanonicalPath()
       // TODO: fix Exception and close the file
-      SimpleFileParser(fileToInclude).parseValue(Source.fromFile(fileToInclude).getLines.mkString)
+      SimpleFileParser(fileToInclude).parseValue(Source.fromFile(fileToInclude).getLines().mkString)
     }
   }
 

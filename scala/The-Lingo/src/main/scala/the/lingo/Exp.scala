@@ -165,7 +165,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _: Tagged => true
           case _ => false
         }, x)
-      case (Symbols.Builtins.ConsTagged, List(tag, xs)) => cons2(Tagged, tag, xs)
+      case (Symbols.Builtins.ConsTagged, List(tag, xs)) => cons2(Tagged(_, _), tag, xs)
       case (Symbols.Builtins.ElimTagged, List(v, RemoveWrapper(Id(idx)), RemoveWrapper(Id(idy)), exp)) =>
         elim2(_ match {
           case Tagged(x, y) => Some(x, y)
