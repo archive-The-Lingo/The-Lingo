@@ -16,7 +16,7 @@ import scala.util.parsing.input.Positional
 
 private final object SimpleFileParser {
   // [\u4e00-\u9fa5] is Chinese chars
-  val sym_regex = """(\w|[-？?/*:]|[\u4e00-\u9fa5])+""".r
+  val sym_regex = """(\w|[-？?/*:><]|[\u4e00-\u9fa5])+""".r
 }
 
 final case class SimpleFileParser(file: String) extends RegexParsers {
