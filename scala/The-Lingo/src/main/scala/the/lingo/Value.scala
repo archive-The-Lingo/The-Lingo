@@ -342,10 +342,6 @@ final object Showable {
         ShowTuple2[ShowableImplOps[A], ShowableImplOps[B]]((ShowableImplOps(x._1), ShowableImplOps(x._2))).impl_show
     }
 
-    implicit class ShowTuple2List[A <: Showable, B <: Showable](xs: List[(A, B)]) extends Showable {
-      override def impl_show(implicit showContext: ShowContext): String = xs.map(ShowTuple2).show
-    }
-
   }
 
 }

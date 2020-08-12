@@ -5,8 +5,9 @@
 */
 package the.lingo
 
-import the.lingo.Value.Implicits._
 import the.lingo.Showable.Implicits._
+import the.lingo.ShowableImpl._
+import the.lingo.Value.Implicits._
 
 // TODO: optimize me
 final case class Mapping private(private val xs: List[(Value, Value)]) extends WHNF {
