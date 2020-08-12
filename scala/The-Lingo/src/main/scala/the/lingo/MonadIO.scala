@@ -52,3 +52,38 @@ private final object AsMonadIOCached {
 
   def unapply(x: Value): Option[MonadIO] = unapply_v.apply(x)
 }
+
+final class IOVar(private var value: Value) extends OpaqueWHNF {
+  override def impl_toCore() = TODO()
+
+  override def impl_show(implicit showContext: ShowContext): String = s"IOVar(${get.show})"
+
+  def get: Value = this.synchronized {
+    value
+  }
+
+  def put(x: Value) = this.synchronized {
+    value = x
+  }
+
+  def transform(f: Value => Value): Unit = this.synchronized {
+    value = f(value)
+  }
+
+  def swap(current: Value, toset: Value): Boolean = this.synchronized {
+    if (current eq value) {
+      value = toset
+      true
+    } else {
+      false
+    }
+  }
+
+  def transformSTM(f: Value => Value): Unit = {
+    val current = get
+    val result = f(current)
+    if (!swap(current, result)) {
+      transformSTM(f)
+    }
+  }
+}
