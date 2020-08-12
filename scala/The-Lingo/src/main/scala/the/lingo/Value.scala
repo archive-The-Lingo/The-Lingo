@@ -282,9 +282,31 @@ trait MayNotWHNF extends Showable {
 
 }
 
+trait ShowableImpl[A] {
+  def static_impl_show(x: A)(implicit showContext: ShowContext): String
+}
+
+final object ShowableImpl {
+  def static_impl_show[A](x: A)(implicit instance: ShowableImpl[A], showContext: ShowContext): String =
+    instance.static_impl_show(x)
+
+  implicit def showableImpl[A <: Showable]: ShowableImpl[A] = new ShowableImpl[A] {
+    override def static_impl_show(x: A)(implicit showContext: ShowContext): String =
+      x.impl_show
+  }
+
+  implicit class ShowableImplOps[A: ShowableImpl](x: A) extends Showable {
+    override def impl_show(implicit showContext: ShowContext): String =
+      static_impl_show(x)
+  }
+
+}
+
 final object Showable {
 
   final object Implicits {
+
+    import ShowableImpl._
 
     implicit class ShowXs[A <: Showable](xs: List[A]) {
       def showXs(implicit showContext: ShowContext): String = xs.map(_.show).mkString(",")
@@ -294,6 +316,11 @@ final object Showable {
       override def impl_show(implicit showContext: ShowContext): String = s"List(${x.showXs})"
     }
 
+    implicit def showList[A: ShowableImpl]: ShowableImpl[List[A]] = new ShowableImpl[List[A]] {
+      override def static_impl_show(x: List[A])(implicit showContext: ShowContext): String =
+        ShowList[ShowableImplOps[A]](x.map(ShowableImplOps[A])).impl_show
+    }
+
     implicit class ShowOption[A <: Showable](x: Option[A]) extends Showable {
       override def impl_show(implicit showContext: ShowContext): String = x match {
         case Some(x) => s"Some(${x.show})"
@@ -301,8 +328,18 @@ final object Showable {
       }
     }
 
+    implicit def showOption[A: ShowableImpl]: ShowableImpl[Option[A]] = new ShowableImpl[Option[A]] {
+      override def static_impl_show(x: Option[A])(implicit showContext: ShowContext): String =
+        ShowOption[ShowableImplOps[A]](x.map(ShowableImplOps[A])).impl_show
+    }
+
     implicit class ShowTuple2[A <: Showable, B <: Showable](x: (A, B)) extends Showable {
       override def impl_show(implicit showContext: ShowContext): String = s"(${x._1.show},${x._2.show})"
+    }
+
+    implicit def showTuple2[A: ShowableImpl, B: ShowableImpl]: ShowableImpl[(A, B)] = new ShowableImpl[(A, B)] {
+      override def static_impl_show(x: (A, B))(implicit showContext: ShowContext): String =
+        ShowTuple2[ShowableImplOps[A], ShowableImplOps[B]]((ShowableImplOps(x._1), ShowableImplOps(x._2))).impl_show
     }
 
     implicit class ShowTuple2List[A <: Showable, B <: Showable](xs: List[(A, B)]) extends Showable {
