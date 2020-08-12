@@ -5,27 +5,44 @@
 */
 package the.lingo
 
-sealed trait MonadIO extends WHNF {
+import the.lingo.Showable.Implicits._
 
+sealed trait MonadIO extends WHNF {
+  def run(): Value
 }
 
-final case object MonadIOReturn extends MonadIO {
+final case class MonadIOReturn(x: Value) extends MonadIO {
   override def impl_toCore() = TODO()
 
   override def impl_show(implicit showContext: ShowContext): String = s"MonadIOReturn"
+
+  override def run() = x
 }
 
-final case class MonadIOBind(x: MonadIO, f: InterpretedClosure) extends MonadIO {
+final case class MonadIOBind(x: MonadIO, f: Value) extends MonadIO {
   override def impl_toCore() = TODO()
 
   override def impl_show(implicit showContext: ShowContext): String = s"MonadIOBind(${x.show},${f.show})"
+
+  override def run() = AsMonadIOCached.unapply(f.app(List(x.run()))).get.run()
 }
 
-sealed trait MonadIOOp extends MonadIO {
+final case class MonadIOOp(f: Sym, args: List[Value]) extends MonadIO {
+  override def impl_toCore() = TODO()
+
+  override def impl_show(implicit showContext: ShowContext): String = s"MonadIOOp(${f.show},${args.show})"
+
+  override def run() = TODO()
 
 }
 
-final object MonadIOOp {
-  // TODO
+private final object AsMonadIOCached {
+  private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
+    case x: MonadIO => Some(x)
+    case _ => arg.toCore() match {
+      case _ => TODO()
+    }
+  })
 
+  def unapply(x: Value): Option[MonadIO] = unapply_v.apply(x)
 }
