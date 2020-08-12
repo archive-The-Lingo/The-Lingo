@@ -14,6 +14,8 @@ import scala.util.parsing.input.Position
 final case class DebugStack(xs: List[DebugStackPosition]) extends WHNF {
   def push(x: DebugStackPosition): DebugStack = DebugStack(x :: xs)
 
+  def concat(x: DebugStack) = DebugStack(x.xs.concat(xs))
+
   override def impl_toCore() = ValueList(xs).toCore()
 
   override def impl_show(implicit showContext: ShowContext): String = s"DebugStack(${xs.show})"

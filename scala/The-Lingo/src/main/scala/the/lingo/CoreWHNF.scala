@@ -86,7 +86,7 @@ final object Tagged {
   }
 
   def unapply(x: CoreWHNF): Option[(Value, Value)] = x match {
-    case Tagged(a, b) => Some((a, b))
+    case x: Tagged => Some((x.tag, x.xs))
     case _ => None
   }
 }
