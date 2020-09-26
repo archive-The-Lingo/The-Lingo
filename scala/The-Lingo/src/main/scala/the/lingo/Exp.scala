@@ -141,9 +141,9 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
     def cons2[A <: WHNF](cons: (Value, Value) => A, x: Value, y: Value): Value =
       cons(x.eval(context, stack), y.eval(context, stack))
 
-    def elim2[A <: WHNF](elim: CoreWHNF => Option[(Value, Value)], exception: Sym, v: Value, idx: Value, idy: Value, exp: Value): Value =
+    def elim2[A <: WHNF](elim: CoreWHNF => Option[(Value, Value)], exception: Sym, v: Value, k: Value): Value =
       elim(v.eval(context, stack).reduce_rec_toCore()) match {
-        case Some((x, y)) => exp.eval(context.updated(idx, x).updated(idy, y), stack)
+        case Some((x, y)) => k.eval(context, stack).app(List(x,y),stack)
         case None => CoreException(stack, exception, context, this)
       }
 
@@ -154,11 +154,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.ConsPair, List(head, tail)) => cons2(Pair, head, tail)
-      case (Symbols.Builtins.ElimPair, List(v, RemoveWrapper(Id(idx)), RemoveWrapper(Id(idy)), exp)) =>
+      case (Symbols.Builtins.ElimPair, List(v, k)) =>
         elim2(_ match {
           case Pair(x, y) => Some(x, y)
           case _ => None
-        }, Symbols.CoreExceptions.TypeMismatch_Pair, v, idx, idy, exp)
+        }, Symbols.CoreExceptions.TypeMismatch_Pair, v, k)
 
       case (Symbols.Builtins.IsTagged, List(x)) => evalIs(
         _ match {
@@ -166,11 +166,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.ConsTagged, List(tag, xs)) => cons2(Tagged(_, _), tag, xs)
-      case (Symbols.Builtins.ElimTagged, List(v, RemoveWrapper(Id(idx)), RemoveWrapper(Id(idy)), exp)) =>
+      case (Symbols.Builtins.ElimTagged, List(v, k)) =>
         elim2(_ match {
           case Tagged(x, y) => Some(x, y)
           case _ => None
-        }, Symbols.CoreExceptions.TypeMismatch_Tagged, v, idx, idy, exp)
+        }, Symbols.CoreExceptions.TypeMismatch_Tagged, v, k)
 
       case (Symbols.Builtins.IsException, List(x)) => evalIs(
         _ match {
@@ -178,11 +178,11 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
           case _ => false
         }, x)
       case (Symbols.Builtins.ConsException, List(tag, xs)) => cons2(ValueException, tag, xs)
-      case (Symbols.Builtins.ElimException, List(v, RemoveWrapper(Id(idx)), RemoveWrapper(Id(idy)), exp)) =>
+      case (Symbols.Builtins.ElimException, List(v, k)) =>
         elim2(_ match {
           case ValueException(x, y) => Some(x, y)
           case _ => None
-        }, Symbols.CoreExceptions.TypeMismatch_Exception, v, idx, idy, exp)
+        }, Symbols.CoreExceptions.TypeMismatch_Exception, v, k)
 
       case (Symbols.Builtins.IsSymbol, List(x)) => evalIs(
         _ match {
