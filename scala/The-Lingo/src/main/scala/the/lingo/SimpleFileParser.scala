@@ -11,7 +11,7 @@ import the.lingo.Value.Implicits._
 import the.lingo.utils.Nat
 
 import scala.io.Source
-import scala.util.parsing.combinator.RegexParsers
+import scala.util.parsing.combinator.{Parsers, RegexParsers}
 import scala.util.parsing.input.Positional
 
 private final object SimpleFileParser {
@@ -38,11 +38,10 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
 
   private lazy val dir = new File(file).getParentFile()
 
-  private def includeValue: Parser[Value] = "~|" ~> """[^|]+""".r <~ "|~" ^^ {
+  private val includeValue: Parser[Value] = ("~|" ~> """[^|]+""".r <~ "|~") flatMap {
     case fileToIncludeRaw => {
       val fileToInclude = new File(dir, fileToIncludeRaw).getCanonicalPath()
-      // TODO: fix Exception and close the file
-      SimpleFileParser(fileToInclude).parseValue(Source.fromFile(fileToInclude).getLines().mkString)
+      SimpleFileParser(fileToInclude).valueParser(this).asInstanceOf[SimpleFileParser.this.Parser[Value]] // scala's type checker is broken
     }
   }
 
@@ -148,6 +147,18 @@ final case class SimpleFileParser(file: String) extends RegexParsers {
   def parseValue(x: String = Source.fromFile(file).mkString): Value = parseAll(topValue, x) match {
     case Success(result, _) => result
     case x: NoSuccess => throw new RuntimeException(x.toString)
+  }
+
+  private def valueParser[T <: Parsers](A: T = this, x: String = Source.fromFile(file).mkString): A.Parser[Value] = A.Parser { input => {
+    def repackParseResult[T](x: ParseResult[T]): A.ParseResult[T] = x match {
+      case Failure(msg, next) => A.Failure(msg, input)
+      case Error(msg, next) => A.Error(msg, input)
+      case Success(result, next) => A.Success(result, input)
+      case _ => throw new IllegalStateException()
+    }
+
+    repackParseResult(parseAll(topValue, x))
+  }
   }
 
   private def pos: Parser[Positional] = positioned(success(new Positional {}))
