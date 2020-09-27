@@ -74,7 +74,7 @@ final case class Comment(comment: Value, x: Value) extends Exp {
   override def impl_show(implicit showContext: ShowContext): String = s"Comment(${comment.show},${x.show})"
 }
 
-final private object RemoveWrapper {
+final private object WrapperedExp {
   def unapply(x: Value): Option[Exp] = x match {
     case AsExpCached(e) => e match {
       case Comment(_, x) => unapply(x)
@@ -96,7 +96,7 @@ final case class Positioned(pos: DebugStackPosition, x: Value) extends Exp {
 
 final case class ApplyFunc(f: Value, xs: List[Value]) extends Exp {
   private lazy val fAsId = f match {
-    case RemoveWrapper(Id(x)) => Some(x)
+    case WrapperedExp(Id(x)) => Some(x)
     case _ => None
   }
 
@@ -198,7 +198,7 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_String, context, this)
       }
 
-      case (Symbols.Builtins.Rec, List(RemoveWrapper(Id(id)), exp)) => {
+      case (Symbols.Builtins.Rec, List(WrapperedExp(Id(id)), exp)) => {
         lazy val result: Value = exp.eval_callByName({
           innerContext
         }, stack)
@@ -227,9 +227,9 @@ final case class Builtin(f: Sym, xs: List[Value]) extends Exp {
         case _ => CoreException(stack, Symbols.CoreExceptions.TypeMismatch_List, context, this)
       }
       case (Symbols.Func, List(args, exp)) => args match {
-        case ListUtils.ConsList(AsInterpretedClosureCached.AsIdList(args)) =>
+        case ListUtils.ConsList(AsIdList(args)) =>
           InterpretedClosure(args, None, context, exp)
-        case ListUtils.ConsListMaybeWithTail(AsInterpretedClosureCached.AsIdList(args), RemoveWrapper(tail: Id)) =>
+        case ListUtils.ConsListMaybeWithTail(AsIdList(args), WrapperedExp(tail: Id)) =>
           InterpretedClosure(args, Some(tail), context, exp)
         case _ => CoreException(stack, Symbols.CoreExceptions.IllegalExp, context, this)
       }
@@ -282,4 +282,15 @@ private final object AsBooleanListCached {
     case _ => None
   }
 
+}
+
+private final object AsIdList {
+
+  import ListHelpers._
+
+  def unapply(xs: List[Value]): Option[List[Id]] = xs.flatMapOption(
+    _ match {
+      case WrapperedExp(x: Id) => Some(x)
+      case _ => None
+    })
 }

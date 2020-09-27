@@ -41,17 +41,6 @@ private final object InterpretedClosure {
 
 private final object AsInterpretedClosureCached {
 
-  private[lingo] final object AsIdList {
-
-    import ListHelpers._
-
-    def unapply(xs: List[Value]): Option[List[Id]] = xs.flatMapOption(
-      _ match {
-        case RemoveWrapper(x: Id) => Some(x)
-        case _ => None
-      })
-  }
-
   private val unapply_v = Value.cached_option_as((arg: WHNF) => arg match {
     case x: InterpretedClosure => Some(x)
     case _ => arg.toCore() match {
@@ -65,7 +54,7 @@ private final object AsInterpretedClosureCached {
           exp))
       case Tagged(
       AsSym(Symbols.Func),
-      ListUtils.ConsList(List(ListUtils.ConsListMaybeWithTail(AsIdList(args), RemoveWrapper(tail: Id)), exp))) =>
+      ListUtils.ConsList(List(ListUtils.ConsListMaybeWithTail(AsIdList(args), WrapperedExp(tail: Id)), exp))) =>
         Some(InterpretedClosure(
           args,
           Some(tail),
