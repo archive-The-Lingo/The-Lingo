@@ -1,5 +1,11 @@
 # TheLingo
 
+## Why Chinese?
+
+I love Analytic Language!
+
+## Archived ... TODO: update README.md
+
 This is an experimental language
 
 TheLingo don't assume:
