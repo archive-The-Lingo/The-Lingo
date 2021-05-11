@@ -10,6 +10,6 @@ bidirectional type checking.
 
 `t: U n * v: t`
 
-## Write Type Checker in FullRel
+## Write Type Checker in FullRel or FullFP on the top of FullRel
 
 Every expression has multiple possible types in this design, especially symbols, which makes it difficult to implement the type synthesis.
