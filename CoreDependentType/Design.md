@@ -12,4 +12,4 @@ bidirectional type checking.
 
 ## Write Type Checker in FullRel
 
-Every expression has multiple possible type in this design, especially symbols, which makes it difficult to implement the type synthesis.
+Every expression has multiple possible types in this design, especially symbols, which makes it difficult to implement the type synthesis.
