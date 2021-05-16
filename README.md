@@ -1,4 +1,3 @@
 # The Lingo
 
-The basic infrastructure.
-
+The basic infrastructure for the coming years.
