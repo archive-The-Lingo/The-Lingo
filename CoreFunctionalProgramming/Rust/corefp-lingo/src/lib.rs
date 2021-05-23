@@ -14,9 +14,9 @@ pub trait Values: Downcast + Debug {
 impl_downcast!(Values);
 
 #[derive(Debug, Clone)]
-pub struct Value(Arc<Box<dyn Values>>);
+pub struct Value(Arc<dyn Values>);
 impl Deref for Value {
-    type Target = Arc<Box<dyn Values>>;
+    type Target = Arc<dyn Values>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
