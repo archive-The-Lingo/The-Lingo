@@ -8,3 +8,4 @@ interact with the physics world
 + Android
 + IOS
 + POSIX X11
++ Bare Metal: amd64 / arm64
