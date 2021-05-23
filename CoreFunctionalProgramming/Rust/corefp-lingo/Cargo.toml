@@ -10,3 +10,6 @@ license = "MPL-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+arc-swap = "1.2.0"
+downcast-rs = "1.2.0"
+trilean = "1.0.1"
