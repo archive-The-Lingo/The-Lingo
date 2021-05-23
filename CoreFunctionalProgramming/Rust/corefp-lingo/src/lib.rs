@@ -131,11 +131,11 @@ pub type Identifier = Value;
 pub enum Expression {
     Id(Identifier),
     Quote(Value),
-    ApplyFunction(Box<Expression>, Vec<Expression>),
-    ApplyMacro(Box<Expression>, Vec<Value>),
-    Comment(Box<Expression>, Value),
+    ApplyFunction(Arc<Expression>, Vec<Expression>),
+    ApplyMacro(Arc<Expression>, Vec<Value>),
+    Comment(Arc<Expression>, Value),
     Builtin(ExpressionBuiltin),
-    Positioned(Box<Expression>, UNIXFilePosition),
+    Positioned(Arc<Expression>, UNIXFilePosition),
 }
 
 #[derive(Debug, Clone)]
@@ -161,28 +161,28 @@ impl Values for Expression {
 
 #[derive(Debug, Clone)]
 pub enum ExpressionBuiltin {
-    IsEmptyList(Box<Expression>),
-    IsSymbol(Box<Expression>),
-    NewSymbol(Box<Expression>),
-    ReadSymbol(Box<Expression>),
-    IsNonEmptyList(Box<Expression>),
-    ReadNonEmptyListHead(Box<Expression>),
-    ReadNonEmptyListTail(Box<Expression>),
-    IsTagged(Box<Expression>),
-    ReadTaggedTag(Box<Expression>),
-    ReadTaggedData(Box<Expression>),
-    IsException(Box<Expression>),
-    ReadExceptionTag(Box<Expression>),
-    ReadExceptionData(Box<Expression>),
-    Recursive(Identifier, Box<Expression>),
-    Evaluate(Box<Expression>, Box<Expression>),
-    Lambda(Vec<Identifier>, Option<Identifier>, Box<Expression>),
-    ReadBoolean(Box<Expression>, Box<Expression>, Box<Expression>),
+    IsEmptyList(Arc<Expression>),
+    IsSymbol(Arc<Expression>),
+    NewSymbol(Arc<Expression>),
+    ReadSymbol(Arc<Expression>),
+    IsNonEmptyList(Arc<Expression>),
+    ReadNonEmptyListHead(Arc<Expression>),
+    ReadNonEmptyListTail(Arc<Expression>),
+    IsTagged(Arc<Expression>),
+    ReadTaggedTag(Arc<Expression>),
+    ReadTaggedData(Arc<Expression>),
+    IsException(Arc<Expression>),
+    ReadExceptionTag(Arc<Expression>),
+    ReadExceptionData(Arc<Expression>),
+    Recursive(Identifier, Arc<Expression>),
+    Evaluate(Arc<Expression>, Arc<Expression>),
+    Lambda(Vec<Identifier>, Option<Identifier>, Arc<Expression>),
+    ReadBoolean(Arc<Expression>, Arc<Expression>, Arc<Expression>),
 
     // for easy using - could be implemented in the lingo itself
-    IsBoolean(Box<Expression>),
-    IsMapping(Box<Expression>),
-    ReadMapping(Box<Expression>, Box<Expression>),
+    IsBoolean(Arc<Expression>),
+    IsMapping(Arc<Expression>),
+    ReadMapping(Arc<Expression>, Arc<Expression>),
 }
 
 impl Values for ExpressionBuiltin {
