@@ -191,6 +191,18 @@ impl Values for ExpressionBuiltin {
     }
 }
 
+pub struct PossiblyRecursive(Value);
+
+impl PossiblyRecursive {
+    pub fn new(_x: Value) -> PossiblyRecursive {
+        todo!();
+    }
+}
+
+pub fn run_gc() {
+    todo!();
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
