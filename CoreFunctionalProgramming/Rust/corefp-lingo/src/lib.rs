@@ -14,12 +14,31 @@ pub trait Values: Downcast + Debug {
 impl_downcast!(Values);
 
 #[derive(Debug, Clone)]
-pub struct Value(Arc<ArcSwap<Box<dyn Values>>>);
+pub struct Value(Arc<Box<dyn Values>>);
 impl Deref for Value {
-    type Target = Arc<ArcSwap<Box<dyn Values>>>;
+    type Target = Arc<Box<dyn Values>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+#[derive(Debug)]
+pub struct OptimizableValue(ArcSwap<Value>);
+impl Deref for OptimizableValue {
+    type Target = ArcSwap<Value>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl Values for OptimizableValue {
+    fn deoptimize(&self) -> CoreValue {
+        self.load().deoptimize()
+    }
+
+    fn internal_equal(&self, other: &Value) -> SKleene {
+        self.load().internal_equal(other)
     }
 }
 
@@ -36,7 +55,6 @@ impl Values for CoreValue {
         self.clone()
     }
     fn internal_equal(&self, other: &Value) -> SKleene {
-        let other = &***other.load();
         if let Some(_other) = other.downcast_ref::<CoreValue>() {
             todo!()
         } else {
