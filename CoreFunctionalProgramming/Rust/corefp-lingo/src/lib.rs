@@ -10,15 +10,8 @@ use trilean::SKleene;
 
 pub trait Values: Downcast + Debug {
     fn deoptimize(&self) -> CoreValue;
-    fn internal_equal(&self, _other: &Value) -> SKleene {
+    fn internal_equal(&self, _this: &Value, _other: &Value) -> SKleene {
         SKleene::Unknown
-    }
-    fn equal(&self, other: &Value) -> bool {
-        match self.internal_equal(other) {
-            SKleene::False => false,
-            SKleene::True => true,
-            SKleene::Unknown => self.deoptimize().core_equal(&other.deoptimize()),
-        }
     }
 }
 impl_downcast!(Values);
@@ -37,7 +30,14 @@ impl Deref for Value {
 impl Value {
     pub fn equal(&self, other: &Value) -> bool {
         if ptr::eq::<dyn Values>(&***self, &***other) { return true; }
-        self.0.equal(other)
+        match self.internal_equal(other) {
+            SKleene::False => false,
+            SKleene::True => true,
+            SKleene::Unknown => self.deoptimize().core_equal(&other.deoptimize()),
+        }
+    }
+    pub fn internal_equal(&self, other: &Value) -> SKleene {
+        self.0.internal_equal(self, other)
     }
 }
 
@@ -67,7 +67,7 @@ impl Values for OptimizableValue {
         self.load().deoptimize()
     }
 
-    fn internal_equal(&self, other: &Value) -> SKleene {
+    fn internal_equal(&self, _this: &Value, other: &Value) -> SKleene {
         if let Some(other) = other.downcast_ref::<OptimizableValue>() {
             if ptr::eq::<ArcSwap<Value>>(&**self, &**other) { return SKleene::True; }
             let this = self.remove_layers();
@@ -100,11 +100,11 @@ impl Values for CoreValue {
     fn deoptimize(&self) -> CoreValue {
         self.clone()
     }
-    fn internal_equal(&self, other: &Value) -> SKleene {
-        if let Some(_other) = other.downcast_ref::<CoreValue>() {
-            todo!()
+    fn internal_equal(&self, this: &Value, other: &Value) -> SKleene {
+        if let Some(other) = other.downcast_ref::<CoreValue>() {
+            SKleene::from_bool(self.core_equal(other))
         } else {
-            todo!()
+            other.internal_equal(this)
         }
     }
 }
