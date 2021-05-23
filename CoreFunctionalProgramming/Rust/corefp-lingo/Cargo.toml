@@ -1,8 +1,11 @@
 [package]
 name = "corefp-lingo"
-version = "0.1.0"
+version = "0.0.0"
 authors = ["ㄗㄠˋ ㄑㄧˊ <tsao-chi@the-lingo.org>"]
 edition = "2018"
+repository = "https://gitlab.com/The-Lingo/The-Lingo"
+description = "CoreFP Lingo"
+license = "MPL-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
