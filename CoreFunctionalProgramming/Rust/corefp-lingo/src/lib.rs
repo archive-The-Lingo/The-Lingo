@@ -135,9 +135,17 @@ pub enum Expression {
     Comment(Box<Expression>, Value),
     Builtin(ExpressionBuiltin),
 }
+
 impl Values for Expression {
     fn deoptimize(&self) -> CoreValue {
-        todo!()
+        match self {
+            Expression::Id(_) => todo!(),
+            Expression::Quote(_) => todo!(),
+            Expression::ApplyFunction(_, _) => todo!(),
+            Expression::ApplyMacro(_, _) => todo!(),
+            Expression::Comment(_, _) => todo!(),
+            Expression::Builtin(x) => x.deoptimize(),
+        }
     }
 }
 
@@ -166,6 +174,7 @@ pub enum ExpressionBuiltin {
     IsMapping(Box<Expression>),
     ReadMapping(Box<Expression>, Box<Expression>),
 }
+
 impl Values for ExpressionBuiltin {
     fn deoptimize(&self) -> CoreValue {
         todo!()
