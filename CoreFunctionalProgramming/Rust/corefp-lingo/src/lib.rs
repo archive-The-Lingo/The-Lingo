@@ -1,12 +1,12 @@
 use std::fmt::Debug;
 use std::ops::Deref;
+use std::ptr;
 use std::sync::Arc;
 
 use arc_swap::ArcSwap;
 use downcast_rs::Downcast;
 use downcast_rs::impl_downcast;
 use trilean::SKleene;
-use std::ptr;
 
 pub trait Values: Downcast + Debug {
     fn deoptimize(&self) -> CoreValue;
@@ -52,13 +52,38 @@ impl Deref for OptimizableValue {
     }
 }
 
+impl OptimizableValue {
+    fn remove_layers(&self) -> Arc<Value> {
+        let mut this = self.load().clone();
+        while let Some(this0) = this.downcast_ref::<OptimizableValue>(){
+            this = this0.load().clone();
+        }
+        this
+    }
+}
+
 impl Values for OptimizableValue {
     fn deoptimize(&self) -> CoreValue {
         self.load().deoptimize()
     }
 
     fn internal_equal(&self, other: &Value) -> SKleene {
-        self.load().internal_equal(other)
+        if let Some(other) = other.downcast_ref::<OptimizableValue>() {
+            if ptr::eq::<ArcSwap<Value>>(&**self, &**other) { return SKleene::True; }
+            let this = self.remove_layers();
+            if ptr::eq::<Value>(&*this, &*other.remove_layers()) {
+                self.store(this.clone());
+                other.store(this.clone());
+                return SKleene::True;
+            }
+        }
+        match self.load().internal_equal(other) {
+            SKleene::True => {
+                self.store(Arc::new(other.clone()));
+                SKleene::True
+            }
+            x => x,
+        }
     }
 }
 
@@ -89,9 +114,9 @@ impl CoreValue {
         match (self, other) {
             (CoreValue::EmptyList, CoreValue::EmptyList) => true,
             (CoreValue::Symbol(x), CoreValue::Symbol(y)) => x == y,
-            (CoreValue::NonEmptyList(x0,y0),CoreValue::NonEmptyList(x1,y1)) => x0.equal(x1) && y0.equal(y1),
-            (CoreValue::Tagged(x0,y0),CoreValue::Tagged(x1,y1)) => x0.equal(x1) && y0.equal(y1),
-            (CoreValue::Exception(x0,y0),CoreValue::Exception(x1,y1)) => x0.equal(x1) && y0.equal(y1),
+            (CoreValue::NonEmptyList(x0, y0), CoreValue::NonEmptyList(x1, y1)) => x0.equal(x1) && y0.equal(y1),
+            (CoreValue::Tagged(x0, y0), CoreValue::Tagged(x1, y1)) => x0.equal(x1) && y0.equal(y1),
+            (CoreValue::Exception(x0, y0), CoreValue::Exception(x1, y1)) => x0.equal(x1) && y0.equal(y1),
             (_, _) => false,
         }
     }
