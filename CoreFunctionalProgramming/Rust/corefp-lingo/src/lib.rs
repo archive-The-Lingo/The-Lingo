@@ -55,7 +55,7 @@ impl Deref for OptimizableValue {
 impl OptimizableValue {
     fn remove_layers(&self) -> Arc<Value> {
         let mut this = self.load().clone();
-        while let Some(this0) = this.downcast_ref::<OptimizableValue>(){
+        while let Some(this0) = this.downcast_ref::<OptimizableValue>() {
             this = this0.load().clone();
         }
         this
@@ -87,10 +87,12 @@ impl Values for OptimizableValue {
     }
 }
 
+type CoreIdentifier = String;
+
 #[derive(Debug, Clone)]
 pub enum CoreValue {
     EmptyList,
-    Symbol(String),
+    Symbol(CoreIdentifier),
     NonEmptyList(Value, Value),
     Tagged(Value, Value),
     Exception(Value, Value),
@@ -119,6 +121,54 @@ impl CoreValue {
             (CoreValue::Exception(x0, y0), CoreValue::Exception(x1, y1)) => x0.equal(x1) && y0.equal(y1),
             (_, _) => false,
         }
+    }
+}
+
+type Identifier = Value;
+
+#[derive(Debug, Clone)]
+pub enum Expression {
+    Id(Identifier),
+    Quote(Value),
+    ApplyFunction(Box<Expression>, Vec<Expression>),
+    ApplyMacro(Box<Expression>, Vec<Value>),
+    Comment(Box<Expression>, Value),
+    Builtin(ExpressionBuiltin),
+}
+impl Values for Expression {
+    fn deoptimize(&self) -> CoreValue {
+        todo!()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ExpressionBuiltin {
+    IsEmptyList(Box<Expression>),
+    IsSymbol(Box<Expression>),
+    NewSymbol(Box<Expression>),
+    ReadSymbol(Box<Expression>),
+    IsNonEmptyList(Box<Expression>),
+    ReadNonEmptyListHead(Box<Expression>),
+    ReadNonEmptyListTail(Box<Expression>),
+    IsTagged(Box<Expression>),
+    ReadTaggedTag(Box<Expression>),
+    ReadTaggedData(Box<Expression>),
+    IsException(Box<Expression>),
+    ReadExceptionTag(Box<Expression>),
+    ReadExceptionData(Box<Expression>),
+    Recursive(Identifier, Box<Expression>),
+    Evaluate(Box<Expression>, Box<Expression>),
+    Lambda(Vec<Identifier>, Option<Identifier>, Box<Expression>),
+    ReadBoolean(Box<Expression>, Box<Expression>, Box<Expression>),
+
+    // for easy using - could be implemented in the lingo itself
+    IsBoolean(Box<Expression>),
+    IsMapping(Box<Expression>),
+    ReadMapping(Box<Expression>, Box<Expression>),
+}
+impl Values for ExpressionBuiltin {
+    fn deoptimize(&self) -> CoreValue {
+        todo!()
     }
 }
 
