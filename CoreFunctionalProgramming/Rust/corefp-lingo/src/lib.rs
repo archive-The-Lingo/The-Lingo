@@ -87,7 +87,7 @@ impl Values for OptimizableValue {
     }
 }
 
-type CoreIdentifier = String;
+pub type CoreIdentifier = String;
 
 #[derive(Debug, Clone)]
 pub enum CoreValue {
@@ -124,7 +124,7 @@ impl CoreValue {
     }
 }
 
-type Identifier = Value;
+pub type Identifier = Value;
 
 #[derive(Debug, Clone)]
 pub enum Expression {
