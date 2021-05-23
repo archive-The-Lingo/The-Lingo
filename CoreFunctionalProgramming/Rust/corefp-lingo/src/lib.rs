@@ -1,15 +1,17 @@
 use std::fmt::Debug;
 use std::ops::Deref;
+use std::path::Path;
 use std::ptr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, Weak};
 
 use arc_swap::ArcSwap;
 use downcast_rs::Downcast;
 use downcast_rs::impl_downcast;
+use lazy_static::lazy_static;
 use trilean::SKleene;
-use std::path::Path;
+use weak_table::PtrWeakHashSet;
 
-pub trait Values: Downcast + Debug {
+pub trait Values: Downcast + Debug + Send + Sync {
     fn deoptimize(&self) -> CoreValue;
     fn internal_equal(&self, _this: &Value, _other: &Value) -> SKleene {
         SKleene::Unknown
@@ -17,8 +19,12 @@ pub trait Values: Downcast + Debug {
 }
 impl_downcast!(Values);
 
+type ValueInternal = Arc<dyn Values>;
+
 #[derive(Debug, Clone)]
-pub struct Value(Arc<dyn Values>);
+pub struct Value(ValueInternal);
+
+type WeakValue = Weak<dyn Values>;
 
 impl Deref for Value {
     type Target = Arc<dyn Values>;
@@ -191,15 +197,20 @@ impl Values for ExpressionBuiltin {
     }
 }
 
-pub struct PossiblyRecursive(Value);
+lazy_static! {
+    static ref POSSIBLY_RECURSIVE_SET: Mutex<PtrWeakHashSet<WeakValue>> = Mutex::new(PtrWeakHashSet::new());
+}
+
+pub struct PossiblyRecursive(ValueInternal);
 
 impl PossiblyRecursive {
-    pub fn new(_x: Value) -> PossiblyRecursive {
-        todo!();
+    pub fn new(x: &Value) -> PossiblyRecursive {
+        POSSIBLY_RECURSIVE_SET.lock().unwrap().insert((**x).clone());
+        PossiblyRecursive((**x).clone())
     }
 }
 
-pub fn run_gc() {
+pub fn run_gc() -> () {
     todo!();
 }
 
