@@ -7,6 +7,7 @@ use arc_swap::ArcSwap;
 use downcast_rs::Downcast;
 use downcast_rs::impl_downcast;
 use trilean::SKleene;
+use std::path::Path;
 
 pub trait Values: Downcast + Debug {
     fn deoptimize(&self) -> CoreValue;
@@ -134,6 +135,14 @@ pub enum Expression {
     ApplyMacro(Box<Expression>, Vec<Value>),
     Comment(Box<Expression>, Value),
     Builtin(ExpressionBuiltin),
+    Positioned(Box<Expression>, UNIXFilePosition),
+}
+
+#[derive(Debug, Clone)]
+pub struct UNIXFilePosition {
+    file: Box<Path>,
+    line: u128,
+    column: u128,
 }
 
 impl Values for Expression {
@@ -145,6 +154,7 @@ impl Values for Expression {
             Expression::ApplyMacro(_, _) => todo!(),
             Expression::Comment(_, _) => todo!(),
             Expression::Builtin(x) => x.deoptimize(),
+            Expression::Positioned(_, _) => todo!(),
         }
     }
 }
