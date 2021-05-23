@@ -14,7 +14,10 @@ pub struct Value(Arc<ArcSwap<dyn Values>>);
 
 pub enum CoreValue {
     EmptyList,
-    NonEmptyList(Value, Value)
+    Symbol(String),
+    NonEmptyList(Value, Value),
+    Tagged(Value, Value),
+    Exception(Value, Value),
 }
 
 
