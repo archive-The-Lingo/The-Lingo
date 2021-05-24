@@ -201,12 +201,25 @@ lazy_static! {
     static ref POSSIBLY_RECURSIVE_SET: Mutex<PtrWeakHashSet<WeakValue>> = Mutex::new(PtrWeakHashSet::new());
 }
 
+#[derive(Debug, Clone)]
 pub struct PossiblyRecursive(ValueInternal);
 
 impl PossiblyRecursive {
     pub fn new(x: &Value) -> PossiblyRecursive {
         POSSIBLY_RECURSIVE_SET.lock().unwrap().insert((**x).clone());
         PossiblyRecursive((**x).clone())
+    }
+    pub fn read(&self) -> Value {
+        Value(self.0.clone())
+    }
+}
+
+impl Values for PossiblyRecursive {
+    fn deoptimize(&self) -> CoreValue {
+        self.0.deoptimize()
+    }
+    fn internal_equal(&self, _this: &Value, other: &Value) -> SKleene {
+        self.read().internal_equal(other)
     }
 }
 
