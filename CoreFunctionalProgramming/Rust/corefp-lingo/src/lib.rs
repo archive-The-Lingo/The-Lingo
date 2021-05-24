@@ -187,7 +187,7 @@ impl Expression {
             Expression::ApplyMacro(_, _) => todo!(),
             Expression::Comment(_, _) => todo!(),
             Expression::Builtin(x) => x.evaluate_with_option_stack(environment, stack),
-            Expression::Positioned(expression, position) => expression.evaluate_with_option_stack(environment,&if let Some(stack) = stack {Some(stack.extend(position))} else {None}),
+            Expression::Positioned(expression, position) => expression.evaluate_with_option_stack(environment, &if let Some(stack) = stack { Some(stack.extend(position)) } else { None }),
         }
     }
 }
@@ -229,19 +229,19 @@ impl ExpressionBuiltin {
         self.evaluate_with_option_stack(environment, &None)
     }
     pub fn evaluate_with_option_stack(&self, environment: &Mapping, stack: &Option<DebugStack>) -> Value {
-        let eval = |x : &Expression| x.evaluate_with_option_stack(environment, stack);
+        let eval = |x: &Expression| x.evaluate_with_option_stack(environment, stack);
         match self {
             ExpressionBuiltin::IsEmptyList(x) => if let CoreValue::EmptyList = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
-            ExpressionBuiltin::IsSymbol(_) => todo!(),
+            ExpressionBuiltin::IsSymbol(x) => if let CoreValue::Symbol(_) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::NewSymbol(_) => todo!(),
             ExpressionBuiltin::ReadSymbol(_) => todo!(),
-            ExpressionBuiltin::IsNonEmptyList(_) => todo!(),
+            ExpressionBuiltin::IsNonEmptyList(x) => if let CoreValue::NonEmptyList(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::ReadNonEmptyListHead(_) => todo!(),
             ExpressionBuiltin::ReadNonEmptyListTail(_) => todo!(),
-            ExpressionBuiltin::IsTagged(_) => todo!(),
+            ExpressionBuiltin::IsTagged(x) => if let CoreValue::Tagged(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::ReadTaggedTag(_) => todo!(),
             ExpressionBuiltin::ReadTaggedData(_) => todo!(),
-            ExpressionBuiltin::IsException(_) => todo!(),
+            ExpressionBuiltin::IsException(x) => if let CoreValue::Exception(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::ReadExceptionTag(_) => todo!(),
             ExpressionBuiltin::ReadExceptionData(_) => todo!(),
             ExpressionBuiltin::Recursive(_, _) => todo!(),
