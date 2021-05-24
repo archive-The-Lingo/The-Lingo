@@ -35,6 +35,9 @@ impl Deref for Value {
 }
 
 impl Value {
+    pub fn new<T: Values>(x: T) -> Value {
+        Value(Arc::new(x))
+    }
     pub fn equal(&self, other: &Value) -> bool {
         if ptr::eq::<dyn Values>(&***self, &***other) { return true; }
         match self.internal_equal(other) {
