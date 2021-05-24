@@ -1,8 +1,8 @@
+use std::{mem, ptr};
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::path::Path;
-use std::ptr;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex, RwLock, Weak};
 
 use arc_swap::ArcSwap;
 use downcast_rs::Downcast;
@@ -141,14 +141,17 @@ pub enum Expression {
     ApplyMacro(Arc<Expression>, Vec<Value>),
     Comment(Arc<Expression>, Value),
     Builtin(ExpressionBuiltin),
-    Positioned(Arc<Expression>, UNIXFilePosition),
+    Positioned(Arc<Expression>, Position),
 }
+
+pub type Position = UNIXFilePosition;
 
 #[derive(Debug, Clone)]
 pub struct UNIXFilePosition {
-    file: Box<Path>,
+    file: Arc<Path>,
     line: u128,
     column: u128,
+    name: Option<String>,
 }
 
 impl Values for Expression {
@@ -162,6 +165,15 @@ impl Values for Expression {
             Expression::Builtin(x) => x.deoptimize(),
             Expression::Positioned(_, _) => todo!(),
         }
+    }
+}
+
+impl Expression {
+    pub fn evaluate(&self, environment: Mapping) -> LazyValue {
+        self.evaluate_with_option_stack(environment, None)
+    }
+    pub fn evaluate_with_option_stack(&self, _environment: Mapping, _stack: Option<DebugStack>) -> LazyValue {
+        todo!()
     }
 }
 
@@ -197,6 +209,68 @@ impl Values for ExpressionBuiltin {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct LazyValue(Arc<RwLock<LazyValueInternal>>);
+
+#[derive(Debug, Clone)]
+enum LazyValueInternal {
+    Unevaluated(Mapping, Arc<Expression>, Option<DebugStack>),
+    Evaluated(Value),
+    EvaluationInProgress,
+}
+
+impl LazyValue {
+    pub fn new(environment: Mapping, expression: Arc<Expression>) -> Self {
+        LazyValue(Arc::new(RwLock::new(LazyValueInternal::Unevaluated(environment, expression, None))))
+    }
+    pub fn pack(this: Value) -> Self {
+        LazyValue(Arc::new(RwLock::new(LazyValueInternal::Evaluated(this))))
+    }
+    pub fn force(&self) -> Value {
+        let read = self.0.read().unwrap();
+        match &*read {
+            LazyValueInternal::Unevaluated(_, _, _) => {
+                drop(read);
+                let mut write = self.0.write().unwrap();
+                if if let LazyValueInternal::Unevaluated(_, _, _) = &*write { true } else { false } {
+                    let mut value = LazyValueInternal::EvaluationInProgress;
+                    mem::swap(&mut value, &mut write);
+                    drop(write);
+                    if let LazyValueInternal::Unevaluated(environment, expression, stack) = value {
+                        let new = expression.evaluate_with_option_stack(environment, stack).force();
+                        let mut write = self.0.write().unwrap();
+                        if !(if let LazyValueInternal::EvaluationInProgress = &*write { true } else { false }) {
+                            panic!();
+                        }
+                        *write = LazyValueInternal::Evaluated(new.clone());
+                        new
+                    } else {
+                        panic!();
+                    }
+                } else {
+                    drop(write);
+                    self.force()
+                }
+            }
+            LazyValueInternal::Evaluated(x) => x.clone(),
+            LazyValueInternal::EvaluationInProgress => todo!(),
+        }
+    }
+}
+
+// TODO: optimize this.
+#[derive(Debug, Clone)]
+pub struct Mapping(Arc<ArcLinkedList<(Value, Value)>>);
+
+#[derive(Debug, Clone)]
+pub struct DebugStack(Arc<ArcLinkedList<Position>>);
+
+#[derive(Debug, Clone)]
+pub enum ArcLinkedList<T> {
+    Empty,
+    NonEmpty(T, Arc<ArcLinkedList<T>>),
+}
+
 lazy_static! {
     static ref POSSIBLY_RECURSIVE_SET: Mutex<PtrWeakHashSet<WeakValue>> = Mutex::new(PtrWeakHashSet::new());
 }
@@ -205,7 +279,7 @@ lazy_static! {
 pub struct PossiblyRecursive(ValueInternal);
 
 impl PossiblyRecursive {
-    pub fn new(x: &Value) -> PossiblyRecursive {
+    pub fn new(x: &Value) -> Self {
         POSSIBLY_RECURSIVE_SET.lock().unwrap().insert((**x).clone());
         PossiblyRecursive((**x).clone())
     }
