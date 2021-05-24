@@ -46,7 +46,7 @@ impl Value {
     pub fn internal_equal(&self, other: &Value) -> SKleene {
         self.0.internal_equal(self, other)
     }
-    pub fn from_bool(x:bool) -> Value {
+    pub fn from_bool(x: bool) -> Value {
         if x {
             TRUE.clone()
         } else {
@@ -151,7 +151,7 @@ pub enum Expression {
     Positioned(Arc<Expression>, Position),
 }
 
-pub type Position = UNIXFilePosition;
+pub type Position = Arc<UNIXFilePosition>;
 
 #[derive(Debug, Clone)]
 pub struct UNIXFilePosition {
@@ -176,18 +176,18 @@ impl Values for Expression {
 }
 
 impl Expression {
-    pub fn evaluate(&self, environment: Mapping) -> Value {
-        self.evaluate_with_option_stack(environment, None)
+    pub fn evaluate(&self, environment: &Mapping) -> Value {
+        self.evaluate_with_option_stack(environment, &None)
     }
-    pub fn evaluate_with_option_stack(&self, _environment: Mapping, _stack: Option<DebugStack>) -> Value {
+    pub fn evaluate_with_option_stack(&self, environment: &Mapping, stack: &Option<DebugStack>) -> Value {
         match self {
             Expression::Id(_) => todo!(),
             Expression::Quote(x) => x.clone(),
             Expression::ApplyFunction(_, _) => todo!(),
             Expression::ApplyMacro(_, _) => todo!(),
             Expression::Comment(_, _) => todo!(),
-            Expression::Builtin(_) => todo!(),
-            Expression::Positioned(_, _) => todo!(),
+            Expression::Builtin(x) => x.evaluate_with_option_stack(environment, stack),
+            Expression::Positioned(expression, position) => expression.evaluate_with_option_stack(environment,&if let Some(stack) = stack {Some(stack.extend(position))} else {None}),
         }
     }
 }
@@ -225,13 +225,13 @@ lazy_static! {
 }
 
 impl ExpressionBuiltin {
-    pub fn evaluate(&self, environment: Mapping) -> Value {
-        self.evaluate_with_option_stack(environment, None)
+    pub fn evaluate(&self, environment: &Mapping) -> Value {
+        self.evaluate_with_option_stack(environment, &None)
     }
-    pub fn evaluate_with_option_stack(&self, environment: Mapping, stack: Option<DebugStack>) -> Value {
+    pub fn evaluate_with_option_stack(&self, environment: &Mapping, stack: &Option<DebugStack>) -> Value {
         let eval = |x : &Expression| x.evaluate_with_option_stack(environment, stack);
         match self {
-            ExpressionBuiltin::IsEmptyList(x) => if let CoreValue::EmptyList = eval(x).deoptimize() {TRUE.clone()} else {FALSE.clone()},
+            ExpressionBuiltin::IsEmptyList(x) => if let CoreValue::EmptyList = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::IsSymbol(_) => todo!(),
             ExpressionBuiltin::NewSymbol(_) => todo!(),
             ExpressionBuiltin::ReadSymbol(_) => todo!(),
@@ -267,6 +267,12 @@ pub struct Mapping(Arc<ArcLinkedList<(Value, Value)>>);
 
 #[derive(Debug, Clone)]
 pub struct DebugStack(Arc<ArcLinkedList<Position>>);
+
+impl DebugStack {
+    pub fn extend(&self, x: &Position) -> Self {
+        DebugStack(Arc::new(ArcLinkedList::NonEmpty(x.clone(), self.0.clone())))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum ArcLinkedList<T> {
