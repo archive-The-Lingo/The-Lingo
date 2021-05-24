@@ -46,6 +46,13 @@ impl Value {
     pub fn internal_equal(&self, other: &Value) -> SKleene {
         self.0.internal_equal(self, other)
     }
+    pub fn from_bool(x:bool) -> Value {
+        if x {
+            TRUE.clone()
+        } else {
+            FALSE.clone()
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -211,13 +218,20 @@ pub enum ExpressionBuiltin {
     ReadMapping(Arc<Expression>, Arc<Expression>),
 }
 
+
+lazy_static! {
+    pub static ref TRUE: Value = todo!();
+    pub static ref FALSE: Value = todo!();
+}
+
 impl ExpressionBuiltin {
     pub fn evaluate(&self, environment: Mapping) -> Value {
         self.evaluate_with_option_stack(environment, None)
     }
-    pub fn evaluate_with_option_stack(&self, _environment: Mapping, _stack: Option<DebugStack>) -> Value {
+    pub fn evaluate_with_option_stack(&self, environment: Mapping, stack: Option<DebugStack>) -> Value {
+        let eval = |x : &Expression| x.evaluate_with_option_stack(environment, stack);
         match self {
-            ExpressionBuiltin::IsEmptyList(_) => todo!(),
+            ExpressionBuiltin::IsEmptyList(x) => if let CoreValue::EmptyList = eval(x).deoptimize() {TRUE.clone()} else {FALSE.clone()},
             ExpressionBuiltin::IsSymbol(_) => todo!(),
             ExpressionBuiltin::NewSymbol(_) => todo!(),
             ExpressionBuiltin::ReadSymbol(_) => todo!(),
