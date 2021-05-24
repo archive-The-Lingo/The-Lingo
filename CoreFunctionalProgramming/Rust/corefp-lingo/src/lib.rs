@@ -1,8 +1,8 @@
-use std::{mem, ptr};
+use std::ptr;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::path::Path;
-use std::sync::{Arc, Mutex, RwLock, Weak};
+use std::sync::{Arc, Mutex, Weak};
 
 use arc_swap::ArcSwap;
 use downcast_rs::Downcast;
@@ -169,11 +169,19 @@ impl Values for Expression {
 }
 
 impl Expression {
-    pub fn evaluate(&self, environment: Mapping) -> LazyValue {
+    pub fn evaluate(&self, environment: Mapping) -> Value {
         self.evaluate_with_option_stack(environment, None)
     }
-    pub fn evaluate_with_option_stack(&self, _environment: Mapping, _stack: Option<DebugStack>) -> LazyValue {
-        todo!()
+    pub fn evaluate_with_option_stack(&self, _environment: Mapping, _stack: Option<DebugStack>) -> Value {
+        match self {
+            Expression::Id(_) => todo!(),
+            Expression::Quote(x) => x.clone(),
+            Expression::ApplyFunction(_, _) => todo!(),
+            Expression::ApplyMacro(_, _) => todo!(),
+            Expression::Comment(_, _) => todo!(),
+            Expression::Builtin(_) => todo!(),
+            Expression::Positioned(_, _) => todo!(),
+        }
     }
 }
 
@@ -203,58 +211,39 @@ pub enum ExpressionBuiltin {
     ReadMapping(Arc<Expression>, Arc<Expression>),
 }
 
+impl ExpressionBuiltin {
+    pub fn evaluate(&self, environment: Mapping) -> Value {
+        self.evaluate_with_option_stack(environment, None)
+    }
+    pub fn evaluate_with_option_stack(&self, _environment: Mapping, _stack: Option<DebugStack>) -> Value {
+        match self {
+            ExpressionBuiltin::IsEmptyList(_) => todo!(),
+            ExpressionBuiltin::IsSymbol(_) => todo!(),
+            ExpressionBuiltin::NewSymbol(_) => todo!(),
+            ExpressionBuiltin::ReadSymbol(_) => todo!(),
+            ExpressionBuiltin::IsNonEmptyList(_) => todo!(),
+            ExpressionBuiltin::ReadNonEmptyListHead(_) => todo!(),
+            ExpressionBuiltin::ReadNonEmptyListTail(_) => todo!(),
+            ExpressionBuiltin::IsTagged(_) => todo!(),
+            ExpressionBuiltin::ReadTaggedTag(_) => todo!(),
+            ExpressionBuiltin::ReadTaggedData(_) => todo!(),
+            ExpressionBuiltin::IsException(_) => todo!(),
+            ExpressionBuiltin::ReadExceptionTag(_) => todo!(),
+            ExpressionBuiltin::ReadExceptionData(_) => todo!(),
+            ExpressionBuiltin::Recursive(_, _) => todo!(),
+            ExpressionBuiltin::Evaluate(_, _) => todo!(),
+            ExpressionBuiltin::Lambda(_, _, _) => todo!(),
+            ExpressionBuiltin::ReadBoolean(_, _, _) => todo!(),
+            ExpressionBuiltin::IsBoolean(_) => todo!(),
+            ExpressionBuiltin::IsMapping(_) => todo!(),
+            ExpressionBuiltin::ReadMapping(_, _) => todo!(),
+        }
+    }
+}
+
 impl Values for ExpressionBuiltin {
     fn deoptimize(&self) -> CoreValue {
         todo!()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LazyValue(Arc<RwLock<LazyValueInternal>>);
-
-#[derive(Debug, Clone)]
-enum LazyValueInternal {
-    Unevaluated(Mapping, Arc<Expression>, Option<DebugStack>),
-    Evaluated(Value),
-    EvaluationInProgress,
-}
-
-impl LazyValue {
-    pub fn new(environment: Mapping, expression: Arc<Expression>) -> Self {
-        LazyValue(Arc::new(RwLock::new(LazyValueInternal::Unevaluated(environment, expression, None))))
-    }
-    pub fn pack(this: Value) -> Self {
-        LazyValue(Arc::new(RwLock::new(LazyValueInternal::Evaluated(this))))
-    }
-    pub fn force(&self) -> Value {
-        let read = self.0.read().unwrap();
-        match &*read {
-            LazyValueInternal::Unevaluated(_, _, _) => {
-                drop(read);
-                let mut write = self.0.write().unwrap();
-                if if let LazyValueInternal::Unevaluated(_, _, _) = &*write { true } else { false } {
-                    let mut value = LazyValueInternal::EvaluationInProgress;
-                    mem::swap(&mut value, &mut write);
-                    drop(write);
-                    if let LazyValueInternal::Unevaluated(environment, expression, stack) = value {
-                        let new = expression.evaluate_with_option_stack(environment, stack).force();
-                        let mut write = self.0.write().unwrap();
-                        if !(if let LazyValueInternal::EvaluationInProgress = &*write { true } else { false }) {
-                            panic!();
-                        }
-                        *write = LazyValueInternal::Evaluated(new.clone());
-                        new
-                    } else {
-                        panic!();
-                    }
-                } else {
-                    drop(write);
-                    self.force()
-                }
-            }
-            LazyValueInternal::Evaluated(x) => x.clone(),
-            LazyValueInternal::EvaluationInProgress => todo!(),
-        }
     }
 }
 
