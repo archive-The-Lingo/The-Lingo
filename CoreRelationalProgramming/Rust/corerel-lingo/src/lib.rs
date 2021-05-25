@@ -86,8 +86,10 @@ pub enum GoalInternal {
     Apply(Value, Vec<Value>),
 }
 
+pub type World = Arc<WorldInternal>;
+
 #[derive(Debug, Clone)]
-pub struct World {
+pub struct WorldInternal {
     goals: Vec<Goal>,
     // todo
     equals: Vec<()>,
@@ -105,3 +107,10 @@ pub enum ArcLinkedList<T> {
 #[derive(Debug, Clone)]
 pub struct Mapping(Arc<ArcLinkedList<(Value, Value)>>);
 
+pub fn run_world(_current: &Universe, _steps: u16) -> Universe {
+    todo!()
+}
+
+pub fn run_world_multithreading(_current: &Universe, _steps: u16, _max_threades: u16, _parallelism: u16) -> Universe {
+    todo!()
+}
