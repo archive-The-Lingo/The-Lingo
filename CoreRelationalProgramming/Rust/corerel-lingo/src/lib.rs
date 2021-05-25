@@ -28,7 +28,7 @@ pub enum CoreValue {
 pub struct Relation {
     outer_environment: Mapping,
     // mutual recursion
-    inner : Arc<Vec<(Identifier, PartialRelation)>>,
+    inner: Arc<Vec<(Identifier, PartialRelation)>>,
     this: Identifier,
 }
 
@@ -36,7 +36,7 @@ pub struct Relation {
 pub struct PartialRelation {
     args: Vec<Identifier>,
     tail: Option<Identifier>,
-    body:Value,
+    body: Value,
 }
 
 pub type Value = Arc<ValueInternal>;
