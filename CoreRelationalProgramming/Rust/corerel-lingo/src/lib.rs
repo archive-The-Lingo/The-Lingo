@@ -26,14 +26,7 @@ pub enum CoreValue {
 
 #[derive(Debug, Clone)]
 pub struct Relation {
-    outer_environment: Mapping,
-    // mutual recursion
-    inner: Arc<Vec<(Identifier, PartialRelation)>>,
-    this: Identifier,
-}
-
-#[derive(Debug, Clone)]
-pub struct PartialRelation {
+    environment: Mapping,
     args: Vec<Identifier>,
     tail: Option<Identifier>,
     body: Value,
@@ -82,7 +75,7 @@ pub enum GoalInternal {
     NotEq(Value, Value),
     Symbol(Value),
     NotSymbol(Value),
-    // First Value must be a relation here.
+    // First Value must be a relation here. Will implement first-class Relation in the future.
     Apply(Value, Vec<Value>),
 }
 
