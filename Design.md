@@ -18,6 +18,8 @@ Formal languages are analytic languages which are not necessarily pronounceable,
 - Rust: Native (As Application) / WASM / Native (bare metal)
 - Verilog: Hardware
 
+- GraalVM? - JIT?
+
 ## Versioning for Libraries and Languages
 
 License: CC-BY 3.0
