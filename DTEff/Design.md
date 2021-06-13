@@ -40,8 +40,18 @@ funtion only letrec can easily use `sized`. What about data? be lazy and mark th
 
 Is there any other ways to ensure halting? force Weak head normal form when doing recursive.
 
+[Agda sized](https://agda.readthedocs.io/en/v2.5.2/language/sized-types.html)
+
 
 ### Core language
 
 Should the core language include the complete Effect system? or just a few special effects as `Type -> Type` (`sized` for instance)?
+
+complete Effect?
+
+Effect:
+
++ builtin flags
++ custom flags
++ traditional Effect
 
