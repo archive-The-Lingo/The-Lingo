@@ -46,6 +46,20 @@ Does size make sense with some effect?
 
 What does size mean in the effect world? - `return` has the size 0 and `x >>= f ` has a size bigger than x and f
 
+#### Examples
+
+assume
+```
+x -- 100
+a -- 9
+b -- 10
+```
+
+```
+return "a" -- 0
+print "a" >>= \_ => return "a" -- 1
+if x then a else b -- 110 ; could be 100 if the purpose of size is only to ensure it will be a weak head normal form?
+```
 
 ### Core language
 
@@ -66,3 +80,6 @@ effect operator -
 ...
 
 How to model and describe effect operators? - Is it still possible to create an expression-only language?
+operator name + type
+example:
+print + `String -> ()`
