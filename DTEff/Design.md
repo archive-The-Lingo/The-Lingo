@@ -40,6 +40,8 @@ funtion only letrec can easily use `sized`. What about data? be lazy and mark th
 
 Is there any other ways to ensure halting? force Weak head normal form when doing recursive.
 
+`size` is just like how `halt` is defined - `halt` in finite steps - which is `size`
+
 [Agda sized](https://agda.readthedocs.io/en/v2.5.2/language/sized-types.html)
 
 Does size make sense with some effect?
