@@ -42,6 +42,8 @@ Is there any other ways to ensure halting? force Weak head normal form when doin
 
 [Agda sized](https://agda.readthedocs.io/en/v2.5.2/language/sized-types.html)
 
+Does size make sense with some effect?
+
 
 ### Core language
 
