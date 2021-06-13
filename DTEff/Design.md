@@ -44,7 +44,7 @@ Is there any other ways to ensure halting? force Weak head normal form when doin
 
 Does size make sense with some effect?
 
-What does size mean in the effect world? - `return` has the size 0 and `x >>= f ` has bigger size than x and f
+What does size mean in the effect world? - `return` has the size 0 and `x >>= f ` has a size bigger than x and f
 
 
 ### Core language
