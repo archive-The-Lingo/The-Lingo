@@ -61,6 +61,12 @@ print "a" >>= \_ => return "a" -- 1
 if x then a else b -- 110 ; could be 100 if the purpose of size is only to ensure it will be a weak head normal form?
 ```
 
+#### Coinduction
+
+[Coinduction - Agda](https://web.archive.org/web/20201210063822/https://agda.readthedocs.io/en/latest/language/coinduction.html)
+
+Too hard to implement this feature?
+
 ### Core language
 
 Should the core language include the complete Effect system? or just a few special effects as `Type -> Type` (`sized` for instance)?
