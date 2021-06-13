@@ -59,3 +59,10 @@ Effect:
 + custom flags
 + traditional Effect
 
+building block:
+
+effect operator - 
+>>=
+...
+
+How to model and describe effect operators? - Is it still possible to create an expression-only language?
