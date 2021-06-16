@@ -159,8 +159,8 @@ type Identifier = Sym
 
 final case class Id(x: Identifier) extends Expression with NonFirstClassGoalExpression {
   override def hashCode: Int = x.x.hashCode
-  override def eval_value(env: Environment): Option[ValueWithHole] = throw new Exception("WIP")
-  override def eval_goal(env: Environment): Option[NonFirstClassGoal] = throw new Exception("WIP")
+  override def eval_value(env: Environment): Option[ValueWithHole] = env.get(x)
+  override def eval_goal(env: Environment): Option[NonFirstClassGoal] = env.get(x)
 }
 
 final case class Apply(f: Expression, args: List[Expression]) extends NonFirstClassGoalExpression {
