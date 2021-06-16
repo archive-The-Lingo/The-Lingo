@@ -40,8 +40,54 @@ funtion only letrec can easily use `sized`. What about data? be lazy and mark th
 
 Is there any other ways to ensure halting? force Weak head normal form when doing recursive.
 
+`size` is just like how `halt` is defined - `halt` in finite steps - which is `size`
+
+[Agda sized](https://agda.readthedocs.io/en/v2.5.2/language/sized-types.html)
+
+Does size make sense with some effect?
+
+What does size mean in the effect world? - `return` has the size 0 and `x >>= f ` has a size bigger than x and f - and allow any recursion with effect?
+
+#### Examples
+
+assume
+```
+x -- 100
+a -- 9
+b -- 10
+```
+
+```
+return "a" -- 0
+print "a" >>= \_ => return "a" -- 1
+if x then a else b -- 110 ; could be 100 if the purpose of size is only to ensure it will be a weak head normal form?
+```
+
+#### Coinduction
+
+[Coinduction - Agda](https://web.archive.org/web/20201210063822/https://agda.readthedocs.io/en/latest/language/coinduction.html)
+
+Too hard to implement this feature?
 
 ### Core language
 
 Should the core language include the complete Effect system? or just a few special effects as `Type -> Type` (`sized` for instance)?
 
+complete Effect?
+
+Effect:
+
++ builtin flags
++ custom flags
++ traditional Effect
+
+building block:
+
+effect operator - 
+>>=
+...
+
+How to model and describe effect operators? - Is it still possible to create an expression-only language?
+operator name + type
+example:
+print + `String -> ()`
