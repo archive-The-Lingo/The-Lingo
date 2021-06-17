@@ -224,8 +224,8 @@ impl Values for Expression {
 
 pub mod name;
 
-pub fn internal_exception(why: &Value, environment: &Mapping, what: &Value) -> Value {
-    Value::new(CoreValue::Exception(name::value::CORE.clone(), list!(why,Value::new(environment.clone()),what)))
+pub fn internal_exception(why: &Value, environment: &Mapping, what: &Expression) -> Value {
+    Value::new(CoreValue::Exception(name::value::CORE.clone(), list!(why,Value::new(environment.clone()),Value::new(what.clone()))))
 }
 
 impl Expression {
@@ -236,12 +236,12 @@ impl Expression {
         match self {
             Expression::Id(x) => match environment.get(x) {
                 Some(v) => v,
-                None => todo!(),
+                None => internal_exception(&name::value::EXCEPTION_NODEF, environment, self),
             },
             Expression::Quote(x) => x.clone(),
             Expression::ApplyFunction(_, _) => todo!(),
             Expression::ApplyMacro(_, _) => todo!(),
-            Expression::Comment(_, _) => todo!(),
+            Expression::Comment(exp, _cmt) => exp.evaluate_with_option_stack(environment, stack),
             Expression::Builtin(x) => x.evaluate_with_option_stack(environment, stack),
             Expression::Positioned(expression, position) => expression.evaluate_with_option_stack(environment, &if let Some(stack) = stack { Some(stack.extend(position)) } else { None }),
         }
@@ -342,6 +342,7 @@ impl Mapping {
         Mapping(Arc::new(ArcLinkedList::NonEmpty((key, value), self.0.clone())))
     }
 }
+
 impl Values for Mapping {
     fn deoptimize(&self) -> CoreValue {
         todo!()

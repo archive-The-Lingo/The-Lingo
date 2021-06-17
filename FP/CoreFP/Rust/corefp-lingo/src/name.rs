@@ -24,5 +24,6 @@ macro_rules! name {
 }
 name!((CORE,"核"),
     (ID,"識別子"),
-    (EXP,"式")
+    (EXP,"式"),
+    (EXCEPTION_NODEF,"無定義")
 );
