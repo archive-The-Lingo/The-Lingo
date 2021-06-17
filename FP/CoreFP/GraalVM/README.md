@@ -1,3 +1,3 @@
 # GraalVM implementation
 
-JIT of GraalVM!
+JIT and AOT of GraalVM!

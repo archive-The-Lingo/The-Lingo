@@ -177,6 +177,7 @@ impl Values for Expression {
         }
     }
 }
+pub mod name;
 
 impl Expression {
     pub fn evaluate(&self, environment: &Mapping) -> Value {
@@ -184,7 +185,10 @@ impl Expression {
     }
     pub fn evaluate_with_option_stack(&self, environment: &Mapping, stack: &Option<DebugStack>) -> Value {
         match self {
-            Expression::Id(_) => todo!(),
+            Expression::Id(x) => match environment.get(x) {
+                Some(v) => v,
+                None => todo!(),
+            },
             Expression::Quote(x) => x.clone(),
             Expression::ApplyFunction(_, _) => todo!(),
             Expression::ApplyMacro(_, _) => todo!(),
@@ -273,6 +277,22 @@ impl Values for ExpressionBuiltin {
 // TODO: optimize this.
 #[derive(Debug, Clone)]
 pub struct Mapping(Arc<ArcLinkedList<(Value, Value)>>);
+
+impl Mapping {
+    pub fn get(&self, key: &Value) -> Option<Value> {
+        let mut list = &self.0;
+        while let ArcLinkedList::NonEmpty((k0, v0), tail) = &**list {
+            if k0.equal(key) {
+                return Some(v0.clone());
+            }
+            list = tail;
+        }
+        None
+    }
+    pub fn extend(&self, key: Value, value: Value) -> Mapping {
+        Mapping(Arc::new(ArcLinkedList::NonEmpty((key, value), self.0.clone())))
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct DebugStack(Arc<ArcLinkedList<Position>>);
