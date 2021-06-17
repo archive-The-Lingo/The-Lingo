@@ -68,6 +68,7 @@ sealed trait Exp {
 }
 
 case class The(valueType: Exp, value: Exp) extends Exp {
+  // `type.level = value.level + 1` always holds
   override def synth(Γ: Context): Maybe[The] = for {
     l <- valueType.autoLevel(Γ)
     t <- valueType.check(Γ, U(l))
@@ -75,6 +76,7 @@ case class The(valueType: Exp, value: Exp) extends Exp {
     e <- value.check(Γ, t0)
   } yield The(t, e)
 
+  // sometimes we don't have value information
   override def manualLevel(Γ: Context): Maybe[Nat] = valueType.autoLevel(Γ).map(_-1).map(checkNat)
 }
 
