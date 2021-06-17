@@ -5,6 +5,7 @@ sealed trait Value {
 }
 
 sealed trait Type extends Value {
+  override def level: Nat = 1
 }
 
 case class U(x: Nat) extends Type {
