@@ -22,4 +22,7 @@ macro_rules! name {
         }
     };
 }
-name!((CORE, "核"));
+name!((CORE,"核"),
+    (ID,"識別子"),
+    (EXP,"式")
+);
