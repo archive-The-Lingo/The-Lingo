@@ -169,8 +169,20 @@ impl From<&Vec<Value>> for CoreValue {
 
 impl From<&Vec<Value>> for Value {
     fn from(xs: &Vec<Value>) -> Self {
-        Value::new(CoreValue::from(xs))
+        let mut result = EMPTY_LIST.clone();
+        for x in xs.iter().rev() {
+            result = Value::new(CoreValue::NonEmptyList(x.clone(), result));
+        }
+        result
     }
+}
+#[macro_export]
+macro_rules! list {
+    () => {EMPTY_LIST.clone()};
+    ( $a:expr ) => {Value::new(CoreValue::NonEmptyList($a.clone(), EMPTY_LIST.clone()))};
+    ( $a:expr, $( $x:expr ),* ) => {
+        Value::new(CoreValue::NonEmptyList($a.clone(), list!($($x),*)))
+    };
 }
 
 pub type Identifier = Value;
@@ -211,6 +223,10 @@ impl Values for Expression {
 }
 
 pub mod name;
+
+pub fn internal_exception(why: &Value, environment: &Mapping, what: &Value) -> Value {
+    Value::new(CoreValue::Exception(name::value::CORE.clone(), list!(why,Value::new(environment.clone()),what)))
+}
 
 impl Expression {
     pub fn evaluate(&self, environment: &Mapping) -> Value {
@@ -324,6 +340,11 @@ impl Mapping {
     }
     pub fn extend(&self, key: Value, value: Value) -> Mapping {
         Mapping(Arc::new(ArcLinkedList::NonEmpty((key, value), self.0.clone())))
+    }
+}
+impl Values for Mapping {
+    fn deoptimize(&self) -> CoreValue {
+        todo!()
     }
 }
 
