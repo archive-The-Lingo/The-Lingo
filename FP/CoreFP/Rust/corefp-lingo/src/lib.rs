@@ -141,6 +141,38 @@ impl CoreValue {
     }
 }
 
+lazy_static! {
+    pub static ref EMPTY_LIST: Value = Value::new(CoreValue::EmptyList);
+}
+
+use std::slice::Iter;
+
+impl From<Iter<'_, Value>> for CoreValue {
+    fn from(xs: Iter<'_, Value>) -> Self {
+        let mut result = CoreValue::EmptyList;
+        for x in xs.rev() {
+            result = CoreValue::NonEmptyList(x.clone(), Value::new(result));
+        }
+        result
+    }
+}
+
+impl From<&Vec<Value>> for CoreValue {
+    fn from(xs: &Vec<Value>) -> Self {
+        let mut result = CoreValue::EmptyList;
+        for x in xs.iter().rev() {
+            result = CoreValue::NonEmptyList(x.clone(), Value::new(result));
+        }
+        result
+    }
+}
+
+impl From<&Vec<Value>> for Value {
+    fn from(xs: &Vec<Value>) -> Self {
+        Value::new(CoreValue::from(xs))
+    }
+}
+
 pub type Identifier = Value;
 
 #[derive(Debug, Clone)]
@@ -177,6 +209,7 @@ impl Values for Expression {
         }
     }
 }
+
 pub mod name;
 
 impl Expression {
