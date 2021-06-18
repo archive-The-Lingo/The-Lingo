@@ -81,7 +81,8 @@ impl OptimizableValue {
 
 impl Values for OptimizableValue {
     fn deoptimize(&self) -> CoreValue {
-        self.load().deoptimize()
+        let inner: Value = (&**self.load()).clone();
+        inner.deoptimize()
     }
 
     fn internal_equal(&self, _this: &Value, other: &Value) -> SKleene {
@@ -368,22 +369,24 @@ lazy_static! {
     static ref POSSIBLY_RECURSIVE_SET: Mutex<PtrWeakHashSet<WeakValue>> = Mutex::new(PtrWeakHashSet::new());
 }
 
-#[derive(Debug, Clone)]
-pub struct PossiblyRecursive(ValueInternal);
+#[derive(Debug)]
+pub struct PossiblyRecursive(ArcSwap<Value>);
 
 impl PossiblyRecursive {
     pub fn new(x: &Value) -> Self {
         POSSIBLY_RECURSIVE_SET.lock().unwrap().insert((**x).clone());
-        PossiblyRecursive((**x).clone())
+        PossiblyRecursive(ArcSwap::from(Arc::new(x.clone())))
     }
     pub fn read(&self) -> Value {
-        Value(self.0.clone())
+        let inner: Value = (&**self.0.load()).clone();
+        inner.clone()
     }
 }
 
 impl Values for PossiblyRecursive {
     fn deoptimize(&self) -> CoreValue {
-        self.0.deoptimize()
+        let inner: Value = (&**self.0.load()).clone();
+        inner.deoptimize()
     }
     fn internal_equal(&self, _this: &Value, other: &Value) -> SKleene {
         self.read().internal_equal(other)
