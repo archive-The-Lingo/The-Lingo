@@ -4,6 +4,8 @@ extern crate no_std_compat as std;
 #[cfg(feature = "std")]
 extern crate std;
 
+pub mod trace;
+
 use std::prelude::v1::*;
 use std::ptr;
 use std::fmt::Debug;
@@ -18,6 +20,7 @@ use lazy_static::lazy_static;
 use trilean::SKleene;
 use weak_table::PtrWeakHashSet;
 
+// todo: add Trace
 pub trait Values: Downcast + Debug + Send + Sync {
     fn deoptimize(&self) -> CoreValue;
     fn internal_equal(&self, _this: &Value, _other: &Value) -> SKleene {
