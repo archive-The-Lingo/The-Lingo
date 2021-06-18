@@ -15,9 +15,10 @@ downcast-rs = { version = "1.2.0", features = [] }
 trilean = { git = "https://github.com/tsao-chi-fork/trilean" }
 weak-table = { git = "https://github.com/tsao-chi-fork/weak-table-rs" }
 lazy_static = "1.4.0"
+no-std-compat = { git = "https://gitlab.com/tsao-chi/no-std-compat.git", branch = "master", optional = true, features = ["alloc", "compat_hash", "compat_macros", "compact_cstr", "compact_osraw", "compact_path", "compat_sync", "compact_guard_unwrap"] }
 
 [features]
 default = ["no_std", "no_std_spin"]
-std = ["downcast-rs/std"]
-no_std = ["lazy_static/spin_no_std", "weak-table/no_std", "arc-swap/no_std"]
+std = ["downcast-rs/std", "no-std-compat/std"]
+no_std = ["no-std-compat", "lazy_static/spin_no_std", "weak-table/no_std", "arc-swap/no_std"]
 no_std_spin = ["arc-swap/no_std_spin_loop"]

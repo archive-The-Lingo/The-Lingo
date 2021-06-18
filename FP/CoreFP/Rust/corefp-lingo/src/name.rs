@@ -5,6 +5,7 @@ macro_rules! name {
         }
         pub mod string {
             use lazy_static::lazy_static;
+            use std::prelude::v1::*;
             lazy_static! {
                 $(
                     pub static ref $x: String = String::from($v);

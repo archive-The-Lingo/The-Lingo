@@ -1,3 +1,10 @@
+#![no_std]
+#[cfg(feature = "no_std")]
+extern crate no_std_compat as std;
+#[cfg(feature = "std")]
+extern crate std;
+
+use std::prelude::v1::*;
 use std::ptr;
 use std::fmt::Debug;
 use std::ops::Deref;
