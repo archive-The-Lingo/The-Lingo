@@ -10,8 +10,14 @@ license = "MPL-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-arc-swap = "1.2.0"
-downcast-rs = "1.2.0"
-trilean = "1.0.1"
-weak-table = "0.3.0"
+arc-swap = { git = "https://github.com/tsao-chi-fork/arc-swap" }
+downcast-rs = { version = "1.2.0", features = [] }
+trilean = { git = "https://github.com/tsao-chi-fork/trilean" }
+weak-table = { git = "https://github.com/tsao-chi-fork/weak-table-rs" }
 lazy_static = "1.4.0"
+
+[features]
+default = ["no_std", "no_std_spin"]
+std = ["downcast-rs/std"]
+no_std = ["lazy_static/spin_no_std", "weak-table/no_std", "arc-swap/no_std"]
+no_std_spin = ["arc-swap/no_std_spin_loop"]
