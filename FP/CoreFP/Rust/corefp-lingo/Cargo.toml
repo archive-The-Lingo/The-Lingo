@@ -11,7 +11,7 @@ license = "MPL-2.0"
 
 [dependencies]
 arc-swap = { git = "https://github.com/tsao-chi-fork/arc-swap" }
-downcast-rs = { version = "1.2.0", features = [] }
+downcast-rs = { version = "1.2.0", default-features = false, features = [] }
 trilean = { git = "https://github.com/tsao-chi-fork/trilean" }
 weak-table = { git = "https://github.com/tsao-chi-fork/weak-table-rs" }
 lazy_static = "1.4.0"
