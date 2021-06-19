@@ -28,5 +28,6 @@ name!((CORE,"核"),
     (EXP,"式"),
     (EXCEPTION_NODEF,"無定義"),
     (BINARY_LE_NAT, "小端二進位自然數"),
-    (CHAR, "字符")
+    (CHAR, "字符"),
+    (STRING, "字串")
 );

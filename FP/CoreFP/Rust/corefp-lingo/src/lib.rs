@@ -446,7 +446,7 @@ impl Nat {
 }
 impl Values for Nat {
     fn deoptimize(&self) -> CoreValue {
-        CoreValue::Tagged(name::value::BINARY_LE_NAT.clone(), Value::from(self.to_bitbox32_le().iter().map(|x|Value::from(*x)).collect::<Vec<Value>>()))
+        CoreValue::Tagged(name::value::BINARY_LE_NAT.clone(), list!(Value::from(self.to_bitbox32_le().iter().map(|x|Value::from(*x)).collect::<Vec<Value>>())))
     }
 }
 
@@ -455,6 +455,7 @@ pub struct Char (char);
 
 impl From<&Char> for Nat {
     fn from(x: &Char) -> Self {
+        // todo: check `as u32`
         Nat(BigUint::new(vec![x.0 as u32]))
     }
 }
@@ -462,6 +463,14 @@ impl From<&Char> for Nat {
 impl Values for Char {
     fn deoptimize(&self) -> CoreValue {
         CoreValue::Tagged(name::value::CHAR.clone(), list!(Value::new(Nat::from(self))))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CharString (String);
+impl Values for CharString {
+    fn deoptimize(&self) -> CoreValue {
+        CoreValue::Tagged(name::value::STRING.clone(), list!(Value::from(self.0.chars().map(|x|Value::new(Char(x))).collect::<Vec<_>>())))
     }
 }
 
