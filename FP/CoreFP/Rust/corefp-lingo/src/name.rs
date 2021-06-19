@@ -27,5 +27,6 @@ name!((CORE,"核"),
     (ID,"識別子"),
     (EXP,"式"),
     (EXCEPTION_NODEF,"無定義"),
-    (BINARY_LE_NAT, "小端二進位自然數")
+    (BINARY_LE_NAT, "小端二進位自然數"),
+    (CHAR, "字符")
 );

@@ -12,6 +12,7 @@ use std::fmt::Debug;
 use std::ops::Deref;
 use std::path::Path;
 use std::sync::{Arc, Mutex, Weak};
+use std::vec;
 
 use arc_swap::ArcSwap;
 use downcast_rs::Downcast;
@@ -452,9 +453,15 @@ impl Values for Nat {
 #[derive(Debug, Clone)]
 pub struct Char (char);
 
+impl From<&Char> for Nat {
+    fn from(x: &Char) -> Self {
+        Nat(BigUint::new(vec![x.0 as u32]))
+    }
+}
+
 impl Values for Char {
     fn deoptimize(&self) -> CoreValue {
-        todo!()
+        CoreValue::Tagged(name::value::CHAR.clone(), list!(Value::new(Nat::from(self))))
     }
 }
 
