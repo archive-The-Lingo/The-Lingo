@@ -29,5 +29,7 @@ name!((CORE,"核"),
     (EXCEPTION_NODEF,"無定義"),
     (BINARY_LE_NAT, "小端二進位自然數"),
     (CHAR, "字符"),
-    (STRING, "字串")
+    (STRING, "字串"),
+    (TRUE, "陽"),
+    (FALSE, "陰")
 );

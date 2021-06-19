@@ -304,8 +304,8 @@ pub enum ExpressionBuiltin {
 
 
 lazy_static! {
-    pub static ref TRUE: Value = todo!();
-    pub static ref FALSE: Value = todo!();
+    pub static ref TRUE: Value = Value::new(CoreValue::Tagged(name::value::TRUE.clone(),list!()));
+    pub static ref FALSE: Value = Value::new(CoreValue::Tagged(name::value::FALSE.clone(),list!()));
 }
 
 impl From<bool> for Value {
