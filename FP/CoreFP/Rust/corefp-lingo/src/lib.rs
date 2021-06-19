@@ -328,7 +328,11 @@ impl ExpressionBuiltin {
             ExpressionBuiltin::IsEmptyList(x) => if let CoreValue::EmptyList = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::IsSymbol(x) => if let CoreValue::Symbol(_) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::NewSymbol(_) => todo!(),
-            ExpressionBuiltin::ReadSymbol(_) => todo!(),
+            ExpressionBuiltin::ReadSymbol(x) => if let CoreValue::Symbol(s) = eval(x).deoptimize() {
+                Value::new(CharString(s))
+            } else {
+                internal_exception(&name::value::EXCEPTION_TYPEMISMATCH, environment, &Expression::Builtin(self.clone()))
+            },
             ExpressionBuiltin::IsNonEmptyList(x) => if let CoreValue::NonEmptyList(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::ReadNonEmptyListHead(_) => todo!(),
             ExpressionBuiltin::ReadNonEmptyListTail(_) => todo!(),
@@ -432,18 +436,20 @@ pub fn run_gc() -> () {
 }
 
 #[derive(Debug, Clone)]
-pub struct Nat (BigUint);
+pub struct Nat(BigUint);
+
 impl Nat {
     // todo: check endian
     pub fn to_bitbox32_le(&self) -> BitBox<Lsb0, u32> {
         BitBox::from_bitslice(self.0.to_u32_digits().view_bits::<Lsb0>())
     }
     // todo: check endian
-    pub fn from_bitslice32_le(x:&BitSlice<Lsb0, u32>) -> Self {
+    pub fn from_bitslice32_le(x: &BitSlice<Lsb0, u32>) -> Self {
         // todo: check as_raw_slice
         Nat(BigUint::from_slice(x.as_raw_slice()))
     }
 }
+
 impl Values for Nat {
     fn deoptimize(&self) -> CoreValue {
         CoreValue::Tagged(name::value::BINARY_LE_NAT.clone(), list!(Value::from(self.to_bitbox32_le().iter().map(|x|Value::from(*x)).collect::<Vec<Value>>())))
@@ -451,7 +457,7 @@ impl Values for Nat {
 }
 
 #[derive(Debug, Clone)]
-pub struct Char (char);
+pub struct Char(char);
 
 impl From<&Char> for Nat {
     fn from(x: &Char) -> Self {
@@ -467,7 +473,8 @@ impl Values for Char {
 }
 
 #[derive(Debug, Clone)]
-pub struct CharString (String);
+pub struct CharString(String);
+
 impl Values for CharString {
     fn deoptimize(&self) -> CoreValue {
         CoreValue::Tagged(name::value::STRING.clone(), list!(Value::from(self.0.chars().map(|x|Value::new(Char(x))).collect::<Vec<_>>())))
