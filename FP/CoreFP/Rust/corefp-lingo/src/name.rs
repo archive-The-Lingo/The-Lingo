@@ -26,5 +26,6 @@ macro_rules! name {
 name!((CORE,"核"),
     (ID,"識別子"),
     (EXP,"式"),
-    (EXCEPTION_NODEF,"無定義")
+    (EXCEPTION_NODEF,"無定義"),
+    (BINARY_LE_NAT, "小端二進位自然數")
 );

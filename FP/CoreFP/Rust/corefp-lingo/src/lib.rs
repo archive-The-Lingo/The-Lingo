@@ -19,6 +19,8 @@ use downcast_rs::impl_downcast;
 use lazy_static::lazy_static;
 use trilean::SKleene;
 use weak_table::PtrWeakHashSet;
+use num_bigint::BigUint;
+use bitvec::prelude::*;
 
 // todo: add Trace
 pub trait Values: Downcast + Debug + Send + Sync {
@@ -187,6 +189,17 @@ impl From<&Vec<Value>> for Value {
         result
     }
 }
+
+impl From<Vec<Value>> for Value {
+    fn from(xs: Vec<Value>) -> Self {
+        let mut result = EMPTY_LIST.clone();
+        for x in xs.into_iter().rev() {
+            result = Value::new(CoreValue::NonEmptyList(x, result));
+        }
+        result
+    }
+}
+
 #[macro_export]
 macro_rules! list {
     () => {EMPTY_LIST.clone()};
@@ -292,6 +305,16 @@ pub enum ExpressionBuiltin {
 lazy_static! {
     pub static ref TRUE: Value = todo!();
     pub static ref FALSE: Value = todo!();
+}
+
+impl From<bool> for Value {
+    fn from(x: bool) -> Self {
+        if x {
+            TRUE.clone()
+        } else {
+            FALSE.clone()
+        }
+    }
 }
 
 impl ExpressionBuiltin {
@@ -405,6 +428,34 @@ impl Values for PossiblyRecursive {
 
 pub fn run_gc() -> () {
     todo!();
+}
+
+#[derive(Debug, Clone)]
+pub struct Nat (BigUint);
+impl Nat {
+    // todo: check endian
+    pub fn to_bitbox32_le(&self) -> BitBox<Lsb0, u32> {
+        BitBox::from_bitslice(self.0.to_u32_digits().view_bits::<Lsb0>())
+    }
+    // todo: check endian
+    pub fn from_bitslice32_le(x:&BitSlice<Lsb0, u32>) -> Self {
+        // todo: check as_raw_slice
+        Nat(BigUint::from_slice(x.as_raw_slice()))
+    }
+}
+impl Values for Nat {
+    fn deoptimize(&self) -> CoreValue {
+        CoreValue::Tagged(name::value::BINARY_LE_NAT.clone(), Value::from(self.to_bitbox32_le().iter().map(|x|Value::from(*x)).collect::<Vec<Value>>()))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Char (char);
+
+impl Values for Char {
+    fn deoptimize(&self) -> CoreValue {
+        todo!()
+    }
 }
 
 #[cfg(test)]
