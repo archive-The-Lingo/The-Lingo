@@ -324,27 +324,25 @@ impl ExpressionBuiltin {
     }
     pub fn evaluate_with_option_stack(&self, environment: &Mapping, stack: &Option<DebugStack>) -> Value {
         let eval = |x: &Expression| x.evaluate_with_option_stack(environment, stack);
+        let exception = |why: &Value| internal_exception(why, environment, &Expression::Builtin(self.clone()));
+        let typemismatch = || exception(&name::value::EXCEPTION_TYPEMISMATCH);
         match self {
             ExpressionBuiltin::IsEmptyList(x) => if let CoreValue::EmptyList = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::IsSymbol(x) => if let CoreValue::Symbol(_) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
             ExpressionBuiltin::NewSymbol(_) => todo!(),
-            ExpressionBuiltin::ReadSymbol(x) => if let CoreValue::Symbol(s) = eval(x).deoptimize() {
-                Value::new(CharString(s))
-            } else {
-                internal_exception(&name::value::EXCEPTION_TYPEMISMATCH, environment, &Expression::Builtin(self.clone()))
-            },
+            ExpressionBuiltin::ReadSymbol(x) => if let CoreValue::Symbol(s) = eval(x).deoptimize() { Value::new(CharString(s)) } else { typemismatch() },
             ExpressionBuiltin::IsNonEmptyList(x) => if let CoreValue::NonEmptyList(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
-            ExpressionBuiltin::ReadNonEmptyListHead(_) => todo!(),
-            ExpressionBuiltin::ReadNonEmptyListTail(_) => todo!(),
-            ExpressionBuiltin::NewNonEmptyList(_, _) => todo!(),
+            ExpressionBuiltin::ReadNonEmptyListHead(x) => if let CoreValue::NonEmptyList(v, _) = eval(x).deoptimize() { v } else { typemismatch() },
+            ExpressionBuiltin::ReadNonEmptyListTail(x) => if let CoreValue::NonEmptyList(_, v) = eval(x).deoptimize() { v } else { typemismatch() },
+            ExpressionBuiltin::NewNonEmptyList(x, y) => Value::new(CoreValue::NonEmptyList(eval(x),eval(y))),
             ExpressionBuiltin::IsTagged(x) => if let CoreValue::Tagged(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
-            ExpressionBuiltin::ReadTaggedTag(_) => todo!(),
-            ExpressionBuiltin::ReadTaggedData(_) => todo!(),
-            ExpressionBuiltin::NewTagged(_, _) => todo!(),
+            ExpressionBuiltin::ReadTaggedTag(x) => if let CoreValue::Tagged(v, _) = eval(x).deoptimize() { v } else { typemismatch() },
+            ExpressionBuiltin::ReadTaggedData(x) => if let CoreValue::Tagged(_, v) = eval(x).deoptimize() { v } else { typemismatch() },
+            ExpressionBuiltin::NewTagged(x, y) => Value::new(CoreValue::Tagged(eval(x),eval(y))),
             ExpressionBuiltin::IsException(x) => if let CoreValue::Exception(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
-            ExpressionBuiltin::ReadExceptionTag(_) => todo!(),
-            ExpressionBuiltin::ReadExceptionData(_) => todo!(),
-            ExpressionBuiltin::NewException(_, _) => todo!(),
+            ExpressionBuiltin::ReadExceptionTag(x) => if let CoreValue::Exception(v, _) = eval(x).deoptimize() { v } else { typemismatch() },
+            ExpressionBuiltin::ReadExceptionData(x) => if let CoreValue::Exception(_, v) = eval(x).deoptimize() { v } else { typemismatch() },
+            ExpressionBuiltin::NewException(x, y) => Value::new(CoreValue::Exception(eval(x),eval(y))),
             ExpressionBuiltin::Recursive(_, _) => todo!(),
             ExpressionBuiltin::Evaluate(_, _) => todo!(),
             ExpressionBuiltin::Lambda(_, _, _) => todo!(),
