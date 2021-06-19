@@ -91,3 +91,30 @@ How to model and describe effect operators? - Is it still possible to create an 
 operator name + type
 example:
 print + `String -> ()`
+
+## Examples
+
+Explicit version
+```
+id: {e: Effect, n: Nat, t: Type n}, t -> e t
+id {e, n, t} x = x
+
+id_pure: {n: Nat, t: Type n}, t -> pure t
+id_pure {n, t} x = x 
+
+id_e: {e: Effect, n: Nat, t: Type n}, (() -> e t) -> e t
+id_e {e, n, t} f = f ()
+
+
+map: {e: Effect, n0: Nat, t0: Type n0, n1: Nat, t1: Type n1}, Listof t -> (t -> e t1) -> e (Listof t1)
+...
+```
+
+Simple version
+```
+id: t -> t
+id x = x
+
+map: Listof t -> (t -> t1) -> Listof t1
+...
+```
