@@ -122,3 +122,7 @@ map: Listof t -> (t -> t1) -> Listof t1
 with size
 
 TODO
+
+procedural language like
+
+TODO
