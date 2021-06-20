@@ -23,8 +23,9 @@ Related: [Why must inductive types be strictly positive?](http://web.archive.org
 // Curry's paradox
 A: Type
 A = A -> B
+// or `data A = A (A -> B)`
 
 B_proof: B
 B_proof a = a a
-// a: A -> B, a: A, so a a: B
+// a: A -> B, a: A, so `a a: B`
 ```
