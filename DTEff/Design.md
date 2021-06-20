@@ -29,3 +29,9 @@ B_proof: B
 B_proof a = a a
 // a: A -> B, a: A, so `a a: B`
 ```
+
+## Examples
+
+```
+
+```
