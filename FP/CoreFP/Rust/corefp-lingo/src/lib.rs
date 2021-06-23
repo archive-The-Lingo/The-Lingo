@@ -23,7 +23,7 @@ use weak_table::PtrWeakHashSet;
 use num_bigint::BigUint;
 use bitvec::prelude::*;
 
-// todo: add Trace
+// todo: add Trace and Hash
 pub trait Values: Downcast + Debug + Send + Sync {
     fn deoptimize(&self) -> CoreValue;
     fn internal_equal(&self, _this: &Value, _other: &Value) -> SKleene {
