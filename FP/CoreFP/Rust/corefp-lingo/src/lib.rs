@@ -13,6 +13,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::sync::{Arc, Mutex, Weak};
 use std::vec;
+use std::hash::{Hash, Hasher};
 
 use arc_swap::ArcSwap;
 use downcast_rs::Downcast;
@@ -23,8 +24,9 @@ use weak_table::PtrWeakHashSet;
 use num_bigint::BigUint;
 use bitvec::prelude::*;
 
-// todo: add Trace and Hash
+// todo: add Trace
 pub trait Values: Downcast + Debug + Send + Sync {
+    // todo: consider cache deoptimize
     fn deoptimize(&self) -> CoreValue;
     fn internal_equal(&self, _this: &Value, _other: &Value) -> SKleene {
         SKleene::Unknown
@@ -68,6 +70,14 @@ impl Value {
         } else {
             FALSE.clone()
         }
+    }
+}
+
+
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // todo: consider cache
+        self.deoptimize().hash(state);
     }
 }
 
@@ -120,7 +130,7 @@ impl Values for OptimizableValue {
 
 pub type CoreIdentifier = String;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub enum CoreValue {
     EmptyList,
     Symbol(CoreIdentifier),
