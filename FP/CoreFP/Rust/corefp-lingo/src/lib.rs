@@ -339,7 +339,7 @@ pub enum ExpressionBuiltin {
 }
 
 lazy_static! {
-    pub struct ref TRUE_CORE: CoreValue = CoreValue::Tagged(name::value::TRUE.clone(),list!());
+    pub static ref TRUE_CORE: CoreValue = CoreValue::Tagged(name::value::TRUE.clone(),list!());
     pub static ref TRUE: Value = Value::new(TRUE_CORE.clone());
     pub static ref FALSE_CORE: CoreValue = CoreValue::Tagged(name::value::FALSE.clone(),list!());
     pub static ref FALSE: Value = Value::new(FALSE_CORE.clone());
