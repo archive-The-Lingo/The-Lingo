@@ -304,8 +304,21 @@ pub enum ExpressionBuiltin {
 
 
 lazy_static! {
-    pub static ref TRUE: Value = Value::new(CoreValue::Tagged(name::value::TRUE.clone(),list!()));
-    pub static ref FALSE: Value = Value::new(CoreValue::Tagged(name::value::FALSE.clone(),list!()));
+    pub struct ref TRUE_CORE: CoreValue = CoreValue::Tagged(name::value::TRUE.clone(),list!());
+    pub static ref TRUE: Value = Value::new(TRUE_CORE.clone());
+    pub static ref FALSE_CORE: CoreValue = CoreValue::Tagged(name::value::FALSE.clone(),list!());
+    pub static ref FALSE: Value = Value::new(FALSE_CORE.clone());
+}
+
+impl From<bool> for CoreValue {
+    fn from(x: bool) -> Self {
+        if x {
+            TRUE_CORE.clone()
+        } else {
+            FALSE_CORE.clone()
+        }
+    }
+
 }
 
 impl From<bool> for Value {
@@ -476,6 +489,14 @@ pub struct CharString(String);
 impl Values for CharString {
     fn deoptimize(&self) -> CoreValue {
         CoreValue::Tagged(name::value::STRING.clone(), list!(Value::from(self.0.chars().map(|x|Value::new(Char(x))).collect::<Vec<_>>())))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Boolean(bool);
+impl Values for Boolean {
+    fn deoptimize(&self) -> CoreValue {
+        CoreValue::from(self.0)
     }
 }
 
