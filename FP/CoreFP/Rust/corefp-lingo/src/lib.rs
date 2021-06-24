@@ -599,7 +599,7 @@ impl Values for Nat {
             list!(Value::from(
                 self.to_bitbox32_le()
                     .iter()
-                    .map(|x| Value::from(*x))
+                    .map(|x| Value::new(Boolean(*x)))
                     .collect::<Vec<Value>>()
             )),
         )
@@ -659,6 +659,19 @@ pub struct Boolean(bool);
 impl Values for Boolean {
     fn deoptimize(&self) -> CoreValue {
         CoreValue::from(self.0)
+    }
+}
+impl Boolean {
+    pub fn optimize(x: &Value) -> Option<Self> {
+        if let Some(this) = x.downcast_ref::<Boolean>() {
+            Some(this.clone())
+        } else if x.equal(&TRUE) {
+            Some(Boolean(true))
+        } else if x.equal(&FALSE) {
+            Some(Boolean(false))
+        } else {
+            None
+        }
     }
 }
 
