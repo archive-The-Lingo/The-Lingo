@@ -626,8 +626,12 @@ impl Values for Char {
 }
 
 impl Char {
-    pub fn optimize(_x: &Value) -> Option<Self> {
-        todo!()
+    pub fn optimize(x: &Value) -> Option<Self> {
+        if let Some(this) = x.downcast_ref::<Self>() {
+            Some(this.clone())
+        } else {
+            todo!();
+        }
     }
 }
 
@@ -649,8 +653,12 @@ impl Values for CharString {
 }
 
 impl CharString {
-    pub fn optimize(_x: &Value) -> Option<Self> {
-        todo!()
+    pub fn optimize(x: &Value) -> Option<Self> {
+        if let Some(this) = x.downcast_ref::<Self>() {
+            Some(this.clone())
+        } else {
+            todo!();
+        }
     }
 }
 
@@ -663,7 +671,7 @@ impl Values for Boolean {
 }
 impl Boolean {
     pub fn optimize(x: &Value) -> Option<Self> {
-        if let Some(this) = x.downcast_ref::<Boolean>() {
+        if let Some(this) = x.downcast_ref::<Self>() {
             Some(this.clone())
         } else if x.equal(&TRUE) {
             Some(Boolean(true))
