@@ -6,25 +6,27 @@ extern crate std;
 
 pub mod trace;
 
-use std::prelude::v1::*;
-use std::ptr;
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::path::Path;
+use std::prelude::v1::*;
+use std::ptr;
 use std::sync::{Arc, Mutex, Weak};
 use std::vec;
 
 use arc_swap::ArcSwap;
-use downcast_rs::Downcast;
+use bitvec::prelude::*;
 use downcast_rs::impl_downcast;
+use downcast_rs::Downcast;
 use lazy_static::lazy_static;
+use num_bigint::BigUint;
 use trilean::SKleene;
 use weak_table::PtrWeakHashSet;
-use num_bigint::BigUint;
-use bitvec::prelude::*;
 
 // todo: add Trace
 pub trait Values: Downcast + Debug + Send + Sync {
+    // todo: consider cache deoptimize
     fn deoptimize(&self) -> CoreValue;
     fn internal_equal(&self, _this: &Value, _other: &Value) -> SKleene {
         SKleene::Unknown
@@ -52,7 +54,9 @@ impl Value {
         Value(Arc::new(x))
     }
     pub fn equal(&self, other: &Value) -> bool {
-        if ptr::eq::<dyn Values>(&***self, &***other) { return true; }
+        if ptr::eq::<dyn Values>(&***self, &***other) {
+            return true;
+        }
         match self.internal_equal(other) {
             SKleene::False => false,
             SKleene::True => true,
@@ -68,6 +72,13 @@ impl Value {
         } else {
             FALSE.clone()
         }
+    }
+}
+
+impl Hash for Value {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // todo: consider cache
+        self.deoptimize().hash(state);
     }
 }
 
@@ -100,7 +111,9 @@ impl Values for OptimizableValue {
 
     fn internal_equal(&self, _this: &Value, other: &Value) -> SKleene {
         if let Some(other) = other.downcast_ref::<OptimizableValue>() {
-            if ptr::eq::<ArcSwap<Value>>(&**self, &**other) { return SKleene::True; }
+            if ptr::eq::<ArcSwap<Value>>(&**self, &**other) {
+                return SKleene::True;
+            }
             let this = self.remove_layers();
             if ptr::eq::<Value>(&*this, &*other.remove_layers()) {
                 self.store(this.clone());
@@ -120,9 +133,10 @@ impl Values for OptimizableValue {
 
 pub type CoreIdentifier = String;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub enum CoreValue {
     EmptyList,
+    // todo: cache equality
     Symbol(CoreIdentifier),
     NonEmptyList(Value, Value),
     Tagged(Value, Value),
@@ -147,9 +161,13 @@ impl CoreValue {
         match (self, other) {
             (CoreValue::EmptyList, CoreValue::EmptyList) => true,
             (CoreValue::Symbol(x), CoreValue::Symbol(y)) => x == y,
-            (CoreValue::NonEmptyList(x0, y0), CoreValue::NonEmptyList(x1, y1)) => x0.equal(x1) && y0.equal(y1),
+            (CoreValue::NonEmptyList(x0, y0), CoreValue::NonEmptyList(x1, y1)) => {
+                x0.equal(x1) && y0.equal(y1)
+            }
             (CoreValue::Tagged(x0, y0), CoreValue::Tagged(x1, y1)) => x0.equal(x1) && y0.equal(y1),
-            (CoreValue::Exception(x0, y0), CoreValue::Exception(x1, y1)) => x0.equal(x1) && y0.equal(y1),
+            (CoreValue::Exception(x0, y0), CoreValue::Exception(x1, y1)) => {
+                x0.equal(x1) && y0.equal(y1)
+            }
             (_, _) => false,
         }
     }
@@ -250,14 +268,25 @@ impl Values for Expression {
 pub mod name;
 
 pub fn internal_exception(why: &Value, environment: &Mapping, what: &Expression) -> Value {
-    Value::new(CoreValue::Exception(name::value::CORE.clone(), list!(why,Value::new(environment.clone()),Value::new(what.clone()))))
+    Value::new(CoreValue::Exception(
+        name::value::CORE.clone(),
+        list!(
+            why,
+            Value::new(environment.clone()),
+            Value::new(what.clone())
+        ),
+    ))
 }
 
 impl Expression {
     pub fn evaluate(&self, environment: &Mapping) -> Value {
         self.evaluate_with_option_stack(environment, &None)
     }
-    pub fn evaluate_with_option_stack(&self, environment: &Mapping, stack: &Option<DebugStack>) -> Value {
+    pub fn evaluate_with_option_stack(
+        &self,
+        environment: &Mapping,
+        stack: &Option<DebugStack>,
+    ) -> Value {
         match self {
             Expression::Id(x) => match environment.get(x) {
                 Some(v) => v,
@@ -268,7 +297,14 @@ impl Expression {
             Expression::ApplyMacro(_, _) => todo!(),
             Expression::Comment(exp, _cmt) => exp.evaluate_with_option_stack(environment, stack),
             Expression::Builtin(x) => x.evaluate_with_option_stack(environment, stack),
-            Expression::Positioned(expression, position) => expression.evaluate_with_option_stack(environment, &if let Some(stack) = stack { Some(stack.extend(position)) } else { None }),
+            Expression::Positioned(expression, position) => expression.evaluate_with_option_stack(
+                environment,
+                &if let Some(stack) = stack {
+                    Some(stack.extend(position))
+                } else {
+                    None
+                },
+            ),
         }
     }
 }
@@ -302,7 +338,6 @@ pub enum ExpressionBuiltin {
     ReadMapping(Arc<Expression>, Arc<Expression>),
 }
 
-
 lazy_static! {
     pub struct ref TRUE_CORE: CoreValue = CoreValue::Tagged(name::value::TRUE.clone(),list!());
     pub static ref TRUE: Value = Value::new(TRUE_CORE.clone());
@@ -318,7 +353,6 @@ impl From<bool> for CoreValue {
             FALSE_CORE.clone()
         }
     }
-
 }
 
 impl From<bool> for Value {
@@ -335,27 +369,114 @@ impl ExpressionBuiltin {
     pub fn evaluate(&self, environment: &Mapping) -> Value {
         self.evaluate_with_option_stack(environment, &None)
     }
-    pub fn evaluate_with_option_stack(&self, environment: &Mapping, stack: &Option<DebugStack>) -> Value {
+    pub fn evaluate_with_option_stack(
+        &self,
+        environment: &Mapping,
+        stack: &Option<DebugStack>,
+    ) -> Value {
         let eval = |x: &Expression| x.evaluate_with_option_stack(environment, stack);
-        let exception = |why: &Value| internal_exception(why, environment, &Expression::Builtin(self.clone()));
+        let exception =
+            |why: &Value| internal_exception(why, environment, &Expression::Builtin(self.clone()));
         let typemismatch = || exception(&name::value::EXCEPTION_TYPEMISMATCH);
         match self {
-            ExpressionBuiltin::IsEmptyList(x) => if let CoreValue::EmptyList = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
-            ExpressionBuiltin::IsSymbol(x) => if let CoreValue::Symbol(_) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
-            ExpressionBuiltin::NewSymbol(_) => todo!(),
-            ExpressionBuiltin::ReadSymbol(x) => if let CoreValue::Symbol(s) = eval(x).deoptimize() { Value::new(CharString(s)) } else { typemismatch() },
-            ExpressionBuiltin::IsNonEmptyList(x) => if let CoreValue::NonEmptyList(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
-            ExpressionBuiltin::ReadNonEmptyListHead(x) => if let CoreValue::NonEmptyList(v, _) = eval(x).deoptimize() { v } else { typemismatch() },
-            ExpressionBuiltin::ReadNonEmptyListTail(x) => if let CoreValue::NonEmptyList(_, v) = eval(x).deoptimize() { v } else { typemismatch() },
-            ExpressionBuiltin::NewNonEmptyList(x, y) => Value::new(CoreValue::NonEmptyList(eval(x),eval(y))),
-            ExpressionBuiltin::IsTagged(x) => if let CoreValue::Tagged(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
-            ExpressionBuiltin::ReadTaggedTag(x) => if let CoreValue::Tagged(v, _) = eval(x).deoptimize() { v } else { typemismatch() },
-            ExpressionBuiltin::ReadTaggedData(x) => if let CoreValue::Tagged(_, v) = eval(x).deoptimize() { v } else { typemismatch() },
-            ExpressionBuiltin::NewTagged(x, y) => Value::new(CoreValue::Tagged(eval(x),eval(y))),
-            ExpressionBuiltin::IsException(x) => if let CoreValue::Exception(_, _) = eval(x).deoptimize() { TRUE.clone() } else { FALSE.clone() },
-            ExpressionBuiltin::ReadExceptionTag(x) => if let CoreValue::Exception(v, _) = eval(x).deoptimize() { v } else { typemismatch() },
-            ExpressionBuiltin::ReadExceptionData(x) => if let CoreValue::Exception(_, v) = eval(x).deoptimize() { v } else { typemismatch() },
-            ExpressionBuiltin::NewException(x, y) => Value::new(CoreValue::Exception(eval(x),eval(y))),
+            ExpressionBuiltin::IsEmptyList(x) => {
+                if let CoreValue::EmptyList = eval(x).deoptimize() {
+                    TRUE.clone()
+                } else {
+                    FALSE.clone()
+                }
+            }
+            ExpressionBuiltin::IsSymbol(x) => {
+                if let CoreValue::Symbol(_) = eval(x).deoptimize() {
+                    TRUE.clone()
+                } else {
+                    FALSE.clone()
+                }
+            }
+            ExpressionBuiltin::NewSymbol(x) => {
+                if let Some(r) = CharString::optimize(&eval(x)) {
+                    Value::new(CoreValue::Symbol(r.0))
+                } else {
+                    typemismatch()
+                }
+            }
+            ExpressionBuiltin::ReadSymbol(x) => {
+                if let CoreValue::Symbol(s) = eval(x).deoptimize() {
+                    Value::new(CharString(s))
+                } else {
+                    typemismatch()
+                }
+            }
+            ExpressionBuiltin::IsNonEmptyList(x) => {
+                if let CoreValue::NonEmptyList(_, _) = eval(x).deoptimize() {
+                    TRUE.clone()
+                } else {
+                    FALSE.clone()
+                }
+            }
+            ExpressionBuiltin::ReadNonEmptyListHead(x) => {
+                if let CoreValue::NonEmptyList(v, _) = eval(x).deoptimize() {
+                    v
+                } else {
+                    typemismatch()
+                }
+            }
+            ExpressionBuiltin::ReadNonEmptyListTail(x) => {
+                if let CoreValue::NonEmptyList(_, v) = eval(x).deoptimize() {
+                    v
+                } else {
+                    typemismatch()
+                }
+            }
+            ExpressionBuiltin::NewNonEmptyList(x, y) => {
+                Value::new(CoreValue::NonEmptyList(eval(x), eval(y)))
+            }
+            ExpressionBuiltin::IsTagged(x) => {
+                if let CoreValue::Tagged(_, _) = eval(x).deoptimize() {
+                    TRUE.clone()
+                } else {
+                    FALSE.clone()
+                }
+            }
+            ExpressionBuiltin::ReadTaggedTag(x) => {
+                if let CoreValue::Tagged(v, _) = eval(x).deoptimize() {
+                    v
+                } else {
+                    typemismatch()
+                }
+            }
+            ExpressionBuiltin::ReadTaggedData(x) => {
+                if let CoreValue::Tagged(_, v) = eval(x).deoptimize() {
+                    v
+                } else {
+                    typemismatch()
+                }
+            }
+            ExpressionBuiltin::NewTagged(x, y) => Value::new(CoreValue::Tagged(eval(x), eval(y))),
+            ExpressionBuiltin::IsException(x) => {
+                if let CoreValue::Exception(_, _) = eval(x).deoptimize() {
+                    TRUE.clone()
+                } else {
+                    FALSE.clone()
+                }
+            }
+            ExpressionBuiltin::ReadExceptionTag(x) => {
+                if let CoreValue::Exception(v, _) = eval(x).deoptimize() {
+                    v
+                } else {
+                    typemismatch()
+                }
+            }
+            ExpressionBuiltin::ReadExceptionData(x) => {
+                if let CoreValue::Exception(_, v) = eval(x).deoptimize() {
+                    v
+                } else {
+                    typemismatch()
+                }
+            }
+            ExpressionBuiltin::NewException(x, y) => {
+                Value::new(CoreValue::Exception(eval(x), eval(y)))
+            }
             ExpressionBuiltin::Recursive(_, _) => todo!(),
             ExpressionBuiltin::Evaluate(_, _) => todo!(),
             ExpressionBuiltin::Lambda(_, _, _) => todo!(),
@@ -388,8 +509,14 @@ impl Mapping {
         }
         None
     }
-    pub fn extend(&self, key: Value, value: Value) -> Mapping {
-        Mapping(Arc::new(ArcLinkedList::NonEmpty((key, value), self.0.clone())))
+    pub fn extend(&self, key: Value, value: Value) -> Self {
+        Self(Arc::new(ArcLinkedList::NonEmpty(
+            (key, value),
+            self.0.clone(),
+        )))
+    }
+    pub fn optimize(_x: &Value) -> Option<Self> {
+        todo!()
     }
 }
 
@@ -415,7 +542,8 @@ pub enum ArcLinkedList<T> {
 }
 
 lazy_static! {
-    static ref POSSIBLY_RECURSIVE_SET: Mutex<PtrWeakHashSet<WeakValue>> = Mutex::new(PtrWeakHashSet::new());
+    static ref POSSIBLY_RECURSIVE_SET: Mutex<PtrWeakHashSet<WeakValue>> =
+        Mutex::new(PtrWeakHashSet::new());
 }
 
 #[derive(Debug)]
@@ -459,11 +587,22 @@ impl Nat {
         // todo: check as_raw_slice
         Nat(BigUint::from_slice(x.as_raw_slice()))
     }
+    pub fn optimize(_x: &Value) -> Option<Self> {
+        todo!()
+    }
 }
 
 impl Values for Nat {
     fn deoptimize(&self) -> CoreValue {
-        CoreValue::Tagged(name::value::BINARY_LE_NAT.clone(), list!(Value::from(self.to_bitbox32_le().iter().map(|x|Value::from(*x)).collect::<Vec<Value>>())))
+        CoreValue::Tagged(
+            name::value::BINARY_LE_NAT.clone(),
+            list!(Value::from(
+                self.to_bitbox32_le()
+                    .iter()
+                    .map(|x| Value::from(*x))
+                    .collect::<Vec<Value>>()
+            )),
+        )
     }
 }
 
@@ -479,7 +618,16 @@ impl From<&Char> for Nat {
 
 impl Values for Char {
     fn deoptimize(&self) -> CoreValue {
-        CoreValue::Tagged(name::value::CHAR.clone(), list!(Value::new(Nat::from(self))))
+        CoreValue::Tagged(
+            name::value::CHAR.clone(),
+            list!(Value::new(Nat::from(self))),
+        )
+    }
+}
+
+impl Char {
+    pub fn optimize(_x: &Value) -> Option<Self> {
+        todo!()
     }
 }
 
@@ -488,7 +636,21 @@ pub struct CharString(String);
 
 impl Values for CharString {
     fn deoptimize(&self) -> CoreValue {
-        CoreValue::Tagged(name::value::STRING.clone(), list!(Value::from(self.0.chars().map(|x|Value::new(Char(x))).collect::<Vec<_>>())))
+        CoreValue::Tagged(
+            name::value::STRING.clone(),
+            list!(Value::from(
+                self.0
+                    .chars()
+                    .map(|x| Value::new(Char(x)))
+                    .collect::<Vec<_>>()
+            )),
+        )
+    }
+}
+
+impl CharString {
+    pub fn optimize(_x: &Value) -> Option<Self> {
+        todo!()
     }
 }
 
