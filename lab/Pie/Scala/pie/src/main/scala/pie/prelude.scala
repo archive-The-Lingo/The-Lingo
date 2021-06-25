@@ -13,4 +13,5 @@ val prelude: Definitions = Definitions(HashMap(
   (Symbol("Absurd"), (U(1), AbsurdT)),
   (Symbol("Nat"), (U(1), NatT)),
   (Symbol("add1"), (SimplePi(NatT, NatT), PrimitiveClosure(add1))),
+  (Symbol("zero"), (NatT, NaturalNumber.zero))
 ))

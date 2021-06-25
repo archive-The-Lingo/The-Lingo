@@ -67,7 +67,7 @@ case class The(valueType: Exp, value: Exp) extends Exp {
 case class Lambda(argument: Identifier, body: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = body.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+  override def eval(env: Definitions): Maybe[Value] = Right(PieClosure(env, argument, body))
 }
 
 case class Variable(x: Identifier) extends Exp {
@@ -94,4 +94,10 @@ case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
   } yield t.max(m)
 
   override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+}
+
+case class Quote(symbol: Symbol) extends Exp {
+  override def manualLevel(Γ: Definitions): Maybe[Nat] = Right(0)
+
+  override def eval(env: Definitions): Maybe[Value] = Right(Atom(symbol))
 }
