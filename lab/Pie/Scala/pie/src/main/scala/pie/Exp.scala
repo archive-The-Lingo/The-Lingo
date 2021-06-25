@@ -41,13 +41,14 @@ sealed trait Exp {
   def autoLevel(Γ: Definitions): Maybe[Nat] = this.eval(Γ) match {
     case Right(v) => Right(v.level)
     case Left(s) => this.synth(Γ).flatMap(_.autoLevel(Γ)) match {
-      case Right(v) => Right(checkNat(v-1))
+      case Right(v) => Right(checkNat(v - 1))
       case Left(s2) => Left(s"find level failed $s $s2")
     }
   }
-  def manualLevel(Γ: Definitions): Maybe[Nat] = throw new Exception("WIP")
 
-  def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+  def manualLevel(Γ: Definitions): Maybe[Nat]
+
+  def eval(env: Definitions): Maybe[Value]
 }
 
 case class The(valueType: Exp, value: Exp) extends Exp {
@@ -60,11 +61,15 @@ case class The(valueType: Exp, value: Exp) extends Exp {
   } yield The(t, e)
 
   // sometimes we don't have value information
-  override def manualLevel(Γ: Definitions): Maybe[Nat] = valueType.autoLevel(Γ).map(_-1).map(checkNat)
+  override def manualLevel(Γ: Definitions): Maybe[Nat] = valueType.autoLevel(Γ).map(_ - 1).map(checkNat)
+
+  override def eval(env: Definitions): Maybe[Value] = value.eval(env)
 }
 
 case class Lambda(argument: Identifier, body: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = body.autoLevel(Γ)
+
+  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
 }
 
 case class Variable(x: Identifier) extends Exp {
@@ -80,6 +85,8 @@ case class ElimNat(target: Exp, motive: Exp, base: Exp, step: Exp) extends Exp {
     b <- base.autoLevel(Γ)
     s <- step.autoLevel(Γ)
   } yield t.max(m).max(b).max(s)
+
+  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
 }
 
 case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
@@ -87,4 +94,15 @@ case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
     t <- target.autoLevel(Γ)
     m <- motive.autoLevel(Γ)
   } yield t.max(m)
+
+  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+}
+
+case class Add1(pred: Exp) extends Exp {
+  override def manualLevel(Γ: Definitions): Maybe[Nat] = pred.autoLevel(Γ)
+
+  override def eval(env: Definitions): Maybe[Value] = pred.eval(env) flatMap {
+    case x: NaturalNumber => Right(x.add1)
+    case not => Left(s"Not a Nat $not")
+  }
 }
