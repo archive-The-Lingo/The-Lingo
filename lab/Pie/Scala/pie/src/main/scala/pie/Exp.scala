@@ -26,8 +26,6 @@ case class Definitions(x: HashMap[Identifier, (Type, Value)]) {
   def getValue(id: Identifier): Maybe[Value] = get(id).map(_._2)
 }
 
-val globalDefinitions: Definitions = Definitions(HashMap((Symbol("Absurd"), (U(1), Absurd))))
-
 sealed trait Exp {
   def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
 
@@ -96,13 +94,4 @@ case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
   } yield t.max(m)
 
   override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
-}
-
-case class Add1(pred: Exp) extends Exp {
-  override def manualLevel(Γ: Definitions): Maybe[Nat] = pred.autoLevel(Γ)
-
-  override def eval(env: Definitions): Maybe[Value] = pred.eval(env) flatMap {
-    case x: NaturalNumber => Right(x.add1)
-    case not => Left(s"Not a Nat $not")
-  }
 }

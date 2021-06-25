@@ -13,12 +13,18 @@ case class U(x: Nat) extends Type {
 }
 
 case class NaturalNumber(x: Nat) extends Value {
-  def add1: NaturalNumber = NaturalNumber(x+1)
+  def add1: NaturalNumber = NaturalNumber(x + 1)
 }
+
+case object NatT extends Type
 
 case object Absurd extends Type
 
-case class Closure(env: Definitions, x: Identifier, body: Exp) extends Value
+sealed trait Closure extends Value
+
+case class PieClosure(env: Definitions, x: Identifier, body: Exp) extends Closure
+
+case class PrimitiveClosure(x: Value => Value) extends Closure
 
 case class Neu(t: Type, name: Symbol, id: Nat) extends Value
 
@@ -30,4 +36,12 @@ object Neu {
     neuCount = neuCount + 1
     result
   }
+}
+
+case class Pi(domain: Type, range: Closure/*: Type -> Type*/) extends Type {
+  override def level: Nat = domain.level + 1 + 1 // todo: check me
+}
+
+object SimplePi {
+  def apply(domain: Type, range: Type): Pi = Pi(domain, PrimitiveClosure(_ => range))
 }
