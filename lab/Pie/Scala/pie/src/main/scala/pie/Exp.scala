@@ -27,7 +27,7 @@ case class Definitions(x: HashMap[Identifier, (Type, Value)]) {
 }
 
 sealed trait Exp {
-  def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
+  def synth(Γ: Definitions): Maybe[The]
 
   def check(Γ: Definitions, t: Type): Maybe[Exp] = throw new Exception("WIP")
 
@@ -68,12 +68,16 @@ case class Lambda(argument: Identifier, body: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = body.autoLevel(Γ)
 
   override def eval(env: Definitions): Maybe[Value] = Right(PieClosure(env, argument, body))
+
+  override def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
 }
 
 case class Variable(x: Identifier) extends Exp {
   override def eval(env: Definitions): Maybe[Value] = env.getValue(x)
 
   override def manualLevel(Γ: Definitions): Maybe[Nat] = this.eval(Γ).map(_.level)
+
+  override def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
 }
 
 case class ElimNat(target: Exp, motive: Exp, base: Exp, step: Exp) extends Exp {
@@ -85,6 +89,8 @@ case class ElimNat(target: Exp, motive: Exp, base: Exp, step: Exp) extends Exp {
   } yield t.max(m).max(b).max(s)
 
   override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+
+  override def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
 }
 
 case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
@@ -94,10 +100,24 @@ case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
   } yield t.max(m)
 
   override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+
+  override def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
 }
 
 case class Quote(symbol: Symbol) extends Exp {
+  private val value = Atom(symbol)
+
   override def manualLevel(Γ: Definitions): Maybe[Nat] = Right(0)
 
-  override def eval(env: Definitions): Maybe[Value] = Right(Atom(symbol))
+  override def eval(env: Definitions): Maybe[Value] = Right(value)
+
+  override def synth(Γ: Definitions): Maybe[The] = Right(The(EmbeddedValue(U1, AtomT), this))
+}
+
+case class EmbeddedValue(t: Type, v: Value) extends Exp {
+  override def manualLevel(Γ: Definitions): Maybe[Nat] = Right(t.level)
+
+  override def eval(env: Definitions): Maybe[Value] = Right(v)
+
+  override def synth(Γ: Definitions): Maybe[The] = Right(The(EmbeddedValue(U(t.level), t), this))
 }

@@ -13,6 +13,8 @@ case class U(x: Nat) extends Type {
   override def level: Nat = x + 1
 }
 
+val U1 = U(1)
+
 case class NaturalNumber(x: Nat) extends Value {
   def add1: NaturalNumber = NaturalNumber(x + 1)
 }
