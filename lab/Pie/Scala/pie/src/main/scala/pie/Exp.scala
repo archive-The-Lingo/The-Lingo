@@ -29,7 +29,7 @@ case class Definitions(x: HashMap[Identifier, (Type, Value)]) {
 }
 
 case class Context(x: HashMap[Identifier, (Type, Option[Value])]) {
-  def toDefinitions: Definitions = throw new Exception("WIP")
+  def toDefinitions: Definitions = Definitions(x map { case (id, (typ, value)) => (id, (typ, throw new Exception("WIP")))})
 
   def get(id: Identifier): Maybe[(Type, Option[Value])] = x.get(id) match {
     case Some(v) => Right(v)
