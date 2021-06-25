@@ -8,6 +8,7 @@ sealed trait Type extends Value {
   override def level: Nat = 1
 }
 
+// consider U(0) = Any, U(1) = Set (Set in Agda)
 case class U(x: Nat) extends Type {
   override def level: Nat = x + 1
 }
@@ -18,7 +19,7 @@ case class NaturalNumber(x: Nat) extends Value {
 
 case object NatT extends Type
 
-case object Absurd extends Type
+case object AbsurdT extends Type
 
 sealed trait Closure extends Value
 
