@@ -183,7 +183,7 @@ case class ElimNat(target: Exp, motive: Exp, base: Exp, step: Exp) extends Exp {
 }
 
 case class NeuElimNat(target: Neu, motive: Value, base: Value, step: Value) extends Neu {
-  override def level: Nat = target.level.max(motive.level).max(base.level).max(step.level)
+  override def level: Nat = target.level.max(motive.level).max(base.level).max(step.level) // todo: check me
 }
 
 case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
@@ -198,7 +198,24 @@ case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
 }
 
 case class NeuElimAbsurd(target: Neu, motive: Value) extends Neu {
-  override def level: Nat = target.level.max(motive.level)
+  override def level: Nat = target.level.max(motive.level) // todo: check me
+}
+
+case class RecNat(t: Exp, target: Exp, base: Exp, step: Exp) extends Exp {
+  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+
+  override def manualLevel(Γ: Definitions): Maybe[Nat] = for {
+    c <- t.autoLevel(Γ)
+    t <- target.autoLevel(Γ)
+    b <- base.autoLevel(Γ)
+    s <- step.autoLevel(Γ)
+  } yield c.max(t).max(b).max(s)
+
+  override def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
+}
+
+case class NeuRecNat(t: Value, target: Neu, base: Value, step: Value) extends Neu {
+  override def level: Nat = t.level.max(target.level).max(base.level).max(step.level) // todo: check me
 }
 
 case class Quote(symbol: Symbol) extends Exp {
