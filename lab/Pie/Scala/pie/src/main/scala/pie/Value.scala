@@ -240,7 +240,10 @@ case class EmbeddedValue(t: Type, v: Value) extends Exp {
 case class Car(x: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+  override def eval(env: Definitions): Maybe[Value] = x.eval(env) flatMap {
+    case Pair(a, d) => Right(a)
+    case v => Left(s"not a pair $v")
+  }
 
   override def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
 }
@@ -248,7 +251,10 @@ case class Car(x: Exp) extends Exp {
 case class Cdr(x: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+  override def eval(env: Definitions): Maybe[Value] = x.eval(env) flatMap {
+    case Pair(a, d) => Right(d)
+    case v => Left(s"not a pair $v")
+  }
 
   override def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
 }
