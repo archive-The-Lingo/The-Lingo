@@ -47,6 +47,7 @@ case object AbsurdT extends Type
 
 sealed trait Closure extends Value {
   // It is not straightforward to store type information in closures since closures' type information is Type*Closure
+  // every closure will have a `The`, from which level can be determined
   override def level: Nat = throw new IllegalStateException("Closure's level is unknown")
 }
 
