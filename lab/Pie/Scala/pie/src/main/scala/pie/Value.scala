@@ -33,13 +33,15 @@ case class PieClosure(env: Definitions, x: Identifier, body: Exp) extends Closur
 
 case class PrimitiveClosure(x: Value => Value) extends Closure
 
-case class Neu(t: Type, name: Symbol, id: Nat) extends Value
+sealed trait Neu extends Value
 
-object Neu {
+case class NeuVar(t: Type, name: Symbol, id: Nat) extends Neu
+
+object NeuVar {
   private var neuCount: Nat = 0
 
-  def apply(t: Type, name: Symbol): Neu = this.synchronized {
-    val result = Neu(t, name, neuCount)
+  def apply(t: Type, name: Symbol): NeuVar = this.synchronized {
+    val result = NeuVar(t, name, neuCount)
     neuCount = neuCount + 1
     result
   }
