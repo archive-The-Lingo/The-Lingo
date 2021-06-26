@@ -121,3 +121,12 @@ case class EmbeddedValue(t: Type, v: Value) extends Exp {
 
   override def synth(Γ: Definitions): Maybe[The] = Right(The(EmbeddedValue(U(t.level), t), this))
 }
+
+// car can't be a value
+case class Car(x: Exp) extends Exp {
+  override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
+
+  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+
+  override def synth(Γ: Definitions): Maybe[The] = throw new Exception("WIP")
+}
