@@ -15,12 +15,24 @@ case class U(x: Nat) extends Type {
 
 val U1 = U(1)
 
-case class NaturalNumber(x: Nat) extends Value {
-  def add1: NaturalNumber = NaturalNumber(x + 1)
+sealed trait NaturalNumber extends Value {
+  def add1: Add1 = Add1(this)
 }
 
+case object Zero extends NaturalNumber
+
+case class Add1(x: Value) extends NaturalNumber
+
 object NaturalNumber {
-  val zero: NaturalNumber = NaturalNumber(0)
+  val zero: NaturalNumber = Zero
+
+  def apply(x: Nat): NaturalNumber = if (x < 0) {
+    throw new IllegalArgumentException("Not a natural number")
+  } else if (x == 0) {
+    Zero
+  } else {
+    NaturalNumber(x - 1).add1
+  }
 }
 
 case object NatT extends Type
