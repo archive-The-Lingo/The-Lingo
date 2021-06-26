@@ -242,14 +242,6 @@ case class Quote(symbol: Symbol) extends Exp {
   override def synth(Γ: Definitions): Maybe[Typed] = Right(Typed(AtomT, value))
 }
 
-case class EmbeddedValue(t: Type, v: Value) extends Exp {
-  override def manualLevel(Γ: Definitions): Maybe[Nat] = Right(t.level)
-
-  override def eval(env: Definitions): Maybe[Value] = Right(v)
-
-  override def synth(Γ: Definitions): Maybe[Typed] = Right(Typed(t, v))
-}
-
 // car can't be a value
 case class Car(x: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
