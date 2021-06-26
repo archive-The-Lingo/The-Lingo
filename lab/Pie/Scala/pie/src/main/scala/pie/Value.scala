@@ -27,7 +27,7 @@ sealed trait NaturalNumber extends Value {
 
 case object Zero extends NaturalNumber
 
-case class Add1(x: Value) extends NaturalNumber
+case class Add1(x: NaturalNumber | Neu) extends NaturalNumber
 
 object NaturalNumber {
   val zero: NaturalNumber = Zero
@@ -45,7 +45,10 @@ case object NatT extends Type
 
 case object AbsurdT extends Type
 
-sealed trait Closure extends Value
+sealed trait Closure extends Value {
+  // It is not straightforward to store type information in closures since closures' type information is Type*Closure
+  override def level: Nat = throw new IllegalStateException("Closure's level is unknown")
+}
 
 case class PieClosure(env: Definitions, x: Identifier, body: Exp) extends Closure
 
@@ -77,7 +80,9 @@ case class Sigma(carType: Type, cdrType: Closure /*: Type -> Type*/) extends Typ
   override def level: Nat = carType.level + 1 + 1 // todo: check me
 }
 
-case class Pair(car: Value, cdr: Value) extends Value
+case class Pair(car: Value, cdr: Value) extends Value {
+  override def level: Nat = car.level.max(cdr.level)
+}
 
 case class Eq(t: Type, from: Value, to: Value) extends Type {
   override def level: Nat = t.level + 1
