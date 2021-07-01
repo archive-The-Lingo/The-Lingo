@@ -248,11 +248,15 @@ case class Car(x: Exp) extends Exp {
 
   override def eval(env: Definitions): Maybe[Value] = x.eval(env) flatMap {
     case Pair(a, d) => Right(a)
-    case n:Neu => throw new Exception("WIP")
+    case n: Neu => Right(NeuCar(n))
     case v => Left(s"not a pair $v")
   }
 
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+}
+
+case class NeuCar(target: Neu) extends Neu {
+  override def level: Nat = target.level
 }
 
 case class Cdr(x: Exp) extends Exp {
@@ -260,17 +264,22 @@ case class Cdr(x: Exp) extends Exp {
 
   override def eval(env: Definitions): Maybe[Value] = x.eval(env) flatMap {
     case Pair(a, d) => Right(d)
-    case n:Neu => throw new Exception("WIP")
+    case n: Neu => Right(NeuCdr(n))
     case v => Left(s"not a pair $v")
   }
 
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
 }
 
+case class NeuCdr(target: Neu) extends Neu {
+  override def level: Nat = target.level
+}
+
 case class Apply(f: Exp, x: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
 
   override def eval(env: Definitions): Maybe[Value] = f.eval(env) match {
+    case n: Neu => throw new Exception("WIP")
     case _ => throw new Exception("WIP")
   }
 
