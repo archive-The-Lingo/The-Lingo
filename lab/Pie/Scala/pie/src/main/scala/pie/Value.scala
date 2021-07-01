@@ -53,6 +53,7 @@ sealed trait Closure extends Value {
   def apply(x: Value): Maybe[Value] = throw new Exception("WIP")
 }
 
+// todo: check me - is Type necessary here?
 case class PieClosure(env: Definitions, x: Identifier, xt: Type, body: Exp) extends Closure {
   override def apply(arg: Value): Maybe[Value] = body.eval(env.extend(x, xt, arg))
 }
