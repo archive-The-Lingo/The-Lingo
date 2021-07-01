@@ -180,10 +180,13 @@ case class Typed(t: Type, x: Value) {
 }
 
 // todo: check me - is Type necessary here?
-case class Lambda(argument: Identifier, t: Type, body: Exp) extends Exp {
+case class Lambda(argument: Identifier, t: Exp, body: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = body.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = Right(PieClosure(env, argument, t, body))
+  override def eval(env: Definitions): Maybe[Value] = t.eval(env) flatMap {
+    case t: Type => Right(PieClosure(env, argument, t, body))
+    case t => Left(s"Not a type $t")
+  }
 
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
 }
