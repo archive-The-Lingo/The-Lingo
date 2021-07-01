@@ -49,11 +49,17 @@ sealed trait Closure extends Value {
   // It is not straightforward to store type information in closures to determine level since closures' type information is Type*Closure
   // Every closure will have a corresponding `The`, from which level can be determined
   override def level: Nat = throw new IllegalStateException("Closure's level is unknown")
+
+  def apply(x: Value): Maybe[Value] = throw new Exception("WIP")
 }
 
-case class PieClosure(env: Definitions, x: Identifier, body: Exp) extends Closure
+case class PieClosure(env: Definitions, x: Identifier, xt: Type, body: Exp) extends Closure {
+  override def apply(arg: Value): Maybe[Value] = body.eval(env.extend(x, xt, arg))
+}
 
-case class PrimitiveClosure(x: Value => Value) extends Closure
+case class PrimitiveClosure(x: Value => Value) extends Closure {
+  override def apply(arg: Value): Maybe[Value] = Right(x(arg))
+}
 
 sealed trait Neu extends Value
 
@@ -104,8 +110,8 @@ def checkNat(x: Nat): Nat = {
 
 type Maybe[T] = Either[String, T]
 
-case class Definitions(x: HashMap[Identifier, (Type, Value)]) {
-  def get(id: Identifier): Maybe[(Type, Value)] = x.get(id) match {
+case class Definitions(inner: HashMap[Identifier, (Type, Value)]) {
+  def get(id: Identifier): Maybe[(Type, Value)] = inner.get(id) match {
     case Some(v) => Right(v)
     case None => Left(s"Definition not found $id")
   }
@@ -113,6 +119,11 @@ case class Definitions(x: HashMap[Identifier, (Type, Value)]) {
   def getType(id: Identifier): Maybe[Type] = get(id).map(_._1)
 
   def getValue(id: Identifier): Maybe[Value] = get(id).map(_._2)
+
+  def extend(id: Identifier, t: Type, x: Value): Definitions = {
+    val p: (Identifier, (Type, Value)) = (id, (t, x))
+    Definitions(inner + p)
+  }
 }
 
 sealed trait Exp {
@@ -167,10 +178,10 @@ case class Typed(t: Type, x: Value) {
   def level: Nat = t.level - 1 // todo: check me - why `t`? why not `x`?
 }
 
-case class Lambda(argument: Identifier, body: Exp) extends Exp {
+case class Lambda(argument: Identifier, t: Type, body: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = body.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = Right(PieClosure(env, argument, body))
+  override def eval(env: Definitions): Maybe[Value] = Right(PieClosure(env, argument, t, body))
 
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
 }
@@ -284,13 +295,16 @@ case class NeuCdr(target: Neu) extends Neu {
 case class Apply(f: Exp, x: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = f.eval(env) flatMap {
-    case f: Neu => x.eval(env).flatMap(x => Right(NeuApplyF(f, x)))
-    case f => x.eval(env) match {
-      case x: Neu => Right(NeuApplyX(f, x))
-      case x => throw new Exception("WIP")
+  override def eval(env: Definitions): Maybe[Value] = for {
+    f <- f.eval(env)
+    x <- x.eval(env)
+    r <- (f, x) match {
+      case (f: Neu, x: Neu) => Right(NeuApplyFX(f, x))
+      case (f: Neu, x) => Right(NeuApplyF(f, x))
+      case (f, x: Neu) => Right(NeuApplyX(f, x))
+      case _ => throw new Exception("WIP")
     }
-  }
+  } yield r
 
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
 }
@@ -300,5 +314,9 @@ case class NeuApplyF(f: Neu, x: Value) extends Neu {
 }
 
 case class NeuApplyX(f: Value, x: Neu) extends Neu {
+  override def level: Nat = f.level.max(x.level)
+}
+
+case class NeuApplyFX(f: Neu, x: Neu) extends Neu {
   override def level: Nat = f.level.max(x.level)
 }
