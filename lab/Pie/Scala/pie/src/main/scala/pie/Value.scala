@@ -179,6 +179,7 @@ case class Typed(t: Type, x: Value) {
   def level: Nat = t.level - 1 // todo: check me - why `t`? why not `x`?
 }
 
+// todo: check me - is Type necessary here?
 case class Lambda(argument: Identifier, t: Type, body: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = body.autoLevel(Γ)
 
