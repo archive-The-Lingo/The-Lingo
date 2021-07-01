@@ -278,10 +278,21 @@ case class NeuCdr(target: Neu) extends Neu {
 case class Apply(f: Exp, x: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = f.eval(env) match {
-    case n: Neu => throw new Exception("WIP")
-    case _ => throw new Exception("WIP")
+  override def eval(env: Definitions): Maybe[Value] = f.eval(env) flatMap {
+    case f: Neu => x.eval(env).flatMap(x => Right(NeuApplyF(f, x)))
+    case f => x.eval(env) match {
+      case x: Neu => Right(NeuApplyX(f, x))
+      case x => throw new Exception("WIP")
+    }
   }
 
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+}
+
+case class NeuApplyF(f: Neu, x: Value) extends Neu {
+  override def level: Nat = f.level.max(x.level)
+}
+
+case class NeuApplyX(f: Value, x: Neu) extends Neu {
+  override def level: Nat = f.level.max(x.level)
 }
