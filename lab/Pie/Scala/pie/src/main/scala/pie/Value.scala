@@ -54,6 +54,7 @@ sealed trait Closure extends Value {
 }
 
 // todo: check me - is Type necessary here?
+// todo: use untypped env
 case class PieClosure(env: Definitions, x: Identifier, xt: Type, body: Exp) extends Closure {
   override def apply(arg: Value): Maybe[Value] = body.eval(env.extend(x, xt, arg))
 }
@@ -180,6 +181,7 @@ case class Typed(t: Type, x: Value) {
 }
 
 // todo: check me - is Type necessary here?
+// todo: use untypped env
 case class Lambda(argument: Identifier, t: Exp, body: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = body.autoLevel(Γ)
 
