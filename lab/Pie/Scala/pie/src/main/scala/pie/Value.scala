@@ -206,12 +206,18 @@ case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
     m <- motive.autoLevel(Γ)
   } yield t.max(m)
 
-  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+  override def eval(env: Definitions): Maybe[Value] = target.eval(env) flatMap {
+    case target: Neu => motive.eval(env) flatMap {
+      case t: Type => Right(NeuElimAbsurd(target, t))
+      case t => Left(s"Not a type $t")
+    }
+    case x => Left(s"Absurd exists?! $x")
+  }
 
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
 }
 
-case class NeuElimAbsurd(target: Neu, motive: Value) extends Neu {
+case class NeuElimAbsurd(target: Neu, motive: Type) extends Neu {
   override def level: Nat = target.level.max(motive.level) // todo: check me
 }
 
