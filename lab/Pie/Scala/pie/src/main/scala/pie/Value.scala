@@ -252,7 +252,7 @@ case class RecNat(t: Exp, target: Exp, base: Exp, step: Exp) extends Exp {
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
 }
 
-case class NeuRecNat(t: Value, target: Neu, base: Value, step: Value) extends Neu {
+case class NeuRecNat(t: Type, target: Neu, base: Value, step: Value) extends Neu {
   override def level: Nat = t.level.max(target.level).max(base.level).max(step.level) // todo: check me
 }
 
