@@ -128,6 +128,19 @@ case class Definitions(inner: HashMap[Identifier, (Type, Value)]) {
   }
 }
 
+case class UntyppedDefinitions(inner: HashMap[Identifier, Value]) {
+  def getValue(id: Identifier): Maybe[Value] = inner.get(id) match {
+    case Some(v) => Right(v)
+    case None => Left(s"Definition not found $id")
+  }
+
+  def extend(id: Identifier, x: Value): UntyppedDefinitions = {
+    val p: (Identifier, Value) = (id, x)
+    UntyppedDefinitions(inner + p)
+  }
+}
+
+
 sealed trait Exp {
   def synth(Γ: Definitions): Maybe[Typed]
 
