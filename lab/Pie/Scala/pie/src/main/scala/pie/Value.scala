@@ -53,10 +53,8 @@ sealed trait Closure extends Value {
   def apply(x: Value): Maybe[Value] = throw new Exception("WIP")
 }
 
-// todo: check me - is Type necessary here?
-// todo: use untypped env
-case class PieClosure(env: Definitions, x: Identifier, xt: Type, body: Exp) extends Closure {
-  override def apply(arg: Value): Maybe[Value] = body.eval(env.extend(x, xt, arg))
+case class PieClosure(env: UntyppedDefinitions, x: Identifier, body: Exp) extends Closure {
+  override def apply(arg: Value): Maybe[Value] = body.eval(env.extend(x, arg))
 }
 
 case class PrimitiveClosure(x: Value => Value) extends Closure {
@@ -126,6 +124,8 @@ case class Definitions(inner: HashMap[Identifier, (Type, Value)]) {
     val p: (Identifier, (Type, Value)) = (id, (t, x))
     Definitions(inner + p)
   }
+
+  def untypped: UntyppedDefinitions = UntyppedDefinitions(inner.map({ case (id, (t, v)) => (id, v) }))
 }
 
 case class UntyppedDefinitions(inner: HashMap[Identifier, Value]) {
@@ -139,7 +139,6 @@ case class UntyppedDefinitions(inner: HashMap[Identifier, Value]) {
     UntyppedDefinitions(inner + p)
   }
 }
-
 
 sealed trait Exp {
   def synth(Γ: Definitions): Maybe[Typed]
@@ -161,7 +160,9 @@ sealed trait Exp {
 
   def manualLevel(Γ: Definitions): Maybe[Nat]
 
-  def eval(env: Definitions): Maybe[Value]
+  def eval(env: UntyppedDefinitions): Maybe[Value]
+
+  final def eval(Γ: Definitions): Maybe[Value] = eval(Γ.untypped)
 
   private[pie] final def levelFallback1(Γ: Definitions): Nat = try {
     this.autoLevel(Γ) match {
@@ -186,28 +187,23 @@ case class The(valueType: Exp, value: Exp) extends Exp {
   // sometimes we don't have value information
   override def manualLevel(Γ: Definitions): Maybe[Nat] = valueType.autoLevel(Γ).map(_ - 1).map(checkNat)
 
-  override def eval(env: Definitions): Maybe[Value] = value.eval(env)
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = value.eval(env)
 }
 
 case class Typed(t: Type, x: Value) {
   def level: Nat = t.level - 1 // todo: check me - why `t`? why not `x`?
 }
 
-// todo: check me - is Type necessary here?
-// todo: use untypped env
-case class Lambda(argument: Identifier, t: Exp, body: Exp) extends Exp {
+case class Lambda(argument: Identifier, body: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = body.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = t.eval(env) flatMap {
-    case t: Type => Right(PieClosure(env, argument, t, body))
-    case t => Left(s"Not a type $t")
-  }
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = Right(PieClosure(env, argument, body))
 
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
 }
 
 case class Variable(x: Identifier) extends Exp {
-  override def eval(env: Definitions): Maybe[Value] = env.getValue(x)
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = env.getValue(x)
 
   override def manualLevel(Γ: Definitions): Maybe[Nat] = this.eval(Γ).map(_.level)
 
@@ -222,7 +218,7 @@ case class ElimNat(target: Exp, motive: Exp, base: Exp, step: Exp) extends Exp {
     s <- step.autoLevel(Γ)
   } yield t.max(m).max(b).max(s)
 
-  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = throw new Exception("WIP")
 
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
 }
@@ -237,7 +233,7 @@ case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
     m <- motive.autoLevel(Γ)
   } yield t.max(m)
 
-  override def eval(env: Definitions): Maybe[Value] = target.eval(env) flatMap {
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = target.eval(env) flatMap {
     case target: Neu => motive.eval(env) flatMap {
       case t: Type => Right(NeuElimAbsurd(target, t))
       case t => Left(s"Not a type $t")
@@ -253,7 +249,7 @@ case class NeuElimAbsurd(target: Neu, motive: Type) extends Neu {
 }
 
 case class RecNat(t: Exp, target: Exp, base: Exp, step: Exp) extends Exp {
-  override def eval(env: Definitions): Maybe[Value] = throw new Exception("WIP")
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = throw new Exception("WIP")
 
   override def manualLevel(Γ: Definitions): Maybe[Nat] = for {
     c <- t.autoLevel(Γ)
@@ -274,7 +270,7 @@ case class Quote(symbol: Symbol) extends Exp {
 
   override def manualLevel(Γ: Definitions): Maybe[Nat] = Right(0)
 
-  override def eval(env: Definitions): Maybe[Value] = Right(value)
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = Right(value)
 
   override def synth(Γ: Definitions): Maybe[Typed] = Right(Typed(AtomT, value))
 }
@@ -283,7 +279,7 @@ case class Quote(symbol: Symbol) extends Exp {
 case class Car(x: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = x.eval(env) flatMap {
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = x.eval(env) flatMap {
     case Pair(a, d) => Right(a)
     case n: Neu => Right(NeuCar(n))
     case v => Left(s"not a pair $v")
@@ -299,7 +295,7 @@ case class NeuCar(target: Neu) extends Neu {
 case class Cdr(x: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = x.eval(env) flatMap {
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = x.eval(env) flatMap {
     case Pair(a, d) => Right(d)
     case n: Neu => Right(NeuCdr(n))
     case v => Left(s"not a pair $v")
@@ -315,7 +311,7 @@ case class NeuCdr(target: Neu) extends Neu {
 case class Apply(f: Exp, x: Exp) extends Exp {
   override def manualLevel(Γ: Definitions): Maybe[Nat] = x.autoLevel(Γ)
 
-  override def eval(env: Definitions): Maybe[Value] = for {
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = for {
     f <- f.eval(env)
     x <- x.eval(env)
     r <- (f, x) match {
