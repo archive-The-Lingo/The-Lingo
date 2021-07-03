@@ -4,12 +4,18 @@ package pie
 
 import scala.collection.immutable.HashMap
 
+private def todo[A]: A = throw new Exception("WIP")
+
 type Identifier = Symbol
 
 type Nat = Int
 
 sealed trait Value {
   def level: Nat = 0
+
+  final def alpha_equivalent(ctx: Definitions, t: Type, y: Value): Boolean = this.readback(ctx, t).alpha_equivalent(ctx, y.readback(ctx, t))
+
+  def readback(ctx: Definitions, t: Type): Exp = todo
 }
 
 sealed trait Type extends Value {
@@ -52,7 +58,7 @@ sealed trait Closure extends Value {
   // Every closure will have a corresponding `The`, from which level can be determined
   override def level: Nat = throw new IllegalStateException("Closure's level is unknown")
 
-  def apply(x: Value): Maybe[Value] = throw new Exception("WIP")
+  def apply(x: Value): Maybe[Value] = todo
 }
 
 case class PieClosure(env: UntyppedDefinitions, x: Identifier, body: Exp) extends Closure {
@@ -149,9 +155,9 @@ case class UntyppedDefinitions(inner: HashMap[Identifier, Value]) {
 sealed trait Exp {
   def synth(Γ: Definitions): Maybe[Typed]
 
-  def check(Γ: Definitions, t: Type): Maybe[Exp] = throw new Exception("WIP")
+  def check(Γ: Definitions, t: Type): Maybe[Value] = todo
 
-  def check(Γ: Definitions, t: Value): Maybe[Exp] = t match {
+  def check(Γ: Definitions, t: Value): Maybe[Value] = t match {
     case x: Type => this.check(Γ, x)
     case _ => Left(s"Not a type $t")
   }
@@ -178,16 +184,16 @@ sealed trait Exp {
   } catch {
     case e: IllegalStateException => 1
   }
+
+  def alpha_equivalent(ctx: Definitions, y: Exp): Boolean = todo
 }
 
 case class The(valueType: Exp, value: Exp) extends Exp {
   // `type.level = value.level + 1` always holds
   override def synth(Γ: Definitions): Maybe[Typed] = for {
     l <- Right(valueType.levelFallback1(Γ))
-    t <- valueType.check(Γ, U(l)) // so t0 must be a Type
-    t0 <- t.eval(Γ)
-    e <- value.check(Γ, t0)
-    v <- e.eval(Γ)
+    t0 <- valueType.check(Γ, U(l)) // so t0 must be a Type
+    v <- value.check(Γ, t0)
   } yield Typed(t0.asInstanceOf[Type], v)
 
   // sometimes we don't have value information
@@ -224,15 +230,15 @@ case class ElimNat(target: Exp, motive: Exp, base: Exp, step: Exp) extends Exp {
     s <- step.autoLevel(Γ)
   } yield t.max(m).max(b).max(s)
 
-  override def eval(env: UntyppedDefinitions): Maybe[Value] = throw new Exception("WIP")
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = todo
 
-  override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+  override def synth(Γ: Definitions): Maybe[Typed] = todo
 }
 
 case class NeuElimNat(target: Neu, motive: Value, base: Value, step: Value) extends Neu {
   override def level: Nat = target.level.max(motive.level).max(base.level).max(step.level) // todo: check me
 
-  override def getType: Type = throw new Exception("WIP")
+  override def getType: Type = todo
 }
 
 case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
@@ -260,7 +266,7 @@ case class NeuElimAbsurd(target: Neu, motive: Type) extends Neu {
 
 case class RecNat(t: Exp, target: Exp, base: Exp, step: Exp) extends Exp {
 
-  override def eval(env: UntyppedDefinitions): Maybe[Value] = throw new Exception("WIP")
+  override def eval(env: UntyppedDefinitions): Maybe[Value] = todo
 
   override def manualLevel(Γ: Definitions): Maybe[Nat] = for {
     c <- t.autoLevel(Γ)
@@ -271,8 +277,7 @@ case class RecNat(t: Exp, target: Exp, base: Exp, step: Exp) extends Exp {
 
   override def synth(Γ: Definitions): Maybe[Typed] = for {
     l <- Right(t.levelFallback1(Γ))
-    t0 <- t.check(Γ, U(l)) // so t1: Type
-    t1 <- t0.eval(Γ)
+    t1 <- t.check(Γ, U(l)) // so t1: Type
     v <- this.eval(Γ)
   } yield Typed(t1.asInstanceOf[Type], v)
 }
@@ -303,7 +308,7 @@ case class Car(x: Exp) extends Exp {
     case v => Left(s"not a pair $v")
   }
 
-  override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+  override def synth(Γ: Definitions): Maybe[Typed] = todo
 }
 
 case class NeuCar(target: Neu) extends Neu {
@@ -324,7 +329,7 @@ case class Cdr(x: Exp) extends Exp {
     case v => Left(s"not a pair $v")
   }
 
-  override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+  override def synth(Γ: Definitions): Maybe[Typed] = todo
 }
 
 case class NeuCdr(target: Neu) extends Neu {
@@ -347,11 +352,11 @@ case class Apply(f: Exp, x: Exp) extends Exp {
     x <- x.eval(env)
     r <- (f, x) match {
       case (f: Neu, x) => Right(NeuApply(f, x))
-      case _ => throw new Exception("WIP")
+      case _ => todo
     }
   } yield r
 
-  override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+  override def synth(Γ: Definitions): Maybe[Typed] = todo
 }
 
 case class NeuApply(f: Neu, x: Value) extends Neu {
