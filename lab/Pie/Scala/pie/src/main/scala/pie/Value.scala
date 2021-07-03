@@ -1,5 +1,7 @@
 package pie
 
+// Core Pie
+
 import scala.collection.immutable.HashMap
 
 type Identifier = Symbol
@@ -61,9 +63,13 @@ case class PrimitiveClosure(x: Value => Value) extends Closure {
   override def apply(arg: Value): Maybe[Value] = Right(x(arg))
 }
 
-sealed trait Neu extends Value
+sealed trait Neu extends Value {
+  def getType: Type
+}
 
-case class NeuVar(t: Type, name: Symbol, id: Nat) extends Neu
+case class NeuVar(t: Type, name: Symbol, id: Nat) extends Neu {
+  override def getType: Type = this.t
+}
 
 object NeuVar {
   private var neuCount: Nat = 0
@@ -225,6 +231,8 @@ case class ElimNat(target: Exp, motive: Exp, base: Exp, step: Exp) extends Exp {
 
 case class NeuElimNat(target: Neu, motive: Value, base: Value, step: Value) extends Neu {
   override def level: Nat = target.level.max(motive.level).max(base.level).max(step.level) // todo: check me
+
+  override def getType: Type = throw new Exception("WIP")
 }
 
 case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
@@ -246,6 +254,8 @@ case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
 
 case class NeuElimAbsurd(target: Neu, motive: Type) extends Neu {
   override def level: Nat = target.level.max(motive.level) // todo: check me
+
+  override def getType: Type = AbsurdT
 }
 
 case class RecNat(t: Exp, target: Exp, base: Exp, step: Exp) extends Exp {
@@ -263,6 +273,8 @@ case class RecNat(t: Exp, target: Exp, base: Exp, step: Exp) extends Exp {
 
 case class NeuRecNat(t: Type, target: Neu, base: Value, step: Value) extends Neu {
   override def level: Nat = t.level.max(target.level).max(base.level).max(step.level) // todo: check me
+
+  override def getType: Type = t
 }
 
 case class Quote(symbol: Symbol) extends Exp {
@@ -290,6 +302,11 @@ case class Car(x: Exp) extends Exp {
 
 case class NeuCar(target: Neu) extends Neu {
   override def level: Nat = target.level
+
+  override def getType: Type = target.getType match {
+    case Sigma(a, d) => a
+    case _ => throw IllegalStateException(s"not Sigma $target")
+  }
 }
 
 case class Cdr(x: Exp) extends Exp {
@@ -306,6 +323,14 @@ case class Cdr(x: Exp) extends Exp {
 
 case class NeuCdr(target: Neu) extends Neu {
   override def level: Nat = target.level
+
+  override def getType: Type = target.getType match {
+    case Sigma(a, d) => d.apply(NeuCar(target)) match {
+      case Right(t: Type) => t
+      case otherwise => throw IllegalStateException(s"not Type $otherwise")
+    }
+    case _ => throw IllegalStateException(s"not Sigma $target")
+  }
 }
 
 case class Apply(f: Exp, x: Exp) extends Exp {
@@ -315,9 +340,7 @@ case class Apply(f: Exp, x: Exp) extends Exp {
     f <- f.eval(env)
     x <- x.eval(env)
     r <- (f, x) match {
-      case (f: Neu, x: Neu) => Right(NeuApplyFX(f, x))
-      case (f: Neu, x) => Right(NeuApplyF(f, x))
-      case (f, x: Neu) => Right(NeuApplyX(f, x))
+      case (f: Neu, x) => Right(NeuApply(f, x))
       case _ => throw new Exception("WIP")
     }
   } yield r
@@ -325,14 +348,14 @@ case class Apply(f: Exp, x: Exp) extends Exp {
   override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
 }
 
-case class NeuApplyF(f: Neu, x: Value) extends Neu {
+case class NeuApply(f: Neu, x: Value) extends Neu {
   override def level: Nat = f.level.max(x.level)
-}
 
-case class NeuApplyX(f: Value, x: Neu) extends Neu {
-  override def level: Nat = f.level.max(x.level)
-}
-
-case class NeuApplyFX(f: Neu, x: Neu) extends Neu {
-  override def level: Nat = f.level.max(x.level)
+  override def getType: Type = f.getType match {
+    case Pi(_, range) => range.apply(x) match {
+      case Right(t: Type) => t
+      case otherwise => throw IllegalStateException(s"not Type $otherwise")
+    }
+    case _ => throw IllegalStateException(s"not Pi $f")
+  }
 }
