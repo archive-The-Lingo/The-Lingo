@@ -205,7 +205,7 @@ case class Lambda(argument: Identifier, body: Exp) extends Exp {
 
   override def eval(env: UntyppedDefinitions): Maybe[Value] = Right(PieClosure(env, argument, body))
 
-  override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+  override def synth(Γ: Definitions): Maybe[Typed] = Left("synth Lambda is not supported")
 }
 
 case class Variable(x: Identifier) extends Exp {
@@ -213,7 +213,7 @@ case class Variable(x: Identifier) extends Exp {
 
   override def manualLevel(Γ: Definitions): Maybe[Nat] = this.eval(Γ).map(_.level)
 
-  override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+  override def synth(Γ: Definitions): Maybe[Typed] = Γ.get(x) map { case (t, v) => Typed(t, v) }
 }
 
 case class ElimNat(target: Exp, motive: Exp, base: Exp, step: Exp) extends Exp {
@@ -249,7 +249,7 @@ case class ElimAbsurd(target: Exp, motive: Exp) extends Exp {
     case x => Left(s"Absurd exists?! $x")
   }
 
-  override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+  override def synth(Γ: Definitions): Maybe[Typed] = this.eval(Γ).map(Typed(AbsurdT, _))
 }
 
 case class NeuElimAbsurd(target: Neu, motive: Type) extends Neu {
@@ -259,6 +259,7 @@ case class NeuElimAbsurd(target: Neu, motive: Type) extends Neu {
 }
 
 case class RecNat(t: Exp, target: Exp, base: Exp, step: Exp) extends Exp {
+
   override def eval(env: UntyppedDefinitions): Maybe[Value] = throw new Exception("WIP")
 
   override def manualLevel(Γ: Definitions): Maybe[Nat] = for {
@@ -268,7 +269,12 @@ case class RecNat(t: Exp, target: Exp, base: Exp, step: Exp) extends Exp {
     s <- step.autoLevel(Γ)
   } yield c.max(t).max(b).max(s)
 
-  override def synth(Γ: Definitions): Maybe[Typed] = throw new Exception("WIP")
+  override def synth(Γ: Definitions): Maybe[Typed] = for {
+    l <- Right(t.levelFallback1(Γ))
+    t0 <- t.check(Γ, U(l)) // so t1: Type
+    t1 <- t0.eval(Γ)
+    v <- this.eval(Γ)
+  } yield Typed(t1.asInstanceOf[Type], v)
 }
 
 case class NeuRecNat(t: Type, target: Neu, base: Value, step: Value) extends Neu {

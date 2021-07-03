@@ -5,8 +5,7 @@ import scala.collection.immutable.HashMap
 private def impossible[A]:A = throw new IllegalStateException("impossible!!!")
 
 private def add1(x: Value): Value = x match {
-  case x: Neu => Add1(x)
-  case x: NaturalNumber => x.add1
+  case x: (NaturalNumber | Neu) => Add1(x)
   case _ => impossible
 }
 
