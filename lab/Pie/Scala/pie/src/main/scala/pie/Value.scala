@@ -353,6 +353,7 @@ case class NeuApply(f: Neu, x: Value) extends Neu {
 
   override def getType: Type = f.getType match {
     case Pi(_, range) => range.apply(x) match {
+      // todo: what if t is Neu?
       case Right(t: Type) => t
       case otherwise => throw IllegalStateException(s"not Type $otherwise")
     }
