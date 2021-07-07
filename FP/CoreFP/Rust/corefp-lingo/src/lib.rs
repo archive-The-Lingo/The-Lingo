@@ -5,6 +5,7 @@ extern crate no_std_compat as std;
 extern crate std;
 
 pub mod trace;
+pub mod simple_parser;
 
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
