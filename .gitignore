@@ -31,3 +31,5 @@ hs_err_pid*
 *.scm~
 *.scm#*
 .#*.scm
+
+.bsp
