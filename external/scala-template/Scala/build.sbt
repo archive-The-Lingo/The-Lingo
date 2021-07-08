@@ -8,13 +8,13 @@ ThisBuild / scalaVersion := scala213
 ThisBuild / crossScalaVersions := Seq(scala210, scala211, scala212, scala213, scala3)
 
 lazy val root = project.in(file(".")).
-  aggregate(foo.js, foo.jvm, foo.native).
+  aggregate(cross.js, cross.jvm, cross.native).
   settings(
     publish := {},
     publishLocal := {},
   )
 
-lazy val foo = crossProject(JSPlatform, JVMPlatform, NativePlatform).in(file(".")).
+lazy val cross = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuffixFor(JVMPlatform).in(file(".")).
   settings(
     name := "foo",
     version := "0.1-SNAPSHOT",

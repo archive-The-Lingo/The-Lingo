@@ -5,6 +5,6 @@ object Main {
     val lib = new MyLibrary
     println(lib.sq(2))
 
-    println(s"Using Scala Native version ${System.getProperty("java.vm.version")}")
+    println(s"Using Scala Native")
   }
 }
