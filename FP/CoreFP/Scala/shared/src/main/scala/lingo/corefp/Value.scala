@@ -16,9 +16,11 @@ object typeOf {
 }
 
 sealed trait Value {
-  // todo: check me
-  //private lazy val cachedHashCode: Int = super.hashCode()
-  //override def hashCode(): Int = cachedHashCode
+  //protected def internal_hash: Int
+
+  //private lazy val hash: Int = internal_hash
+
+  //override def hashCode(): Int = hash
 }
 
 object Value {
@@ -56,7 +58,8 @@ object Value {
   def addComponent[T](x: Any, v: Value)(implicit ev: Tag[T]): Value = addComponentAny(typeOf[T], x, v)
 }
 
-final case class Atom(x: Symbol) extends Value
+final case class Atom(x: Symbol) extends Value {
+}
 
 object Atom {
   def apply(x: Symbol): Atom = new Atom(x)
@@ -64,7 +67,8 @@ object Atom {
   def apply(x: String): Atom = new Atom(Symbol(x))
 }
 
-case object EmptyList extends Value
+case object EmptyList extends Value {
+}
 
 final case class NonEmptyList(x: Value, y: Value) extends Value
 
