@@ -12,7 +12,7 @@ object todo {
 }
 
 object typeOf {
-  def apply[T](implicit ev: Tag[T]): LightTypeTag = LTT[T]
+  def apply[T](implicit ev: Tag[T]): LightTypeTag = ev.tag
 }
 
 sealed trait Value {
