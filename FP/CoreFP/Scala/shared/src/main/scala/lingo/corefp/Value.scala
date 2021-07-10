@@ -15,15 +15,6 @@ object typeOf {
   def apply[T](implicit ev: Tag[T]): LightTypeTag = ev.tag
 }
 
-object evChecker {
-  def apply[T, U](ev: Tag[T])(x: U): U = {
-    if (ev == null) {
-      throw new IllegalArgumentException("ev == null")
-    }
-    x
-  }
-}
-
 sealed trait Value {
   protected def internal_hash: Int
 
@@ -45,26 +36,26 @@ object Value {
 
   def getComponentAny(t: LightTypeTag, v: Value): Option[Any /*: t*/ ] = Option(getComponents(t).get(v))
 
-  def getComponent[T](v: Value)(implicit ev: Tag[T]): Option[T] = evChecker(ev)(getComponentAny(typeOf[T], v).asInstanceOf[Option[T]])
+  def getComponent[T](v: Value)(implicit ev: Tag[T]): Option[T] = getComponentAny(typeOf[T], v).asInstanceOf[Option[T]]
 
   def getComponentOrAddAny(t: LightTypeTag, v: Value, default: => Any /*: t*/): Any /*: t*/ = getComponents(t).computeIfAbsent(v, _ => default)
 
-  def getComponentOrAdd[T](v: Value, default: => T)(implicit ev: Tag[T]): T = evChecker(ev)(getComponentOrAddAny(typeOf[T], v, default).asInstanceOf[T])
+  def getComponentOrAdd[T](v: Value, default: => T)(implicit ev: Tag[T]): T = getComponentOrAddAny(typeOf[T], v, default).asInstanceOf[T]
 
   def getComponentOrAddOptionAny(t: LightTypeTag, v: Value, default: => Option[Any /*: t*/ ]): Option[Any /*: t*/ ] = Option(getComponents(t).computeIfAbsent(v, _ => default.orNull))
 
-  def getComponentOrAddOption[T](v: Value, default: => Option[T])(implicit ev: Tag[T]): Option[T] = evChecker(ev)(getComponentOrAddOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]])
+  def getComponentOrAddOption[T](v: Value, default: => Option[T])(implicit ev: Tag[T]): Option[T] = getComponentOrAddOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]]
 
   def getComponentOrComputeOptionAny(t: LightTypeTag, v: Value, default: Value => Option[Any /*: t*/ ]): Option[Any /*: t*/ ] = Option(getComponents(t).computeIfAbsent(v, v1 => default(v1).orNull))
 
-  def getComponentOrComputeOption[T](v: Value, default: Value => Option[T])(implicit ev: Tag[T]): Option[T] = evChecker(ev)(getComponentOrComputeOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]])
+  def getComponentOrComputeOption[T](v: Value, default: Value => Option[T])(implicit ev: Tag[T]): Option[T] = getComponentOrComputeOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]]
 
   def addComponentAny(t: LightTypeTag, x: Any, v: Value): Value = {
     getComponents(t).put(v, x)
     v
   }
 
-  def addComponent[T](x: Any, v: Value)(implicit ev: Tag[T]): Value = evChecker(ev)(addComponentAny(typeOf[T], x, v))
+  def addComponent[T](x: Any, v: Value)(implicit ev: Tag[T]): Value = addComponentAny(typeOf[T], x, v)
 }
 
 final case class Atom(x: Symbol) extends Value {
