@@ -36,7 +36,7 @@ trait CachedValueT[T] extends ValueT[T] {
 }
 
 
-private[corefp] final case class ValueListT[T](valueT: ValueT[T])(implicit ev: Tag.auto.T[T]) extends ValueT[List[T]] {
+private[corefp] final case class ValueListT[T](valueT: ValueT[T])(implicit ev: Tag[T]) extends ValueT[List[T]] {
   private def traverse[U](xs: List[Option[U]]): Option[List[U]] = xs match {
     case Nil => Some(Nil)
     case Some(head) :: tail => traverse(tail).map(head :: _)
