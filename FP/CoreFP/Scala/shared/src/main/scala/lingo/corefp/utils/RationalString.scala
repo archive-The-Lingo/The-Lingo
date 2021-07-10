@@ -4,6 +4,8 @@ import scala.collection.mutable.ListBuffer
 
 final case class RationalString(xs: List[RationalChar]) {
   def toList: List[RationalChar] = xs
+
+  def valString: String = xs.map(_.valString).mkString
 }
 
 object RationalString {
