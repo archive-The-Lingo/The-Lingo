@@ -1,13 +1,15 @@
 package lingo.corefp
 
+import java.util.Collections
+import scala.reflect.runtime.universe.Type
+import scala.reflect.runtime.universe.TypeTag
+import scala.reflect.runtime.universe.typeOf
+
 object todo {
   def apply[A](): A = {
     throw new java.lang.Exception("WIP")
   }
 }
-
-import java.util.Collections
-import scala.reflect.runtime.universe._
 
 sealed trait Value {
   private lazy val cachedHashCode: Int = super.hashCode()
@@ -37,9 +39,19 @@ object Value {
   def getComponentOrAddOptionAny(t: Type, v: Value, default: => Option[Any /*: t*/ ]): Option[Any /*: t*/ ] = Option(getComponents(t).computeIfAbsent(v, _ => default.orNull))
 
   def getComponentOrAddOption[T](v: Value, default: => Option[T])(implicit ttag: TypeTag[T]): Option[T] = getComponentOrAddOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]]
+
+  def getComponentOrComputeOptionAny(t: Type, v: Value, default: Value => Option[Any /*: t*/ ]): Option[Any /*: t*/ ] = Option(getComponents(t).computeIfAbsent(v, v1 => default(v1).orNull))
+
+  def getComponentOrComputeOption[T](v: Value, default: Value => Option[T])(implicit ttag: TypeTag[T]): Option[T] = getComponentOrComputeOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]]
 }
 
 final case class Atom(x: Symbol) extends Value
+
+object Atom {
+  def apply(x: Symbol): Atom = new Atom(x)
+
+  def apply(x: String): Atom = new Atom(Symbol(x))
+}
 
 case object EmptyList extends Value
 
