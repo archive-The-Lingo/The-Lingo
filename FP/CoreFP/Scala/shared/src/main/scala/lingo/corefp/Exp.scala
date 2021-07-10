@@ -5,6 +5,7 @@ sealed trait Exp {
 }
 
 object ValueExp extends CachedValueT[Exp] {
+  override val helper = Helper()
   override def internal_apply(x: Exp): Value = x.internal_toValue
 
   override def internal_unapply(x: Value): Option[Exp] = x match {
@@ -18,6 +19,7 @@ final case class Quote(x: Value) extends Exp {
 }
 
 object ValueQuote extends CachedValueT[Quote] {
+  override val helper = Helper()
   override def internal_apply(x: Quote): Value = x.internal_toValue
 
   override def internal_unapply(x: Value): Option[Quote] = todo()

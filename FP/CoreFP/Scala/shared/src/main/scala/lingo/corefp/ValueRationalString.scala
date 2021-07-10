@@ -3,6 +3,7 @@ package lingo.corefp
 import lingo.corefp.utils.RationalString
 
 object ValueRationalString extends CachedValueT[RationalString] {
+  override val helper = Helper()
   private val ValueListRationalChar = ValueListT(ValueRationalChar)
 
   override def internal_apply(x: RationalString): Value = TaggedSeq(Atoms.Tags.String, ValueListRationalChar(x.toList))

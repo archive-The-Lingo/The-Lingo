@@ -3,6 +3,7 @@ package lingo.corefp
 import lingo.corefp.utils.Nat
 
 object ValueNat extends CachedValueT[Nat] {
+  override val helper = Helper()
   private val ValueListBoolean = ValueListT(ValueBoolean)
 
   override def internal_apply(x: Nat): Value = TaggedSeq(Atoms.Tags.BinaryNat, ValueListBoolean(NatUtils.nat2booleanList(x)))

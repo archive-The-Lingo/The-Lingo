@@ -1,6 +1,7 @@
 package lingo.corefp
 
 object ValueList extends CachedValueT[List[Value]] {
+  override val helper = Helper()
   override def internal_apply(xs: List[Value]): Value = xs match {
     case Nil => EmptyList()
     case head :: tail => NonEmptyList(head, apply(tail))

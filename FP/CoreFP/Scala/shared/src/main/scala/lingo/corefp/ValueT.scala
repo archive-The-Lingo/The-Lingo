@@ -20,7 +20,13 @@ trait UncachedValueT[T] extends ValueT[T] {
 }
 
 trait CachedValueT[T] extends ValueT[T] {
-  private implicit val rtag: Tag[T] = implicitly[Tag[T]]
+  // https://web.archive.org/web/20210710141226/https://stackoverflow.com/questions/6983759/how-to-declare-traits-as-taking-implicit-constructor-parameters/6984823
+  protected case class Helper()(implicit val ev: Tag[T])
+
+  protected val helper: Helper
+  // usage: `override val helper = Helper()`
+
+  import helper.ev
 
   protected def internal_apply(x: T): Value
 
