@@ -12,12 +12,14 @@ lazy val root = project.in(file(".")).
   settings(
     publish := {},
     publishLocal := {},
+    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   )
 
 lazy val cross = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuffixFor(JVMPlatform).in(file(".")).
   settings(
     name := "foo",
     version := "0.1-SNAPSHOT",
+    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
   ).
   jvmSettings(
     // Add JVM-specific settings here
@@ -29,5 +31,3 @@ lazy val cross = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSu
   nativeSettings(
     // Add Native-specific settings here
   )
-
-libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
