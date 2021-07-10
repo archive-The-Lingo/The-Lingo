@@ -1,8 +1,8 @@
 package lingo.corefp
 
 object ValueBoolean extends ValueT[Boolean] {
-  val True: Value = Tagged(Atoms.Tags.True, EmptyList)
-  val False: Value = Tagged(Atoms.Tags.False, EmptyList)
+  val True: Value = TaggedSeq(Atoms.Tags.True)
+  val False: Value = TaggedSeq(Atoms.Tags.False)
 
   def apply(x: Boolean): Value = if (x) {
     True
@@ -12,8 +12,8 @@ object ValueBoolean extends ValueT[Boolean] {
 
   def unapply(x: Value): Option[Boolean] = Value.getComponentOrAddOption(x, {
     x match {
-      case Tagged(Atoms.Tags.True, EmptyList) => Some(true)
-      case Tagged(Atoms.Tags.False, EmptyList) => Some(false)
+      case TaggedSeq(Atoms.Tags.True) => Some(true)
+      case TaggedSeq(Atoms.Tags.False) => Some(false)
       case _ => None
     }
   })
