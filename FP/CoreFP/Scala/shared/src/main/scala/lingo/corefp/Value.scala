@@ -12,9 +12,9 @@ object todo {
 }
 
 sealed trait Value {
-  private lazy val cachedHashCode: Int = super.hashCode()
-
-  override def hashCode(): Int = cachedHashCode
+  // todo: check me
+  //private lazy val cachedHashCode: Int = super.hashCode()
+  //override def hashCode(): Int = cachedHashCode
 }
 
 object Value {
@@ -49,7 +49,7 @@ object Value {
     v
   }
 
-  def addComponent[T](x: Any, v: Value)(implicit ttag: TypeTag[T]): Value = addComponentAny(typeOf[T], v, x)
+  def addComponent[T](x: Any, v: Value)(implicit ttag: TypeTag[T]): Value = addComponentAny(typeOf[T], x, v)
 }
 
 final case class Atom(x: Symbol) extends Value

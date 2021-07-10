@@ -2,7 +2,7 @@ package lingo.corefp
 
 import lingo.corefp.utils.Nat
 
-object ValueNat {
+object ValueNat extends ValueT[Nat] {
   def apply(x: Nat): Value = Value.addComponent(x, TaggedSeq(Atoms.Tags.BinaryNat, ValueListBoolean(NatUtils.nat2booleanList(x))))
 
   def unapply(x: Value): Option[Nat] = Value.getComponentOrAddOption(x, {
