@@ -11,7 +11,7 @@ object todo {
 }
 
 object typeOf {
-  def apply[T](implicit rtag: Tag[T]): LightTypeTag = Tag[T].tag
+  def apply[T](implicit ev: Tag.auto.T[T]): LightTypeTag = ev.tag
 }
 
 sealed trait Value {
@@ -33,26 +33,26 @@ object Value {
 
   def getComponentAny(t: LightTypeTag, v: Value): Option[Any /*: t*/ ] = Option(getComponents(t).get(v))
 
-  def getComponent[T](v: Value)(implicit rtag: Tag[T]): Option[T] = getComponentAny(typeOf[T], v).asInstanceOf[Option[T]]
+  def getComponent[T](v: Value)(implicit ev: Tag.auto.T[T]): Option[T] = getComponentAny(typeOf[T], v).asInstanceOf[Option[T]]
 
   def getComponentOrAddAny(t: LightTypeTag, v: Value, default: => Any /*: t*/): Any /*: t*/ = getComponents(t).computeIfAbsent(v, _ => default)
 
-  def getComponentOrAdd[T](v: Value, default: => T)(implicit rtag: Tag[T]): T = getComponentOrAddAny(typeOf[T], v, default).asInstanceOf[T]
+  def getComponentOrAdd[T](v: Value, default: => T)(implicit ev: Tag.auto.T[T]): T = getComponentOrAddAny(typeOf[T], v, default).asInstanceOf[T]
 
   def getComponentOrAddOptionAny(t: LightTypeTag, v: Value, default: => Option[Any /*: t*/ ]): Option[Any /*: t*/ ] = Option(getComponents(t).computeIfAbsent(v, _ => default.orNull))
 
-  def getComponentOrAddOption[T](v: Value, default: => Option[T])(implicit rtag: Tag[T]): Option[T] = getComponentOrAddOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]]
+  def getComponentOrAddOption[T](v: Value, default: => Option[T])(implicit ev: Tag.auto.T[T]): Option[T] = getComponentOrAddOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]]
 
   def getComponentOrComputeOptionAny(t: LightTypeTag, v: Value, default: Value => Option[Any /*: t*/ ]): Option[Any /*: t*/ ] = Option(getComponents(t).computeIfAbsent(v, v1 => default(v1).orNull))
 
-  def getComponentOrComputeOption[T](v: Value, default: Value => Option[T])(implicit rtag: Tag[T]): Option[T] = getComponentOrComputeOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]]
+  def getComponentOrComputeOption[T](v: Value, default: Value => Option[T])(implicit ev: Tag.auto.T[T]): Option[T] = getComponentOrComputeOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]]
 
   def addComponentAny(t: LightTypeTag, x: Any, v: Value): Value = {
     getComponents(t).put(v, x)
     v
   }
 
-  def addComponent[T](x: Any, v: Value)(implicit rtag: Tag[T]): Value = addComponentAny(typeOf[T], x, v)
+  def addComponent[T](x: Any, v: Value)(implicit ev: Tag.auto.T[T]): Value = addComponentAny(typeOf[T], x, v)
 }
 
 final case class Atom(x: Symbol) extends Value
@@ -72,7 +72,7 @@ final case class Tagged(x: Value, y: Value) extends Value
 final case class Exception(x: Value, y: Value) extends Value
 
 final case class Resource(x: Value, y: Value, v: Any, t: LightTypeTag) extends Value {
-  def get[T](implicit rtag: Tag[T]): Option[T] = if (typeOf[T] == t) {
+  def get[T](implicit ev: Tag.auto.T[T]): Option[T] = if (typeOf[T] == t) {
     Some(v.asInstanceOf[T])
   } else {
     None
@@ -82,5 +82,5 @@ final case class Resource(x: Value, y: Value, v: Any, t: LightTypeTag) extends V
 object Resource {
   def apply(x: Value, y: Value, v: Any, t: LightTypeTag): Resource = new Resource(x, y, v, t)
 
-  def apply[T](x: Value, y: Value, v: T)(implicit rtag: Tag[T]): Resource = new Resource(x, y, v, typeOf[T])
+  def apply[T](x: Value, y: Value, v: T)(implicit ev: Tag.auto.T[T]): Resource = new Resource(x, y, v, typeOf[T])
 }

@@ -28,6 +28,7 @@ lazy val cross = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSu
   ).
   jvmSettings(
     // Add JVM-specific settings here
+    scalaVersion := scala3,
   ).
   jsSettings(
     // Add JS-specific settings here
