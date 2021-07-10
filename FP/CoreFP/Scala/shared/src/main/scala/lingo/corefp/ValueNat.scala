@@ -7,12 +7,13 @@ object ValueNat {
 
   def unapply(x: Value): Option[Nat] = Value.getComponentOrAddOption(x, {
     x match {
-      case TaggedSeq(Atoms.Tags.BinaryNat, ValueListSeq(ValueBoolean(_))) => todo()
+      case TaggedSeq(Atoms.Tags.BinaryNat, ValueListBoolean(bs)) => Some(NatUtils.booleanList2nat(bs))
       case _ => None
     }
   })
 }
 
+// little-endian ?
 private object NatUtils {
   def nat2booleanList(x: Nat): List[Boolean] =
     (0 until x.bitLength).toList.map(x.testBit)
