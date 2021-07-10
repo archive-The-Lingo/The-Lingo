@@ -20,7 +20,10 @@ trait UncachedValueT[T] extends ValueT[T] {
 }
 
 trait CachedValueT[T] extends ValueT[T] {
-  private implicit val rtag: Tag[T] = implicitly[Tag[T]]
+  private implicit val ev: Tag[T] = implicitly[Tag[T]]
+  if (ev == null) {
+    throw new IllegalArgumentException("ev == null")
+  }
 
   protected def internal_apply(x: T): Value
 
@@ -37,6 +40,10 @@ trait CachedValueT[T] extends ValueT[T] {
 
 
 private[corefp] final case class ValueListT[T](valueT: ValueT[T])(implicit ev: Tag[T]) extends ValueT[List[T]] {
+  if (ev == null) {
+    throw new IllegalArgumentException("ev == null")
+  }
+
   private def traverse[U](xs: List[Option[U]]): Option[List[U]] = xs match {
     case Nil => Some(Nil)
     case Some(head) :: tail => traverse(tail).map(head :: _)
