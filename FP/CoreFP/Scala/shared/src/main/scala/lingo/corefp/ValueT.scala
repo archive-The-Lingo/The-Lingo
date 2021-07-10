@@ -34,3 +34,16 @@ trait CachedValueT[T] extends ValueT[T] {
     internal_unapply(x)
   })
 }
+
+
+private[corefp] final case class ValueListT[T](valueT: ValueT[T])(implicit ttag: TypeTag[T]) extends ValueT[List[T]] {
+  private def traverse[U](xs: List[Option[U]]): Option[List[U]] = xs match {
+    case Nil => Some(Nil)
+    case Some(head) :: tail => traverse(tail).map(head :: _)
+    case None :: _ => None
+  }
+
+  override def apply(xs: List[T]): Value = ValueList(xs.map(valueT.apply))
+
+  override def unapply(x: Value): Option[List[T]] = ValueList.unapply(x).flatMap(xs => traverse(xs.map(valueT.unapply)))
+}
