@@ -1,6 +1,6 @@
 package lingo.corefp
 
-import scala.reflect.runtime.universe.TypeTag
+import izumi.reflect.Tag
 
 trait ValueT[T] {
   // todo: consider auto handling Component
@@ -20,7 +20,7 @@ trait UncachedValueT[T] extends ValueT[T] {
 }
 
 trait CachedValueT[T] extends ValueT[T] {
-  private implicit val ttag: TypeTag[T] = implicitly[TypeTag[T]]
+  private implicit val rtag: Tag[T] = implicitly[Tag[T]]
 
   protected def internal_apply(x: T): Value
 
@@ -36,7 +36,7 @@ trait CachedValueT[T] extends ValueT[T] {
 }
 
 
-private[corefp] final case class ValueListT[T](valueT: ValueT[T])(implicit ttag: TypeTag[T]) extends ValueT[List[T]] {
+private[corefp] final case class ValueListT[T](valueT: ValueT[T])(implicit rtag: Tag[T]) extends ValueT[List[T]] {
   private def traverse[U](xs: List[Option[U]]): Option[List[U]] = xs match {
     case Nil => Some(Nil)
     case Some(head) :: tail => traverse(tail).map(head :: _)

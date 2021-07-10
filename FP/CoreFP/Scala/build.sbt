@@ -14,12 +14,16 @@ lazy val root = project.in(file(".")).
     publishLocal := {},
   )
 
+libraryDependencies ++= Seq(
+  "dev.zio" %% "izumi-reflect" % "1.1.3-RC1",
+)
+
 lazy val cross = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuffixFor(JVMPlatform).in(file(".")).
   settings(
     name := "foo",
     version := "0.1-SNAPSHOT",
     libraryDependencies ++= Seq(
-      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "dev.zio" %% "izumi-reflect" % "1.1.3-RC1",
     ),
   ).
   jvmSettings(
