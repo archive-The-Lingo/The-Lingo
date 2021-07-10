@@ -1,6 +1,6 @@
 package lingo.corefp
 
-object ValueBoolean {
+object ValueBoolean extends ValueT[Boolean] {
   val True: Value = Tagged(Atoms.Tags.True, EmptyList)
   val False: Value = Tagged(Atoms.Tags.False, EmptyList)
 

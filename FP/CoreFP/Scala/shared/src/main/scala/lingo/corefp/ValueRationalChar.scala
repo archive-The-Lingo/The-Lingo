@@ -2,13 +2,11 @@ package lingo.corefp
 
 import lingo.corefp.utils.RationalChar
 
-object ValueRationalChar {
-  def apply(x: RationalChar): Value = Value.addComponent(x, TaggedSeq(Atoms.Tags.Char, ValueNat(x.toNat)))
+object ValueRationalChar extends CachedValueT[RationalChar] {
+  def internal_apply(x: RationalChar): Value = TaggedSeq(Atoms.Tags.Char, ValueNat(x.toNat))
 
-  def unapply(x: Value): Option[RationalChar] = Value.getComponentOrAddOption(x, {
-    x match {
-      case TaggedSeq(Atoms.Tags.Char, ValueNat(n)) => Some(RationalChar(n))
-      case _ => None
-    }
-  })
+  def internal_unapply(x: Value): Option[RationalChar] = x match {
+    case TaggedSeq(Atoms.Tags.Char, ValueNat(n)) => Some(RationalChar(n))
+    case _ => None
+  }
 }

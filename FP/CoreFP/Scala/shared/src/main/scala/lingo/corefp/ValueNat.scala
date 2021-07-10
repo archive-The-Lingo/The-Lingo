@@ -2,15 +2,13 @@ package lingo.corefp
 
 import lingo.corefp.utils.Nat
 
-object ValueNat extends ValueT[Nat] {
-  def apply(x: Nat): Value = Value.addComponent(x, TaggedSeq(Atoms.Tags.BinaryNat, ValueListBoolean(NatUtils.nat2booleanList(x))))
+object ValueNat extends CachedValueT[Nat] {
+  override def internal_apply(x: Nat): Value = TaggedSeq(Atoms.Tags.BinaryNat, ValueListBoolean(NatUtils.nat2booleanList(x)))
 
-  def unapply(x: Value): Option[Nat] = Value.getComponentOrAddOption(x, {
-    x match {
-      case TaggedSeq(Atoms.Tags.BinaryNat, ValueListBoolean(bs)) => Some(NatUtils.booleanList2nat(bs))
-      case _ => None
-    }
-  })
+  override def internal_unapply(x: Value): Option[Nat] = x match {
+    case TaggedSeq(Atoms.Tags.BinaryNat, ValueListBoolean(bs)) => Some(NatUtils.booleanList2nat(bs))
+    case _ => None
+  }
 }
 
 // little-endian ?
