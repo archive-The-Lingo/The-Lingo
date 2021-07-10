@@ -5,6 +5,6 @@ object Main {
     println(msg)
   }
 
-  def msg = "I was compiled by Scala 3. :)"
+  def msg = "I was compiled by Scala 2. :)"
 
 }

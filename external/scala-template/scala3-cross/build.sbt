@@ -9,8 +9,8 @@ lazy val root = project
 
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
 
-    // To make the default compiler and REPL use Dotty
-    scalaVersion := scala3Version,
+    // To make the default compiler and REPL use Scala2
+    scalaVersion := scala2Version,
 
     // To cross compile with Scala 3 and Scala 2
     crossScalaVersions := Seq(scala3Version, scala2Version)
