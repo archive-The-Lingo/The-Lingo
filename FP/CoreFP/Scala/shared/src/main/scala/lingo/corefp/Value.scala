@@ -2,6 +2,7 @@ package lingo.corefp
 
 import java.util.Collections
 import izumi.reflect.macrortti.LightTypeTag
+import izumi.reflect.macrortti.LTT
 import izumi.reflect.Tag
 
 object todo {
@@ -11,7 +12,7 @@ object todo {
 }
 
 object typeOf {
-  def apply[T](implicit ev: Tag.auto.T[T]): LightTypeTag = ev.tag
+  def apply[T](implicit ev: Tag.auto.T[T]): LightTypeTag = LTT[T]
 }
 
 sealed trait Value {
