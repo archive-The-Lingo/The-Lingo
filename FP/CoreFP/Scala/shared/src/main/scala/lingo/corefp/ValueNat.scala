@@ -3,7 +3,7 @@ package lingo.corefp
 import lingo.corefp.utils.Nat
 
 object ValueNat {
-  def apply(x: Nat): Value = todo()
+  def apply(x: Nat): Value = Value.addComponent(x, TaggedSeq(Atoms.Tags.BinaryNat, ValueListBoolean(NatUtils.nat2booleanList(x))))
 
   def unapply(x: Value): Option[Nat] = Value.getComponentOrAddOption(x, {
     x match {
@@ -28,6 +28,8 @@ private object ValueListBoolean {
     case Some(head) :: tail => traverse(tail).map(head :: _)
     case None :: _ => None
   }
+
+  def apply(xs: List[Boolean]): Value = ValueList(xs.map(ValueBoolean.apply))
 
   def unapply(x: Value): Option[List[Boolean]] = ValueList.unapply(x).flatMap(xs => traverse(xs.map(ValueBoolean.unapply)))
 }

@@ -43,6 +43,13 @@ object Value {
   def getComponentOrComputeOptionAny(t: Type, v: Value, default: Value => Option[Any /*: t*/ ]): Option[Any /*: t*/ ] = Option(getComponents(t).computeIfAbsent(v, v1 => default(v1).orNull))
 
   def getComponentOrComputeOption[T](v: Value, default: Value => Option[T])(implicit ttag: TypeTag[T]): Option[T] = getComponentOrComputeOptionAny(typeOf[T], v, default).asInstanceOf[Option[T]]
+
+  def addComponentAny(t: Type, x: Any, v: Value): Value = {
+    getComponents(t).put(v, x)
+    v
+  }
+
+  def addComponent[T](x: Any, v: Value)(implicit ttag: TypeTag[T]): Value = addComponentAny(typeOf[T], v, x)
 }
 
 final case class Atom(x: Symbol) extends Value

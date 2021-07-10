@@ -1,10 +1,10 @@
 package lingo.corefp
 
 object ValueList {
-  def apply(xs: List[Value]): Value = xs match {
+  def apply(xs: List[Value]): Value = Value.addComponent(xs, xs match {
     case Nil => EmptyList
     case head :: tail => NonEmptyList(head, apply(tail))
-  }
+  })
 
   def unapply(x: Value): Option[List[Value]] = Value.getComponentOrAddOption(x, {
     x match {

@@ -10,6 +10,8 @@ object Atoms {
     val BinaryNat: Atom = Atom("自然數-二進位")
     val False: Atom = Atom("陰")
     val True: Atom = Atom("陽")
+    val Char: Atom = Atom("字符")
+    val String: Atom = Atom("字串")
   }
 }
 
