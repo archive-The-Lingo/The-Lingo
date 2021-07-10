@@ -8,6 +8,8 @@ package lingo.corefp
 object Atoms {
   object Tags {
     val BinaryNat: Atom = Atom("自然數-二進位")
+    val False: Atom = Atom("陰")
+    val True: Atom = Atom("陽")
   }
 }
 

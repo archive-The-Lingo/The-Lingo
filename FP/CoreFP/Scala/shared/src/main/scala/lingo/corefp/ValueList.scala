@@ -14,3 +14,7 @@ object ValueList {
     }
   })
 }
+
+object ValueListSeq {
+  def unapplySeq(x: Value): Option[Seq[Value]] = ValueList.unapply(x)
+}
