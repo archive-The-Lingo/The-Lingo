@@ -6,13 +6,16 @@ sealed trait Exp {
   def eval(env: ValueHashMap.Type): Value = todo()
 }
 
-object ValueExp extends CachedValueT[Exp] {
+sealed trait ExpT[T <: Exp] extends CachedValueT[T] {
+}
+
+object ExpExp extends ExpT[Exp] {
   override val helper = Helper()
 
   override def internal_apply(x: Exp): Value = x.internal_toValue
 
   override def internal_unapply(x: Value): Option[Exp] = x match {
-    case ValueQuote(v) => Some(v)
+    case ExpQuote(v) => Some(v)
     case _ => None
   }
 }
@@ -21,7 +24,7 @@ final case class Quote(x: Value) extends Exp {
   override def internal_toValue: Value = todo()
 }
 
-object ValueQuote extends CachedValueT[Quote] {
+object ExpQuote extends ExpT[Quote] {
   override val helper = Helper()
 
   override def internal_apply(x: Quote): Value = x.internal_toValue
@@ -67,18 +70,30 @@ final case class IsException(x: Exp) extends BuiltinFunction
 final case class IsResource(x: Exp) extends BuiltinFunction
 
 final case class IntroNonEmptyList(x: Exp, y: Exp) extends BuiltinFunction
-final case class ElimNonEmptyListHead(x:Exp) extends BuiltinFunction
-final case class ElimNonEmptyListTail(x:Exp) extends BuiltinFunction
+
+final case class ElimNonEmptyListHead(x: Exp) extends BuiltinFunction
+
+final case class ElimNonEmptyListTail(x: Exp) extends BuiltinFunction
+
 final case class IntroTagged(x: Exp, y: Exp) extends BuiltinFunction
-final case class ElimTaggedTag(x:Exp) extends BuiltinFunction
-final case class ElimTaggedData(x:Exp) extends BuiltinFunction
+
+final case class ElimTaggedTag(x: Exp) extends BuiltinFunction
+
+final case class ElimTaggedData(x: Exp) extends BuiltinFunction
+
 final case class IntroException(x: Exp, y: Exp) extends BuiltinFunction
-final case class ElimExceptionTag(x:Exp) extends BuiltinFunction
-final case class ElimExceptionData(x:Exp) extends BuiltinFunction
 
-final case class ElimResourceTag(x:Exp) extends BuiltinFunction
-final case class ElimResourceData(x:Exp) extends BuiltinFunction
+final case class ElimExceptionTag(x: Exp) extends BuiltinFunction
 
+final case class ElimExceptionData(x: Exp) extends BuiltinFunction
+
+final case class ElimResourceTag(x: Exp) extends BuiltinFunction
+
+final case class ElimResourceData(x: Exp) extends BuiltinFunction
+
+final case class ElimBoolean(x: Exp) extends BuiltinFunction
+
+final case class Equal(x: Exp, y: Exp) extends BuiltinFunction
 
 final case class Function(arg: List[Var], rest: Option[Var], body: Exp) extends Exp
 

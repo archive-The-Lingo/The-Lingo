@@ -16,6 +16,8 @@ lazy val root = project.in(file(".")).
 
 libraryDependencies ++= Seq(
   "dev.zio" %% "izumi-reflect" % "1.1.3-RC1",
+  "com.lihaoyi" %% "fastparse" % "2.3.2",
+
 )
 
 lazy val cross = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSuffixFor(JVMPlatform).in(file(".")).
@@ -24,6 +26,7 @@ lazy val cross = crossProject(JSPlatform, JVMPlatform, NativePlatform).withoutSu
     version := "0.1-SNAPSHOT",
     libraryDependencies ++= Seq(
       "dev.zio" %% "izumi-reflect" % "1.1.3-RC1",
+      "com.lihaoyi" %% "fastparse" % "2.3.2",
     ),
   ).
   jvmSettings(
