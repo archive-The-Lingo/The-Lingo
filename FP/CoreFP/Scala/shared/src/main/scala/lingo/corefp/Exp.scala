@@ -35,7 +35,9 @@ object ExpQuote extends ExpT[Quote] {
 final case class Commented(comment: Value, x: Exp) extends Exp
 
 // todo
-final case class Location()
+sealed trait Location
+
+final case class UNIXFileLocation(file: String, location: Int) extends Location
 
 final case class Located(location: Location, x: Exp) extends Exp
 
