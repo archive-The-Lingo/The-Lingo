@@ -14,6 +14,16 @@ object Atoms {
     val String: Atom = Atom("字串")
     val Mapping: Atom = Atom("映射")
   }
+
+  object Builtins {
+    val IsAtom: Atom = Atom("符號？")
+    val IsEmptyList: Atom = Atom("序列/空？")
+    val IsNonEmptyList: Atom = Atom("序列/非空？")
+    val IsTagged: Atom = Atom("具標籤？")
+    val IsException: Atom = Atom("異常？")
+    val IsResource: Atom = Atom("資源？")
+    val IntroNonEmptyList:Atom = Atom("構造-序列/非空")
+  }
 }
 
 /*
@@ -45,9 +55,9 @@ final object Atoms {
     val ConsException: Atom = Atom("構造-異常")
     val ElimException: Atom = Atom("解構-異常")
     val IsNull: Atom = Atom("序列/空？")
-    val IsAtombol: Atom = Atom("符號？")
-    val AtombolToString: Atom = Atom("符號→字串")
-    val StringToAtombol: Atom = Atom("字串→符號")
+    val IsSymbol: Atom = Atom("符號？")
+    val SymbolToString: Atom = Atom("符號→字串")
+    val StringToSymbol: Atom = Atom("字串→符號")
     val Rec: Atom = Atom("遞歸")
     val NatToBinary: Atom = Atom("自然數→二進位")
     val BinaryToNat: Atom = Atom("二進位→自然數")
@@ -78,7 +88,7 @@ final object Atoms {
     val TypeMismatch_Exception: Atom = Atom("標籤不匹配/異常")
     val TypeMismatch_Nat: Atom = Atom("標籤不匹配/自然數")
     val TypeMismatch_Binary: Atom = Atom("標籤不匹配/二進位")
-    val TypeMismatch_Atombol: Atom = Atom("標籤不匹配/符號")
+    val TypeMismatch_Symbol: Atom = Atom("標籤不匹配/符號")
     val TypeMismatch_String: Atom = Atom("標籤不匹配/字串")
     val TypeMismatch_Mapping: Atom = Atom("標籤不匹配/映射")
     val TypeMismatch_List: Atom = Atom("標籤不匹配/序列")

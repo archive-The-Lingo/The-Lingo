@@ -9,7 +9,7 @@ final case class SimpleParser(file: String = "") {
 
   def value[_: P]: P[Value] = P(atom | list | tagged)
 
-  def exp[_: P]: P[Exp] = P(apply)
+  def exp[_: P]: P[Exp] = P(applyFunction | applyMacro | quote)
 
   // [\u4e00-\u9fa5] is Chinese chars
   private val atomRegex = "(\\w|[-？?/*:><]|[\u4e00-\u9fa5])+".r
@@ -24,7 +24,11 @@ final case class SimpleParser(file: String = "") {
 
   def list[_: P]: P[Value] = P("(" ~/ skipWhitepace ~ values ~ skipWhitepace ~ ")").map(ValueList(_))
 
-  def tagged[_: P]: P[Tagged] = P("#(" ~/ skipWhitepace ~ value ~ whitespace ~ values ~ skipWhitepace ~ ")").map(x => Tagged(x._1, ValueList(x._2)))
+  def tagged[_: P]: P[Value] = P("#(" ~/ skipWhitepace ~ value ~ whitespace ~ values ~ skipWhitepace ~ ")").map(x => Tagged(x._1, ValueList(x._2)))
 
-  def apply[_: P]: P[Exp] = P("[" ~/ skipWhitepace ~ exp ~ whitespace ~ exps ~ skipWhitepace ~ "]").map(x => ApplyFunction(x._1, x._2))
+  def applyFunction[_: P]: P[Exp] = P("[" ~/ skipWhitepace ~ exp ~ whitespace ~ exps ~ skipWhitepace ~ "]").map(x => ApplyFunction(x._1, x._2))
+
+  def applyMacro[_: P]: P[Exp] = P("{" ~/ skipWhitepace ~ exp ~ whitespace ~ exps ~ skipWhitepace ~ "}").map(x => ApplyMacro(x._1, x._2))
+
+  def quote[_: P]: P[Exp] = P("'" ~/ value).map(Quote)
 }
