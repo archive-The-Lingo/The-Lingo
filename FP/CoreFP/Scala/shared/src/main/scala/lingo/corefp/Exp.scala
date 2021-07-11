@@ -65,3 +65,21 @@ final case class IsTagged(x: Exp) extends BuiltinFunction
 final case class IsException(x: Exp) extends BuiltinFunction
 
 final case class IsResource(x: Exp) extends BuiltinFunction
+
+final case class IntroNonEmptyList(x: Exp, y: Exp) extends BuiltinFunction
+final case class ElimNonEmptyListHead(x:Exp) extends BuiltinFunction
+final case class ElimNonEmptyListTail(x:Exp) extends BuiltinFunction
+final case class IntroTagged(x: Exp, y: Exp) extends BuiltinFunction
+final case class ElimTaggedTag(x:Exp) extends BuiltinFunction
+final case class ElimTaggedData(x:Exp) extends BuiltinFunction
+final case class IntroException(x: Exp, y: Exp) extends BuiltinFunction
+final case class ElimExceptionTag(x:Exp) extends BuiltinFunction
+final case class ElimExceptionData(x:Exp) extends BuiltinFunction
+
+final case class ElimResourceTag(x:Exp) extends BuiltinFunction
+final case class ElimResourceData(x:Exp) extends BuiltinFunction
+
+
+final case class Function(arg: List[Var], rest: Option[Var], body: Exp) extends Exp
+
+final case class Recursive(self: Var, body: Exp) extends Exp
