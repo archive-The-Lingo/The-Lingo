@@ -12,6 +12,7 @@ object Atoms {
     val True: Atom = Atom("陽")
     val Char: Atom = Atom("字符")
     val String: Atom = Atom("字串")
+    val Mapping: Atom = Atom("映射")
   }
 }
 
