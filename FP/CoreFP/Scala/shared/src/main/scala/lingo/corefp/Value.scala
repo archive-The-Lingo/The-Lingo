@@ -162,9 +162,13 @@ final class PossiblyRecursive(x: => Value) extends Value {
       0
     } else {
       hashing = true
-      val r = result.hashCode()
-      hashing = false
-      r
+      var r: Option[Int] = None
+      try {
+        r = Some(result.hashCode())
+      } finally {
+        hashing = false
+      }
+      r.get
     }
   }
 }
