@@ -7,6 +7,8 @@ package lingo.corefp
 
 object Atoms {
   val Builtin: Atom = Atom("內建")
+  val Func: Atom = Atom("函式")
+
   object Tags {
     val BinaryNat: Atom = Atom("自然數-二進位")
     val False: Atom = Atom("陰")
@@ -29,8 +31,16 @@ object Atoms {
     val IntroTagged: Atom = Atom("構造-具型")
     val ElimTaggedTag: Atom = Atom("具型.型")
     val ElimTaggedData: Atom = Atom("具型.值")
+    val IntroException: Atom = Atom("構造-異常")
+    val ElimExceptionTag: Atom = Atom("異常.型")
+    val ElimExceptionData: Atom = Atom("異常.值")
+    val ElimResourceTag: Atom = Atom("資源.型")
+    val ElimResourceData: Atom = Atom("資源.值")
+    val ElimBoolean: Atom = Atom("若")
+    val Equal: Atom = Atom("等？")
   }
-  object ExceptionReasons{
+
+  object ExceptionReasons {
     val IllegalExp: Atom = Atom("非法式")
     val NoDefinition: Atom = Atom("無定義")
     val TypeMismatch: Atom = Atom("型不匹配")

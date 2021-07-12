@@ -67,9 +67,8 @@ object Atom {
 
   def apply(x: String): Atom = new Atom(Symbol(x))
 
-  def unapply(x: Value): Option[Symbol] = x match {
+  def unapply(x: Value): Option[Symbol] = UnPossiblyRecursive(x) match {
     case v: Atom => Some(v.x)
-    case v: PossiblyRecursive => unapply(v.get)
     case _ => None
   }
 }
@@ -83,9 +82,8 @@ object EmptyList {
 
   def apply(): EmptyList = instance
 
-  def unapply(x: Value): Boolean = x match {
+  def unapply(x: Value): Boolean = UnPossiblyRecursive(x) match {
     case v: EmptyList => true
-    case v: PossiblyRecursive => unapply(v.get)
     case _ => false
   }
 }
@@ -95,9 +93,8 @@ final case class NonEmptyList(x: Value, y: Value) extends Value {
 }
 
 object NonEmptyList {
-  def unapply(x: Value): Option[(Value, Value)] = x match {
-    case v: NonEmptyList => Some((v.x, v.y))
-    case v: PossiblyRecursive => unapply(v.get)
+  def unapply(x: Value): Option[(Value, Value)] = UnPossiblyRecursive(x) match {
+    case v: NonEmptyList => Some((UnPossiblyRecursive(v.x), UnPossiblyRecursive(v.y)))
     case _ => None
   }
 }
@@ -107,9 +104,9 @@ final case class Tagged(x: Value, y: Value) extends Value {
 }
 
 object Tagged {
-  def unapply(x: Value): Option[(Value, Value)] = x match {
-    case v: Tagged => Some((v.x, v.y))
-    case v: PossiblyRecursive => unapply(v.get)
+  def unapply(x: Value): Option[(Value, Value)] = UnPossiblyRecursive(x) match {
+    // inner UnPossiblyRecursive are for patterns like Tagged(<constant>, ...)
+    case v: Tagged => Some((UnPossiblyRecursive(v.x), UnPossiblyRecursive(v.y)))
     case _ => None
   }
 }
@@ -119,9 +116,8 @@ final case class Exception(x: Value, y: Value) extends Value {
 }
 
 object Exception {
-  def unapply(x: Value): Option[(Value, Value)] = x match {
-    case v: Exception => Some((v.x, v.y))
-    case v: PossiblyRecursive => unapply(v.get)
+  def unapply(x: Value): Option[(Value, Value)] = UnPossiblyRecursive(x) match {
+    case v: Exception => Some((UnPossiblyRecursive(v.x), UnPossiblyRecursive(v.y)))
     case _ => None
   }
 }
@@ -142,9 +138,8 @@ object Resource {
 
   def apply[T](x: Value, y: Value, v: T)(implicit ev: Tag[T]): Resource = new Resource(x, y, v, typeOf[T])
 
-  def unapply(x: Value): Option[(Value, Value, Any, LightTypeTag)] = x match {
-    case v: Resource => Some((v.x, v.y, v.v, v.t))
-    case v: PossiblyRecursive => unapply(v.get)
+  def unapply(x: Value): Option[(Value, Value, Any, LightTypeTag)] = UnPossiblyRecursive(x) match {
+    case v: Resource => Some((UnPossiblyRecursive(v.x), UnPossiblyRecursive(v.y), v.v, v.t))
     case _ => None
   }
 }
@@ -192,4 +187,12 @@ final class PossiblyRecursive(x: => Value) extends Value {
   )
 
   override def equals(that: Any): Boolean = that.equals(result)
+}
+
+object UnPossiblyRecursive {
+  def apply(x: Value): Value = if (x.isInstanceOf[PossiblyRecursive]) {
+    apply(x.asInstanceOf[PossiblyRecursive].get)
+  } else {
+    x
+  }
 }
