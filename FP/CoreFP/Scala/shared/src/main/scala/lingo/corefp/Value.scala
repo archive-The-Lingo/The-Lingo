@@ -149,26 +149,47 @@ object Resource {
   }
 }
 
-final class PossiblyRecursive(x: => Value) extends Value {
-  private lazy val result: Value = x
-
-  def get: Value = result
-
-  private val hashingLock: java.lang.Object = new java.lang.Object()
-  private var hashing: Boolean = false
-
-  override def internal_hash: Int = hashingLock.synchronized {
-    if (hashing) {
-      0
+private class MutableBoolean(var x: Boolean = false) {
+  def in[T](failed: => T, body: => T): T = this.synchronized {
+    if (this.x) {
+      failed
     } else {
-      hashing = true
-      var r: Option[Int] = None
+      this.x = true
+      var r: Option[T] = None
       try {
-        r = Some(result.hashCode())
+        r = Some(body)
       } finally {
-        hashing = false
+        this.x = false
       }
       r.get
     }
   }
+}
+
+final class PossiblyRecursive(x: => Value) extends Value {
+  private val computing: MutableBoolean = new MutableBoolean()
+  private lazy val result: Value = computing.in({
+    todo()
+  }, {
+    var r = x
+    while (r.isInstanceOf[PossiblyRecursive]) {
+      r = r.asInstanceOf[PossiblyRecursive].result
+    }
+    r
+  })
+
+  def get: Value = result
+
+  private val hashing: MutableBoolean = new MutableBoolean()
+
+  override def internal_hash: Int = hashing.in(
+    {
+      0
+    },
+    {
+      result.hashCode()
+    }
+  )
+
+  override def equals(that: Any): Boolean = that.equals(result)
 }

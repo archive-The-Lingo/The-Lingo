@@ -6,6 +6,7 @@
 package lingo.corefp
 
 object Atoms {
+  val Builtin: Atom = Atom("內建")
   object Tags {
     val BinaryNat: Atom = Atom("自然數-二進位")
     val False: Atom = Atom("陰")
@@ -19,15 +20,20 @@ object Atoms {
     val IsAtom: Atom = Atom("符號？")
     val IsEmptyList: Atom = Atom("序列/空？")
     val IsNonEmptyList: Atom = Atom("序列/非空？")
-    val IsTagged: Atom = Atom("具標籤？")
+    val IsTagged: Atom = Atom("具型？")
     val IsException: Atom = Atom("異常？")
     val IsResource: Atom = Atom("資源？")
-    val IntroNonEmptyList:Atom = Atom("構造-序列/非空")
-    val ElimNonEmptyListHead:Atom=Atom("序列/非空.首")
-    val ElimNonEmptyListTail:Atom=Atom("序列/非空.尾")
-    val IntroTagged:Atom = Atom("構造-具標籤")
-    val ElimTaggedTag:Atom=Atom("具標籤.標籤")
-    val ElimTaggedData:Atom=Atom("具標籤.數據")
+    val IntroNonEmptyList: Atom = Atom("構造-序列/非空")
+    val ElimNonEmptyListHead: Atom = Atom("序列/非空.首")
+    val ElimNonEmptyListTail: Atom = Atom("序列/非空.尾")
+    val IntroTagged: Atom = Atom("構造-具型")
+    val ElimTaggedTag: Atom = Atom("具型.型")
+    val ElimTaggedData: Atom = Atom("具型.值")
+  }
+  object ExceptionReasons{
+    val IllegalExp: Atom = Atom("非法式")
+    val NoDefinition: Atom = Atom("無定義")
+    val TypeMismatch: Atom = Atom("型不匹配")
   }
 }
 
