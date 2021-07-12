@@ -39,20 +39,28 @@ sealed trait Location
 
 final case class UNIXFileLocation(file: String, location: Int) extends Location
 
-final case class Located(location: Location, x: Exp) extends Exp
+final case class Located(location: Location, x: Exp) extends Exp {
+  override def eval(env: ValueHashMap.Type): Value = x.eval(env)
+}
 
 final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp
 
 final case class ApplyMacro(m: Exp, xs: List[Exp]) extends Exp
 
-final case class Var(id: Value) extends Exp
+final case class Var(id: Value) extends Exp {
+  override def eval(env: ValueHashMap.Type): Value = env.getOrElse(id, {
+    todo()
+  })
+}
 
 final case class GeneralBuiltin(name: Atom, xs: List[Exp])
 
 sealed trait Builtin extends Exp {
-  val name: Atom = todo()
+  val name: Atom = this.toGeneral.name
 
-  def toGeneral: GeneralBuiltin = todo()
+  def toGeneral: GeneralBuiltin = GeneralBuiltin(name, this.getArgsExps)
+
+  def getArgsExps: List[Exp] = this.toGeneral.xs
 }
 
 sealed trait BuiltinSyntax extends Builtin {
@@ -64,7 +72,7 @@ abstract class BuiltinSyntaxBinary(x: Exp, y: Exp) extends BuiltinSyntax {
 }
 
 sealed trait BuiltinFunction extends Builtin {
-
+  protected final def getArgsValues(env: ValueHashMap.Type): List[Value] = this.getArgsExps.map(_.eval(env))
 }
 
 abstract class BuiltinFunctionUnary(x: Exp) extends BuiltinFunction {
@@ -87,31 +95,41 @@ final case class IsNonEmptyList(x: Exp) extends BuiltinFunctionUnary(x) {
   override val name = Atoms.Builtins.IsNonEmptyList
 }
 
-final case class IsTagged(x: Exp) extends BuiltinFunctionUnary(x){
+final case class IsTagged(x: Exp) extends BuiltinFunctionUnary(x) {
   override val name = Atoms.Builtins.IsTagged
 }
 
-final case class IsException(x: Exp) extends BuiltinFunctionUnary(x){
+final case class IsException(x: Exp) extends BuiltinFunctionUnary(x) {
   override val name = Atoms.Builtins.IsException
 }
 
-final case class IsResource(x: Exp) extends BuiltinFunctionUnary(x){
+final case class IsResource(x: Exp) extends BuiltinFunctionUnary(x) {
   override val name = Atoms.Builtins.IsResource
 }
 
-final case class IntroNonEmptyList(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y){
+final case class IntroNonEmptyList(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y) {
   override val name = Atoms.Builtins.IntroNonEmptyList
 }
 
-final case class ElimNonEmptyListHead(x: Exp) extends BuiltinFunctionUnary(x)
+final case class ElimNonEmptyListHead(x: Exp) extends BuiltinFunctionUnary(x) {
+  override val name = Atoms.Builtins.ElimNonEmptyListHead
+}
 
-final case class ElimNonEmptyListTail(x: Exp) extends BuiltinFunctionUnary(x)
+final case class ElimNonEmptyListTail(x: Exp) extends BuiltinFunctionUnary(x) {
+  override val name = Atoms.Builtins.ElimNonEmptyListTail
+}
 
-final case class IntroTagged(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y)
+final case class IntroTagged(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y) {
+  override val name = Atoms.Builtins.IntroTagged
+}
 
-final case class ElimTaggedTag(x: Exp) extends BuiltinFunctionUnary(x)
+final case class ElimTaggedTag(x: Exp) extends BuiltinFunctionUnary(x) {
+  override val name = Atoms.Builtins.ElimTaggedTag
+}
 
-final case class ElimTaggedData(x: Exp) extends BuiltinFunctionUnary(x)
+final case class ElimTaggedData(x: Exp) extends BuiltinFunctionUnary(x) {
+  override val name = Atoms.Builtins.ElimTaggedData
+}
 
 final case class IntroException(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y)
 
@@ -129,4 +147,4 @@ final case class Equal(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y)
 
 final case class Function(arg: List[Var], rest: Option[Var], body: Exp) extends Exp
 
-final case class Recursive(self: Var, body: Exp) extends BuiltinSyntaxBinary(self,body)
+final case class Recursive(self: Var, body: Exp) extends BuiltinSyntaxBinary(self, body)

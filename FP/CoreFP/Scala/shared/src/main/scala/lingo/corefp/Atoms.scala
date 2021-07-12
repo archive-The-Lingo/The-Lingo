@@ -23,6 +23,11 @@ object Atoms {
     val IsException: Atom = Atom("異常？")
     val IsResource: Atom = Atom("資源？")
     val IntroNonEmptyList:Atom = Atom("構造-序列/非空")
+    val ElimNonEmptyListHead:Atom=Atom("序列/非空.首")
+    val ElimNonEmptyListTail:Atom=Atom("序列/非空.尾")
+    val IntroTagged:Atom = Atom("構造-具標籤")
+    val ElimTaggedTag:Atom=Atom("具標籤.標籤")
+    val ElimTaggedData:Atom=Atom("具標籤.數據")
   }
 }
 
