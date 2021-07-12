@@ -237,8 +237,17 @@ final case class ElimBoolean(x: Exp, a: Exp, b: Exp) extends BuiltinFunctionTrip
   }
 }
 
-final case class Equal(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y)
+final case class Equal(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y) {
+  override def eval(env: ValueHashMap.Type): Value = ValueBoolean(x.eval(env) equals y.eval(env))
+}
 
 final case class Function(arg: List[Var], rest: Option[Var], body: Exp) extends Exp
 
-final case class Recursive(self: Var, body: Exp) extends BuiltinSyntaxBinary(self, body)
+final case class Recursive(self: Var, body: Exp) extends BuiltinSyntaxBinary(self, body) {
+  override def eval(env: ValueHashMap.Type): Value = {
+    lazy val result = new PossiblyRecursive({
+      todo()
+    })
+    result
+  }
+}
