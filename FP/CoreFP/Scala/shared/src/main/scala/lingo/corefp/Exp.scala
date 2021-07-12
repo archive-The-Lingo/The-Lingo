@@ -245,8 +245,8 @@ final case class Function(arg: List[Var], rest: Option[Var], body: Exp) extends 
 
 final case class Recursive(self: Var, body: Exp) extends BuiltinSyntaxBinary(self, body) {
   override def eval(env: ValueHashMap.Type): Value = {
-    lazy val result = new PossiblyRecursive({
-      todo()
+    val result = new PossiblyRecursive({
+      body.eval(env.updated(self.id, result))
     })
     result
   }
