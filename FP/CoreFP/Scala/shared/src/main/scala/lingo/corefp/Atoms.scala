@@ -8,6 +8,7 @@ package lingo.corefp
 object Atoms {
   val Builtin: Atom = Atom("內建")
   val Func: Atom = Atom("函式")
+  val Exp: Atom = Atom("式")
 
   object Tags {
     val BinaryNat: Atom = Atom("自然數-二進位")

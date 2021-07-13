@@ -1,36 +1,39 @@
 package lingo.corefp
 
 sealed trait Exp {
-  def internal_toValue: Value = todo()
-
   def eval(env: ValueHashMap.Type): Value = todo()
 }
 
+final case class GeneralExp()
+
 sealed trait ExpT[T <: Exp] extends CachedValueT[T] {
+  final override def internal_apply(x: T): Value = todo()
+
+  final override def internal_unapply(x: Value): Option[T] = todo()
 }
 
-object ValueExp extends ExpT[Exp] {
+object ValueExp extends CachedValueT[Exp] {
   val ValueListExp = ValueListT(ValueExp)
   override val helper = Helper()
 
-  override def internal_apply(x: Exp): Value = x.internal_toValue
+  override def internal_apply(x: Exp): Value = x match {
+    case x: Quote => ExpQuote(x)
+    case x: Located => ExpLocated(x)
+    case _ => todo()
+  }
 
   override def internal_unapply(x: Value): Option[Exp] = x match {
-    case ExpQuote(v) => Some(v)
+    case ExpQuote(x) => Some(x)
+    case ExpLocated(x) => Some(x)
     case _ => None
   }
 }
 
 final case class Quote(x: Value) extends Exp {
-  override def internal_toValue: Value = todo()
 }
 
 object ExpQuote extends ExpT[Quote] {
   override val helper = Helper()
-
-  override def internal_apply(x: Quote): Value = x.internal_toValue
-
-  override def internal_unapply(x: Value): Option[Quote] = todo()
 }
 
 final case class Commented(comment: Value, x: Exp) extends Exp
@@ -42,6 +45,10 @@ final case class UNIXFileLocation(file: String, location: Int) extends Location
 
 final case class Located(location: Location, x: Exp) extends Exp {
   override def eval(env: ValueHashMap.Type): Value = x.eval(env)
+}
+
+object ExpLocated extends ExpT[Located] {
+  override val helper = Helper()
 }
 
 final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp
@@ -56,10 +63,6 @@ final case class Var(id: Value) extends Exp {
 
 object ExpVar extends ExpT[Var] {
   override val helper = Helper()
-
-  override def internal_apply(x: Var): Value = todo()
-
-  override def internal_unapply(x: Value): Option[Var] = todo()
 }
 
 final case class Args(arg: List[Var], rest: Option[Var])
