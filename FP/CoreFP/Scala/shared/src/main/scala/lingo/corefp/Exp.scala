@@ -88,33 +88,23 @@ final case class Recursive(self: Var, body: Exp) extends Exp {
 
 final case class GeneralBuiltin(name: Atom, xs: List[Exp])
 
-sealed trait BuiltinFunction extends Exp {
-  val name: Atom = this.toGeneral.name
-
-  def toGeneral: GeneralBuiltin = GeneralBuiltin(name, this.getArgsExps)
-
-  def getArgsExps: List[Exp] = this.toGeneral.xs
+abstract class Builtin(name: Atom, xs: List[Exp]) extends Exp {
 
   protected final def exception(env: ValueHashMap.Type, reason: Atom): Value =
-    ExceptionSeq(Atoms.Builtin, reason, ValueHashMap(env), this.name, ValueExp.ValueListExp(this.getArgsExps))
+    ExceptionSeq(Atoms.Builtin, reason, ValueHashMap(env), this.name, ValueExp.ValueListExp(this.xs))
 
-  //protected final def getArgsValues(env: ValueHashMap.Type): List[Value] = this.getArgsExps.map(_.eval(env))
 }
 
-abstract class BuiltinFunctionUnary(x: Exp) extends BuiltinFunction {
-  final override def toGeneral: GeneralBuiltin = GeneralBuiltin(name, List(x))
+abstract class BuiltinFunctionUnary(name: Atom, x: Exp) extends Builtin(name, List(x)) {
 }
 
-abstract class BuiltinFunctionBinary(x: Exp, y: Exp) extends BuiltinFunction {
-  final override def toGeneral: GeneralBuiltin = GeneralBuiltin(name, List(x, y))
+abstract class BuiltinFunctionBinary(name: Atom, x: Exp, y: Exp) extends Builtin(name, List(x, y)) {
 }
 
-abstract class BuiltinFunctionTriple(x: Exp, y: Exp, z: Exp) extends BuiltinFunction {
-  final override def toGeneral: GeneralBuiltin = GeneralBuiltin(name, List(x, y, z))
+abstract class BuiltinFunctionTriple(name: Atom, x: Exp, y: Exp, z: Exp) extends Builtin(name, List(x, y, z)) {
 }
 
-final case class IsAtom(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.IsAtom
+final case class IsAtom(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsAtom, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Atom(_) => ValueBoolean.True
@@ -122,8 +112,7 @@ final case class IsAtom(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class IsEmptyList(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.IsEmptyList
+final case class IsEmptyList(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsEmptyList, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case EmptyList() => ValueBoolean.True
@@ -131,8 +120,7 @@ final case class IsEmptyList(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class IsNonEmptyList(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.IsNonEmptyList
+final case class IsNonEmptyList(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsNonEmptyList, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case NonEmptyList(_, _) => ValueBoolean.True
@@ -140,8 +128,7 @@ final case class IsNonEmptyList(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class IsTagged(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.IsTagged
+final case class IsTagged(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsTagged, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Tagged(_, _) => ValueBoolean.True
@@ -149,8 +136,7 @@ final case class IsTagged(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class IsException(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.IsException
+final case class IsException(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsException, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Exception(_, _) => ValueBoolean.True
@@ -158,8 +144,7 @@ final case class IsException(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class IsResource(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.IsResource
+final case class IsResource(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsResource, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Resource(_, _, _, _) => ValueBoolean.True
@@ -167,14 +152,12 @@ final case class IsResource(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class IntroNonEmptyList(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y) {
-  override val name = Atoms.Builtins.IntroNonEmptyList
+final case class IntroNonEmptyList(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.Builtins.IntroNonEmptyList, x, y) {
 
   override def eval(env: ValueHashMap.Type): Value = NonEmptyList(x.eval(env), y.eval(env))
 }
 
-final case class ElimNonEmptyListHead(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.ElimNonEmptyListHead
+final case class ElimNonEmptyListHead(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimNonEmptyListHead, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case NonEmptyList(a, _) => a
@@ -182,8 +165,7 @@ final case class ElimNonEmptyListHead(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class ElimNonEmptyListTail(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.ElimNonEmptyListTail
+final case class ElimNonEmptyListTail(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimNonEmptyListTail, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case NonEmptyList(_, b) => b
@@ -191,14 +173,12 @@ final case class ElimNonEmptyListTail(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class IntroTagged(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y) {
-  override val name = Atoms.Builtins.IntroTagged
+final case class IntroTagged(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.Builtins.IntroTagged, x, y) {
 
   override def eval(env: ValueHashMap.Type): Value = Tagged(x.eval(env), y.eval(env))
 }
 
-final case class ElimTaggedTag(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.ElimTaggedTag
+final case class ElimTaggedTag(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimTaggedTag, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Tagged(a, _) => a
@@ -206,8 +186,7 @@ final case class ElimTaggedTag(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class ElimTaggedData(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.ElimTaggedData
+final case class ElimTaggedData(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimTaggedData, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Tagged(_, b) => b
@@ -215,14 +194,12 @@ final case class ElimTaggedData(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class IntroException(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y) {
-  override val name = Atoms.Builtins.IntroException
+final case class IntroException(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.Builtins.IntroException, x, y) {
 
   override def eval(env: ValueHashMap.Type): Value = Exception(x.eval(env), y.eval(env))
 }
 
-final case class ElimExceptionTag(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.ElimExceptionTag
+final case class ElimExceptionTag(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimExceptionTag, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Exception(a, _) => a
@@ -230,8 +207,7 @@ final case class ElimExceptionTag(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class ElimExceptionData(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.ElimExceptionData
+final case class ElimExceptionData(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimExceptionData, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Exception(_, b) => b
@@ -239,8 +215,7 @@ final case class ElimExceptionData(x: Exp) extends BuiltinFunctionUnary(x) {
   }
 }
 
-final case class ElimResourceTag(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.ElimResourceTag
+final case class ElimResourceTag(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimResourceTag, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Resource(a, _, _, _) => a
@@ -249,8 +224,7 @@ final case class ElimResourceTag(x: Exp) extends BuiltinFunctionUnary(x) {
 
 }
 
-final case class ElimResourceData(x: Exp) extends BuiltinFunctionUnary(x) {
-  override val name = Atoms.Builtins.ElimResourceData
+final case class ElimResourceData(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimResourceData, x) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case Resource(_, b, _, _) => b
@@ -259,8 +233,7 @@ final case class ElimResourceData(x: Exp) extends BuiltinFunctionUnary(x) {
 }
 
 // Yeah ... ElimBoolean is a function in some models
-final case class ElimBoolean(x: Exp, a: Exp, b: Exp) extends BuiltinFunctionTriple(x, a, b) {
-  override val name = Atoms.Builtins.ElimBoolean
+final case class ElimBoolean(x: Exp, a: Exp, b: Exp) extends BuiltinFunctionTriple(Atoms.Builtins.ElimBoolean, x, a, b) {
 
   override def eval(env: ValueHashMap.Type): Value = x.eval(env) match {
     case ValueBoolean(x0) => (if (x0) {
@@ -272,8 +245,7 @@ final case class ElimBoolean(x: Exp, a: Exp, b: Exp) extends BuiltinFunctionTrip
   }
 }
 
-final case class Equal(x: Exp, y: Exp) extends BuiltinFunctionBinary(x, y) {
-  override val name = Atoms.Builtins.Equal
+final case class Equal(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.Builtins.Equal, x, y) {
 
   override def eval(env: ValueHashMap.Type): Value = ValueBoolean(x.eval(env) equals y.eval(env))
 }
