@@ -44,15 +44,22 @@ trait CachedValueT[T] extends ValueT[T] {
   })
 }
 
+trait CachedValueTAny[T] extends ValueTAny[T] {
+  protected case class Helper()(implicit val ev: Tag[T])
 
-private[corefp] final case class ValueListT[T](valueT: ValueT[T])(implicit ev: Tag[T]) extends ValueT[List[T]] {
-  private def traverse[U](xs: List[Option[U]]): Option[List[U]] = xs match {
-    case Nil => Some(Nil)
-    case Some(head) :: tail => traverse(tail).map(head :: _)
-    case None :: _ => None
-  }
+  protected val helper: Helper
 
-  override def apply(xs: List[T]): Value = ValueList(xs.map(valueT.apply))
+  import helper.ev
 
-  override def unapply(x: Value): Option[List[T]] = ValueList.unapply(x).flatMap(xs => traverse(xs.map(valueT.unapply)))
+  protected def internal_apply(x: T): Value
+
+  final override def apply(x: T): Value = Value.addComponent(x, {
+    internal_apply(x)
+  })
+
+  protected def internal_unapply(x: Value): Some[T]
+
+  final override def unapply(x: Value): Some[T] = Some(Value.getComponentOrAdd(x, {
+    internal_unapply(x).get
+  }))
 }
