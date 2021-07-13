@@ -20,3 +20,19 @@ object ValueListSeq {
 
   def unapplySeq(x: Value): Option[Seq[Value]] = ValueList.unapply(x)
 }
+
+final case class ListDot[T](xs: List[T], rest: T)
+
+object ValueListDot extends CachedValueT[ListDot[Value]] {
+  override protected val helper = Helper()
+
+  override protected def internal_apply(x: ListDot[Value]): Value = x.xs match {
+    case Nil => x.rest
+    case head :: tail => NonEmptyList(head, apply(ListDot(tail, x.rest)))
+  }
+
+  override protected def internal_unapply(x: Value): Option[ListDot[Value]] = x match {
+    case NonEmptyList(head, tail) => unapply(tail).map(tail0 => ListDot(head :: tail0.xs, tail0.rest))
+    case v => Some(ListDot(Nil, v))
+  }
+}

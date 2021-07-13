@@ -3,10 +3,13 @@ package lingo.corefp
 import izumi.reflect.Tag
 
 trait ValueT[T] {
-  // todo: consider auto handling Component
   def apply(x: T): Value
 
   def unapply(x: Value): Option[T]
+}
+
+trait ValueTAny[T] extends ValueT[T] {
+  override def unapply(x: Value): Some[T]
 }
 
 trait UncachedValueT[T] extends ValueT[T] {
