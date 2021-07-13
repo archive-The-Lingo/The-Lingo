@@ -1,15 +1,7 @@
 package lingo.corefp
 
-sealed trait Exp {
+sealed abstract class Exp(name: Atom, xs: List[Value]) {
   def eval(env: ValueHashMap.Type): Value = todo()
-}
-
-final case class GeneralExp()
-
-sealed trait ExpT[T <: Exp] extends CachedValueT[T] {
-  final override def internal_apply(x: T): Value = todo()
-
-  final override def internal_unapply(x: Value): Option[T] = todo()
 }
 
 object ValueExp extends CachedValueT[Exp] {
@@ -17,52 +9,46 @@ object ValueExp extends CachedValueT[Exp] {
   override val helper = Helper()
 
   override def internal_apply(x: Exp): Value = x match {
-    case x: Quote => ExpQuote(x)
-    case x: Located => ExpLocated(x)
     case _ => todo()
   }
 
   override def internal_unapply(x: Value): Option[Exp] = x match {
-    case ExpQuote(x) => Some(x)
-    case ExpLocated(x) => Some(x)
     case _ => None
   }
 }
 
-final case class Quote(x: Value) extends Exp {
+final case class Quote(x: Value) extends Exp(Atoms.Exps.Quote, List(x)) {
 }
 
-object ExpQuote extends ExpT[Quote] {
-  override val helper = Helper()
-}
 
-final case class Commented(comment: Value, x: Exp) extends Exp
+final case class Commented(comment: Value, x: Exp) extends Exp(Atoms.Exps.Commented, List(comment, ValueExp(x)))
 
 // todo
 sealed trait Location
 
+object ValueLocation extends CachedValueT[Location] {
+  override val helper = Helper()
+
+  override def internal_apply(x: Location): Value = todo()
+
+  override def internal_unapply(x: Value): Option[Location] = todo()
+}
+
 final case class UNIXFileLocation(file: String, location: Int) extends Location
 
-final case class Located(location: Location, x: Exp) extends Exp {
+final case class Located(location: Location, x: Exp) extends Exp(Atoms.Exps.Located, List(ValueLocation(location), ValueExp(x))) {
   override def eval(env: ValueHashMap.Type): Value = x.eval(env)
 }
 
-object ExpLocated extends ExpT[Located] {
-  override val helper = Helper()
-}
 
-final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp
+final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs)))
 
-final case class ApplyMacro(m: Exp, xs: List[Exp]) extends Exp
+final case class ApplyMacro(m: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyMacro, List(ValueExp(m), ValueExp.ValueListExp(xs)))
 
-final case class Var(id: Value) extends Exp {
+final case class Var(id: Value) extends Exp(Atoms.Exps.Var, List(id)) {
   override def eval(env: ValueHashMap.Type): Value = env.getOrElse(id, {
     todo()
   })
-}
-
-object ExpVar extends ExpT[Var] {
-  override val helper = Helper()
 }
 
 final case class Args(arg: List[Var], rest: Option[Var])
@@ -75,9 +61,9 @@ object ValueArgs extends CachedValueT[Args] {
   override def internal_unapply(x: Value): Option[Args] = todo()
 }
 
-final case class Function(arg: Args, body: Exp) extends Exp
+final case class Function(arg: Args, body: Exp) extends Exp(Atoms.Func, List(ValueArgs(arg), ValueExp(body)))
 
-final case class Recursive(self: Var, body: Exp) extends Exp {
+final case class Recursive(self: Var, body: Exp) extends Exp(Atoms.Exps.Recursive, List(ValueExp(self), ValueExp(body))) {
   override def eval(env: ValueHashMap.Type): Value = {
     lazy val result: PossiblyRecursive = new PossiblyRecursive({
       body.eval(env.updated(self.id, result))
@@ -86,22 +72,20 @@ final case class Recursive(self: Var, body: Exp) extends Exp {
   }
 }
 
-final case class GeneralBuiltin(name: Atom, xs: List[Exp])
-
-abstract class Builtin(name: Atom, xs: List[Exp]) extends Exp {
+sealed abstract class Builtin(name: Atom, xs: List[Exp]) extends Exp(Atoms.Builtin, List(name, ValueExp.ValueListExp(xs))) {
 
   protected final def exception(env: ValueHashMap.Type, reason: Atom): Value =
     ExceptionSeq(Atoms.Builtin, reason, ValueHashMap(env), this.name, ValueExp.ValueListExp(this.xs))
 
 }
 
-abstract class BuiltinFunctionUnary(name: Atom, x: Exp) extends Builtin(name, List(x)) {
+sealed abstract class BuiltinFunctionUnary(name: Atom, x: Exp) extends Builtin(name, List(x)) {
 }
 
-abstract class BuiltinFunctionBinary(name: Atom, x: Exp, y: Exp) extends Builtin(name, List(x, y)) {
+sealed abstract class BuiltinFunctionBinary(name: Atom, x: Exp, y: Exp) extends Builtin(name, List(x, y)) {
 }
 
-abstract class BuiltinFunctionTriple(name: Atom, x: Exp, y: Exp, z: Exp) extends Builtin(name, List(x, y, z)) {
+sealed abstract class BuiltinFunctionTriple(name: Atom, x: Exp, y: Exp, z: Exp) extends Builtin(name, List(x, y, z)) {
 }
 
 final case class IsAtom(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsAtom, x) {

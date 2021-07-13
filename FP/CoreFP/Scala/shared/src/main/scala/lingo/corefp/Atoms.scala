@@ -19,6 +19,16 @@ object Atoms {
     val Mapping: Atom = Atom("映射")
   }
 
+  object Exps {
+    val Quote: Atom = Atom("引用")
+    val Commented: Atom = Atom("具注釋")
+    val Located: Atom = Atom("具座標")
+    val ApplyFunction: Atom = Atom("用-函式")
+    val ApplyMacro: Atom = Atom("用-構式子")
+    val Var: Atom = Atom("變元")
+    val Recursive: Atom = Atom("遞歸")
+  }
+
   object Builtins {
     val IsAtom: Atom = Atom("符號？")
     val IsEmptyList: Atom = Atom("序列/空？")
