@@ -64,12 +64,6 @@ private[corefp] final case class ValueListDotTU[T, U](valueT: ValueT[T], valueU:
 
   import ValueListT.traverse
 
-  private def traverse[U](xs: List[Option[U]]): Option[List[U]] = xs match {
-    case Nil => Some(Nil)
-    case Some(head) :: tail => traverse(tail).map(head :: _)
-    case None :: _ => None
-  }
-
   override def unapply(x: Value): Option[ListDot[T, U]] = x match {
     case ValueListDot(ListDot(xs, valueU(rest))) => traverse(xs.map(valueT.unapply)).map(ListDot(_, rest))
     case _ => None

@@ -12,3 +12,14 @@ object ValueClosure extends CachedValueT[Closure] {
     case _ => None
   }
 }
+
+final case class Args(arg: List[Var], rest: Option[Var])
+
+object ValueArgs extends CachedValueT[Args] {
+  private val valuListDot = ValueListDotTU(ValueVar, ValueVar)
+  override val helper: ValueArgs.Helper = Helper()
+
+  override def internal_apply(x: Args): Value = todo()
+
+  override def internal_unapply(x: Value): Option[Args] = todo()
+}

@@ -2,6 +2,8 @@ package lingo.corefp
 
 sealed abstract class Exp(name: Atom, xs: List[Value]) {
   def eval(env: ValueHashMap.Type): Value = todo()
+
+  def toValue: Value = todo()
 }
 
 object ValueExp extends CachedValueT[Exp] {
@@ -51,17 +53,17 @@ final case class Var(id: Value) extends Exp(Atoms.Exps.Var, List(id)) {
   })
 }
 
-final case class Args(arg: List[Var], rest: Option[Var])
+object ValueVar extends CachedValueT[Var] {
+  override protected val helper = Helper()
 
-object ValueArgs extends CachedValueT[Args] {
-  override val helper: ValueArgs.Helper = Helper()
+  override protected def internal_apply(x: Var): Value = x.toValue
 
-  override def internal_apply(x: Args): Value = todo()
-
-  override def internal_unapply(x: Value): Option[Args] = todo()
+  override protected def internal_unapply(x: Value): Option[Var] = todo()
 }
 
-final case class Function(arg: Args, body: Exp) extends Exp(Atoms.Func, List(ValueArgs(arg), ValueExp(body)))
+final case class Function(args: Args, body: Exp) extends Exp(Atoms.Func, List(ValueArgs(args), ValueExp(body))) {
+  override def eval(env: ValueHashMap.Type): Value = ValueClosure(Closure(env, args, body))
+}
 
 final case class Recursive(self: Var, body: Exp) extends Exp(Atoms.Exps.Recursive, List(ValueExp(self), ValueExp(body))) {
   override def eval(env: ValueHashMap.Type): Value = {
