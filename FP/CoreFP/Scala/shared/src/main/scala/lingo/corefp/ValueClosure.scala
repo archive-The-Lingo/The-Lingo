@@ -1,10 +1,8 @@
 package lingo.corefp
 
 final case class Closure(env: ValueHashMap.Type, args: Args, body: Exp) {
-  def apply(xs: List[Value]): Value = args.matchArgs(xs, env) match {
-    case Some(env) => body.eval(env)
-    case None => todo()
-  }
+  def apply(xs: List[Value]): Option[Value] = args.matchArgs(xs, env).map(body.eval(_))
+  // case None => Builtin.exception(Atoms.ApplyFunction, todo(), ValueHashMap.EmptyMap, Atoms.ExceptionReasons.ArgsMismatch)
 }
 
 object ValueClosure extends CachedValueT[Closure] {

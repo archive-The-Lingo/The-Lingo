@@ -86,13 +86,13 @@ object ExpExtractorLocated extends ExpExtractorT[Located] {
   }
 }
 
-final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) {
+final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) {
   override def eval(env: ValueHashMap.Type): Value = todo()
 }
 
 object ExpExtractorApplyFunction extends ExpExtractorT[ApplyFunction] {
   override def unapply(x: GeneralExp): Option[ApplyFunction] = x match {
-    case GeneralExp(Atoms.Exps.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) => Some(ApplyFunction(f, xs))
+    case GeneralExp(Atoms.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) => Some(ApplyFunction(f, xs))
     case _ => None
   }
 }
@@ -158,7 +158,11 @@ object ExpExtractorRecursive extends ExpExtractorT[Recursive] {
 
 sealed abstract class Builtin(name: Atom, xs: List[Exp]) extends Exp(Atoms.Builtin, List(name, ValueExp.ValueListExp(xs))) {
   protected final def exception(env: ValueHashMap.Type, reason: Atom): Value =
-    ExceptionSeq(Atoms.Builtin, reason, ValueHashMap(env), this.name, ValueExp.ValueListExp(this.xs))
+    Builtin.exception(this.name, this.xs, env, reason)
+}
+
+object Builtin {
+  private[corefp] def exception(name: Atom, xs: List[Exp], env: ValueHashMap.Type, reason: Atom): Value = ExceptionSeq(Atoms.Builtin, reason, ValueHashMap(env), name, ValueExp.ValueListExp(xs))
 }
 
 final case class GeneralBuiltin(name: Atom, xs: List[Exp])
@@ -495,3 +499,4 @@ object BuiltinExtractorEqual extends BuiltinFunctionBinaryExtractorT[Equal] {
     case _ => None
   }
 }
+// todo builtin apply/eval

@@ -9,6 +9,7 @@ object Atoms {
   val Builtin: Atom = Atom("內建")
   val Func: Atom = Atom("函式")
   val Exp: Atom = Atom("式")
+  val ApplyFunction: Atom = Atom("用-函式")
 
   object Tags {
     val BinaryNat: Atom = Atom("自然數-二進位")
@@ -23,7 +24,6 @@ object Atoms {
     val Quote: Atom = Atom("引用")
     val Commented: Atom = Atom("具注釋")
     val Located: Atom = Atom("具座標")
-    val ApplyFunction: Atom = Atom("用-函式")
     val ApplyMacro: Atom = Atom("用-構式子")
     val Var: Atom = Atom("變元")
     val Recursive: Atom = Atom("遞歸")
@@ -55,6 +55,7 @@ object Atoms {
     val IllegalExp: Atom = Atom("非法式")
     val NoDefinition: Atom = Atom("無定義")
     val TypeMismatch: Atom = Atom("型不匹配")
+    val ArgsMismatch: Atom = Atom("參數不匹配")
   }
 }
 
