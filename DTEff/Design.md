@@ -1,6 +1,6 @@
-# Design
+## Design 0
 
-## size
+### size
 
 Mathematical induction - The base case can not be missing
 
@@ -30,8 +30,26 @@ B_proof a = a a
 // a: A -> B, a: A, so `a a: B`
 ```
 
-## Examples
+### Examples
 
 ```
 
 ```
+
+## 1
+
+又是无用的列表
+
++ Koka algebraic effects ...
++ ΠΣ Structural Type ...
+  ```
+  Nat: Type = (l: {zero succ}) * case l of { zero -> {unit} | suc -> [Nat]};
+  ```
+
+...
+
+References
+
+[A Framework for Dependent Types and Effects](https://arxiv.org/abs/1512.08009) 不过这篇论文有关吗？
+
+> On the other hand, we hope it can contribute a small-step towards the ultimate goal of an elegant fully fledged language for certified effectful programming. 
