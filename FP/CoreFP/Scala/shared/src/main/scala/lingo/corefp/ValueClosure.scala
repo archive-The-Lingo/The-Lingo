@@ -1,8 +1,11 @@
 package lingo.corefp
 
-import lingo.corefp.ValueArgs.valueListDotVar
-
-final case class Closure(env: ValueHashMap.Type, args: Args, body: Exp)
+final case class Closure(env: ValueHashMap.Type, args: Args, body: Exp) {
+  def apply(xs: List[Value]): Value = args.matchArgs(xs, env) match {
+    case Some(env) => body.eval(env)
+    case None => todo()
+  }
+}
 
 object ValueClosure extends CachedValueT[Closure] {
   override val helper = Helper()
@@ -15,7 +18,17 @@ object ValueClosure extends CachedValueT[Closure] {
   }
 }
 
-final case class Args(arg: List[Var], rest: Option[Var])
+final case class Args(args: List[Var], rest: Option[Var]) {
+  def matchArgs(xs: List[Value]): Option[ValueHashMap.Type] = this.matchArgs(xs, ValueHashMap.EmptyMap)
+
+  def matchArgs(xs: List[Value], env: ValueHashMap.Type): Option[ValueHashMap.Type] = (args, rest, xs) match {
+    case (Nil, None, Nil) => Some(env)
+    case (Nil, Some(Var(v)), xs) => Some(env.updated(v, ValueList(xs)))
+    case (Var(a) :: args, rest, x :: xs) => Args(args, rest).matchArgs(xs, env.updated(a, x))
+    case (_ :: _, _, Nil) => None
+    case (Nil, None, _) => None
+  }
+}
 
 object ValueArgs extends CachedValueT[Args] {
   private val valueListDotVar = ValueListDotTU(ValueVar, ValueVar)

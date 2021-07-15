@@ -1,7 +1,8 @@
 package lingo.corefp
 
 sealed abstract class Exp(name: Atom, xs: List[Value]) {
-  def eval(env: ValueHashMap.Type): Value = todo()
+  // todo: add DebugStack
+  def eval(env: ValueHashMap.Type): Value
 
   def toValue: Value = TaggedSeq(Atoms.Exp, name, ValueList(xs))
 }
@@ -36,6 +37,7 @@ trait ExpExtractorT[T <: Exp] {
 }
 
 final case class Quote(x: Value) extends Exp(Atoms.Exps.Quote, List(x)) {
+  override def eval(env: ValueHashMap.Type): Value = x
 }
 
 object ExpExtractorQuote extends ExpExtractorT[Quote] {
@@ -45,7 +47,9 @@ object ExpExtractorQuote extends ExpExtractorT[Quote] {
   }
 }
 
-final case class Commented(comment: Value, x: Exp) extends Exp(Atoms.Exps.Commented, List(comment, ValueExp(x)))
+final case class Commented(comment: Value, x: Exp) extends Exp(Atoms.Exps.Commented, List(comment, ValueExp(x))) {
+  def eval(env: ValueHashMap.Type): Value = x.eval(env)
+}
 
 object ExpExtractorCommented extends ExpExtractorT[Commented] {
   override def unapply(x: GeneralExp): Option[Commented] = x match {
@@ -56,6 +60,10 @@ object ExpExtractorCommented extends ExpExtractorT[Commented] {
 
 // todo
 sealed trait Location
+
+final case class DebugStack(xs: List[Location]) {
+  def updated(x: Location): DebugStack = DebugStack(x :: xs)
+}
 
 object ValueLocation extends CachedValueT[Location] {
   override val helper = Helper()
@@ -78,7 +86,9 @@ object ExpExtractorLocated extends ExpExtractorT[Located] {
   }
 }
 
-final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs)))
+final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) {
+  override def eval(env: ValueHashMap.Type): Value = todo()
+}
 
 object ExpExtractorApplyFunction extends ExpExtractorT[ApplyFunction] {
   override def unapply(x: GeneralExp): Option[ApplyFunction] = x match {
@@ -87,7 +97,9 @@ object ExpExtractorApplyFunction extends ExpExtractorT[ApplyFunction] {
   }
 }
 
-final case class ApplyMacro(m: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyMacro, List(ValueExp(m), ValueExp.ValueListExp(xs)))
+final case class ApplyMacro(m: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyMacro, List(ValueExp(m), ValueExp.ValueListExp(xs))) {
+  override def eval(env: ValueHashMap.Type): Value = todo()
+}
 
 object ExpExtractorApplyMacro extends ExpExtractorT[ApplyMacro] {
   override def unapply(x: GeneralExp): Option[ApplyMacro] = x match {

@@ -4,6 +4,7 @@ import scala.collection.immutable.HashMap
 
 object ValueHashMap extends CachedValueT[HashMap[Value, Value]] {
   type Type = HashMap[Value, Value]
+  val EmptyMap: Type = new HashMap()
   private val ValueListListPair = ValueListT(ValueListPair)
   override val helper = Helper()
 
