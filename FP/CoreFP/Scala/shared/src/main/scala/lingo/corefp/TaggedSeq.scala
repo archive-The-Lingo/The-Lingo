@@ -9,7 +9,7 @@ object TaggedSeq {
   }
 }
 
-object ExceptionSeq{
+object ExceptionSeq {
   def apply(tag: Value, xs: Value*): Value = Exception(tag, ValueList(xs.toList))
 
   def unapplySeq(x: Value): Option[Seq[Value]] = x match {
