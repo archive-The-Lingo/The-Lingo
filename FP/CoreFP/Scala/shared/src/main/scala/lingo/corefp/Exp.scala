@@ -193,13 +193,13 @@ object ExpExtractorRecursive extends ExpExtractorT[Recursive] {
 }
 
 sealed abstract class Builtin(name: Atom, xs: List[Exp]) extends Exp(Atoms.Builtin, List(name, ValueExp.ValueListExp(xs))) {
-  // todo debugstack
-  protected final def exception(reason: Atom)(implicit env: ValueHashMap.Type): Value =
-    Builtin.exception(this.name, this.xs, env, reason)
+  protected final def exception(reason: Atom)(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value =
+    Builtin.exception(this.name, this.xs, reason)(env, debugStack)
 }
 
 object Builtin {
-  private[corefp] def exception(name: Atom, xs: List[Exp], env: ValueHashMap.Type, reason: Atom): Value = ExceptionSeq(Atoms.Builtin, reason, ValueHashMap(env), name, ValueExp.ValueListExp(xs))
+  // todo debugstack
+  private[corefp] def exception(name: Atom, xs: List[Exp], reason: Atom)(implicit env: ValueHashMap.Type, _debugStack: MaybeDebugStack): Value = ExceptionSeq(Atoms.Builtin, reason, name, ValueExp.ValueListExp(xs), ValueHashMap(env))
 }
 
 final case class GeneralBuiltin(name: Atom, xs: List[Exp])
