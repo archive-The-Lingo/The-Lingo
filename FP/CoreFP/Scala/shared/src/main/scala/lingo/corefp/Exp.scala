@@ -117,9 +117,9 @@ object ExpExtractorLocated extends ExpExtractorT[Located] {
 final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) {
   override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = f.eval match {
     case ValueClosure(c) => c.apply(xs.map(_.eval)).getOrElse({
-      todo()
+      Builtin.exception(Atoms.Builtins.Eval,List(Quote(ValueHashMap(env)),Quote(ValueExp(this))),Atoms.ExceptionReasons.ArgsMismatch)
     })
-    case _ => todo()
+    case _ => Builtin.exception(Atoms.Builtins.Eval,List(Quote(ValueHashMap(env)),Quote(ValueExp(this))),Atoms.ExceptionReasons.TypeMismatch)
   }
 }
 
