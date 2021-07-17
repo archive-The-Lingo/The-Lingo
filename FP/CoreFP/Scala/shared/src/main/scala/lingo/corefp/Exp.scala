@@ -1,8 +1,7 @@
 package lingo.corefp
 
 sealed abstract class Exp(name: Atom, xs: List[Value]) {
-  // todo: add DebugStack
-  def eval(implicit env: ValueHashMap.Type): Value
+  def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value
 
   def toValue: Value = TaggedSeq(Atoms.Exp, name, ValueList(xs))
 }
@@ -37,7 +36,7 @@ trait ExpExtractorT[T <: Exp] {
 }
 
 final case class Quote(x: Value) extends Exp(Atoms.Exps.Quote, List(x)) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x
 }
 
 object ExpExtractorQuote extends ExpExtractorT[Quote] {
@@ -48,7 +47,7 @@ object ExpExtractorQuote extends ExpExtractorT[Quote] {
 }
 
 final case class Commented(comment: Value, x: Exp) extends Exp(Atoms.Exps.Commented, List(comment, ValueExp(x))) {
-  def eval(implicit env: ValueHashMap.Type): Value = x.eval
+  def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval
 }
 
 object ExpExtractorCommented extends ExpExtractorT[Commented] {
@@ -61,8 +60,16 @@ object ExpExtractorCommented extends ExpExtractorT[Commented] {
 // todo
 sealed trait Location
 
-final case class DebugStack(xs: List[Location]) {
-  def updated(x: Location): DebugStack = DebugStack(x :: xs)
+sealed trait MaybeDebugStack {
+  def updated(x: Location): MaybeDebugStack
+}
+
+final case class DebugStack(xs: List[Location]) extends MaybeDebugStack {
+  override def updated(x: Location): DebugStack = DebugStack(x :: xs)
+}
+
+case object NotDebugStack extends MaybeDebugStack {
+  override def updated(x: Location): NotDebugStack.type = NotDebugStack
 }
 
 object ValueLocation extends CachedValueT[Location] {
@@ -76,7 +83,7 @@ object ValueLocation extends CachedValueT[Location] {
 final case class UNIXFileLocation(file: String, location: Int) extends Location
 
 final case class Located(location: Location, x: Exp) extends Exp(Atoms.Exps.Located, List(ValueLocation(location), ValueExp(x))) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval
 }
 
 object ExpExtractorLocated extends ExpExtractorT[Located] {
@@ -87,7 +94,7 @@ object ExpExtractorLocated extends ExpExtractorT[Located] {
 }
 
 final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) {
-  override def eval(implicit env: ValueHashMap.Type): Value = todo()
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = todo()
 }
 
 object ExpExtractorApplyFunction extends ExpExtractorT[ApplyFunction] {
@@ -98,7 +105,7 @@ object ExpExtractorApplyFunction extends ExpExtractorT[ApplyFunction] {
 }
 
 final case class ApplyMacro(m: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyMacro, List(ValueExp(m), ValueExp.ValueListExp(xs))) {
-  override def eval(implicit env: ValueHashMap.Type): Value = todo()
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = todo()
 }
 
 object ExpExtractorApplyMacro extends ExpExtractorT[ApplyMacro] {
@@ -109,7 +116,7 @@ object ExpExtractorApplyMacro extends ExpExtractorT[ApplyMacro] {
 }
 
 final case class Var(id: Value) extends Exp(Atoms.Exps.Var, List(id)) {
-  override def eval(implicit env: ValueHashMap.Type): Value = env.getOrElse(id, {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = env.getOrElse(id, {
     todo()
   })
 }
@@ -130,7 +137,7 @@ object ValueVar extends CachedValueT[Var] {
 }
 
 final case class Function(args: Args, body: Exp) extends Exp(Atoms.Func, List(ValueArgs(args), ValueExp(body))) {
-  override def eval(implicit env: ValueHashMap.Type): Value = ValueClosure(Closure(env, args, body))
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = ValueClosure(Closure(env, args, body))
 }
 
 object ExpExtractorFunction extends ExpExtractorT[Function] {
@@ -141,9 +148,9 @@ object ExpExtractorFunction extends ExpExtractorT[Function] {
 }
 
 final case class Recursive(self: Var, body: Exp) extends Exp(Atoms.Exps.Recursive, List(ValueVar(self), ValueExp(body))) {
-  override def eval(implicit env: ValueHashMap.Type): Value = {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = {
     lazy val result: PossiblyRecursive = new PossiblyRecursive({
-      body.eval(env.updated(self.id, result))
+      body.eval(env.updated(self.id, result), implicitly)
     })
     result
   }
@@ -242,7 +249,7 @@ trait BuiltinFunctionTripleExtractorT[T <: BuiltinFunctionTriple] extends Builti
 }
 
 final case class IsAtom(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsAtom, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Atom(_) => ValueBoolean.True
     case _ => ValueBoolean.False
   }
@@ -256,7 +263,7 @@ object BuiltinExtractorIsAtom extends BuiltinFunctionUnaryExtractorT[IsAtom] {
 }
 
 final case class IsEmptyList(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsEmptyList, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case EmptyList() => ValueBoolean.True
     case _ => ValueBoolean.False
   }
@@ -270,7 +277,7 @@ object BuiltinExtractorIsEmptyList extends BuiltinFunctionUnaryExtractorT[IsEmpt
 }
 
 final case class IsNonEmptyList(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsNonEmptyList, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case NonEmptyList(_, _) => ValueBoolean.True
     case _ => ValueBoolean.False
   }
@@ -284,7 +291,7 @@ object BuiltinExtractorIsNonEmptyList extends BuiltinFunctionUnaryExtractorT[IsN
 }
 
 final case class IsTagged(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsTagged, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Tagged(_, _) => ValueBoolean.True
     case _ => ValueBoolean.False
   }
@@ -298,7 +305,7 @@ object BuiltinExtractorIsTagged extends BuiltinFunctionUnaryExtractorT[IsTagged]
 }
 
 final case class IsException(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsException, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Exception(_, _) => ValueBoolean.True
     case _ => ValueBoolean.False
   }
@@ -312,7 +319,7 @@ object BuiltinExtractorIsException extends BuiltinFunctionUnaryExtractorT[IsExce
 }
 
 final case class IsResource(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.IsResource, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Resource(_, _, _, _) => ValueBoolean.True
     case _ => ValueBoolean.False
   }
@@ -326,7 +333,7 @@ object BuiltinExtractorIsResource extends BuiltinFunctionUnaryExtractorT[IsResou
 }
 
 final case class IntroNonEmptyList(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.Builtins.IntroNonEmptyList, x, y) {
-  override def eval(implicit env: ValueHashMap.Type): Value = NonEmptyList(x.eval, y.eval)
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = NonEmptyList(x.eval, y.eval)
 }
 
 object BuiltinExtractorIntroNonEmptyList extends BuiltinFunctionBinaryExtractorT[IntroNonEmptyList] {
@@ -337,7 +344,7 @@ object BuiltinExtractorIntroNonEmptyList extends BuiltinFunctionBinaryExtractorT
 }
 
 final case class ElimNonEmptyListHead(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimNonEmptyListHead, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case NonEmptyList(a, _) => a
     case _ => this.exception(env, Atoms.ExceptionReasons.TypeMismatch)
   }
@@ -351,7 +358,7 @@ object BuiltinExtractorElimNonEmptyListHead extends BuiltinFunctionUnaryExtracto
 }
 
 final case class ElimNonEmptyListTail(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimNonEmptyListTail, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case NonEmptyList(_, b) => b
     case _ => this.exception(env, Atoms.ExceptionReasons.TypeMismatch)
   }
@@ -365,7 +372,7 @@ object BuiltinExtractorElimNonEmptyListTail extends BuiltinFunctionUnaryExtracto
 }
 
 final case class IntroTagged(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.Builtins.IntroTagged, x, y) {
-  override def eval(implicit env: ValueHashMap.Type): Value = Tagged(x.eval, y.eval)
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = Tagged(x.eval, y.eval)
 }
 
 object BuiltinExtractorIntroTagged extends BuiltinFunctionBinaryExtractorT[IntroTagged] {
@@ -376,7 +383,7 @@ object BuiltinExtractorIntroTagged extends BuiltinFunctionBinaryExtractorT[Intro
 }
 
 final case class ElimTaggedTag(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimTaggedTag, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Tagged(a, _) => a
     case _ => this.exception(env, Atoms.ExceptionReasons.TypeMismatch)
   }
@@ -390,7 +397,7 @@ object BuiltinExtractorElimTaggedTag extends BuiltinFunctionUnaryExtractorT[Elim
 }
 
 final case class ElimTaggedData(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimTaggedData, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Tagged(_, b) => b
     case _ => this.exception(env, Atoms.ExceptionReasons.TypeMismatch)
   }
@@ -404,7 +411,7 @@ object BuiltinExtractorElimTaggedData extends BuiltinFunctionUnaryExtractorT[Eli
 }
 
 final case class IntroException(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.Builtins.IntroException, x, y) {
-  override def eval(implicit env: ValueHashMap.Type): Value = Exception(x.eval, y.eval)
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = Exception(x.eval, y.eval)
 }
 
 object BuiltinExtractorIntroException extends BuiltinFunctionBinaryExtractorT[IntroException] {
@@ -415,7 +422,7 @@ object BuiltinExtractorIntroException extends BuiltinFunctionBinaryExtractorT[In
 }
 
 final case class ElimExceptionTag(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimExceptionTag, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Exception(a, _) => a
     case _ => this.exception(env, Atoms.ExceptionReasons.TypeMismatch)
   }
@@ -429,7 +436,7 @@ object BuiltinExtractorElimExceptionTag extends BuiltinFunctionUnaryExtractorT[E
 }
 
 final case class ElimExceptionData(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimExceptionData, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Exception(_, b) => b
     case _ => this.exception(env, Atoms.ExceptionReasons.TypeMismatch)
   }
@@ -443,7 +450,7 @@ object BuiltinExtractorElimExceptionData extends BuiltinFunctionUnaryExtractorT[
 }
 
 final case class ElimResourceTag(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimResourceTag, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Resource(a, _, _, _) => a
     case _ => this.exception(env, Atoms.ExceptionReasons.TypeMismatch)
   }
@@ -457,7 +464,7 @@ object BuiltinExtractorElimResourceTag extends BuiltinFunctionUnaryExtractorT[El
 }
 
 final case class ElimResourceData(x: Exp) extends BuiltinFunctionUnary(Atoms.Builtins.ElimResourceData, x) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case Resource(_, b, _, _) => b
     case _ => this.exception(env, Atoms.ExceptionReasons.TypeMismatch)
   }
@@ -472,7 +479,7 @@ object BuiltinExtractorElimResourceData extends BuiltinFunctionUnaryExtractorT[E
 
 // Yeah ... ElimBoolean is a function in some models
 final case class ElimBoolean(x: Exp, a: Exp, b: Exp) extends BuiltinFunctionTriple(Atoms.Builtins.ElimBoolean, x, a, b) {
-  override def eval(implicit env: ValueHashMap.Type): Value = x.eval match {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
     case ValueBoolean(x0) => (if (x0) {
       a
     } else {
@@ -490,7 +497,7 @@ object BuiltinExtractorElimBoolean extends BuiltinFunctionTripleExtractorT[ElimB
 }
 
 final case class Equal(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.Builtins.Equal, x, y) {
-  override def eval(implicit env: ValueHashMap.Type): Value = ValueBoolean(x.eval equals y.eval)
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = ValueBoolean(x.eval equals y.eval)
 }
 
 object BuiltinExtractorEqual extends BuiltinFunctionBinaryExtractorT[Equal] {
