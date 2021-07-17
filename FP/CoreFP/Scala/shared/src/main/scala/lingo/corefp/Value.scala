@@ -5,11 +5,13 @@ import izumi.reflect.macrortti.LightTypeTag
 import izumi.reflect.macrortti.LTT
 import izumi.reflect.Tag
 
+/*
 object todo {
   def apply[A](): A = {
     throw new java.lang.Exception("WIP")
   }
 }
+*/
 
 object typeOf {
   def apply[T](implicit ev: Tag[T]): LightTypeTag = ev.tag
@@ -164,7 +166,7 @@ private class MutableBoolean(var x: Boolean = false) {
 final class PossiblyRecursive(x: => Value) extends Value {
   private val computing: MutableBoolean = new MutableBoolean()
   private lazy val result: Value = computing.in({
-    todo()
+    ExceptionSeq(Atoms.TopLevelExceptionTags.WillNotTerminate)
   }, {
     var r = x
     while (r.isInstanceOf[PossiblyRecursive]) {

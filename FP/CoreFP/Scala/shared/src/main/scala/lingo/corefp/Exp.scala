@@ -148,7 +148,7 @@ object ExpExtractorApplyMacro extends ExpExtractorT[ApplyMacro] {
 
 final case class Var(id: Value) extends Exp(Atoms.Exps.Var, List(id)) {
   override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = env.getOrElse(id, {
-    todo()
+    Builtin.evalException(this, Atoms.ExceptionReasons.NoDefinition)
   })
 }
 

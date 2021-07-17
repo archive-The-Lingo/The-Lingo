@@ -52,7 +52,7 @@ object Atoms {
     val ElimResourceData: Atom = Atom("資源.值")
     val ElimBoolean: Atom = Atom("若")
     val Equal: Atom = Atom("等？")
-    val Eval:Atom=Atom("算")
+    val Eval: Atom = Atom("算")
   }
 
   object ExceptionReasons {
@@ -60,6 +60,9 @@ object Atoms {
     val NoDefinition: Atom = Atom("無定義")
     val TypeMismatch: Atom = Atom("型不匹配")
     val ArgsMismatch: Atom = Atom("參數不匹配")
+  }
+  object TopLevelExceptionTags {
+    val WillNotTerminate: Atom = Atom("惡性自指")
   }
 }
 
