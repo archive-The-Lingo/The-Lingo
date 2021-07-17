@@ -44,3 +44,16 @@ object ValueArgs extends CachedValueT[Args] {
     case _ => None
   }
 }
+
+final case class Macro(x: Closure)
+
+object ValueMacro extends CachedValueT[Macro] {
+  override val helper = Helper()
+
+  override def internal_apply(x: Macro): Value = TaggedSeq(Atoms.Tags.Macro, ValueClosure(x.x))
+
+  override def internal_unapply(x: Value): Option[Macro] = x match {
+    case TaggedSeq(Atoms.Tags.Macro, ValueClosure(x)) => Some(Macro(x))
+    case _ => None
+  }
+}

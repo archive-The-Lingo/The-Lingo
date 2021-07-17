@@ -20,6 +20,7 @@ object Atoms {
     val Mapping: Atom = Atom("映射")
     val UNIXFilePosition: Atom = Atom("座標/UNIX文件")
     val Trivial: Atom = Atom("元")
+    val Macro: Atom = Atom("構式子")
   }
 
   object Exps {

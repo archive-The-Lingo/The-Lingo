@@ -117,9 +117,9 @@ object ExpExtractorLocated extends ExpExtractorT[Located] {
 final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) {
   override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = f.eval match {
     case ValueClosure(c) => c.apply(xs.map(_.eval)).getOrElse({
-      Builtin.exception(Atoms.Builtins.Eval,List(Quote(ValueHashMap(env)),Quote(ValueExp(this))),Atoms.ExceptionReasons.ArgsMismatch)
+      Builtin.exception(Atoms.Builtins.Eval, List(Quote(ValueHashMap(env)), Quote(ValueExp(this))), Atoms.ExceptionReasons.ArgsMismatch)
     })
-    case _ => Builtin.exception(Atoms.Builtins.Eval,List(Quote(ValueHashMap(env)),Quote(ValueExp(this))),Atoms.ExceptionReasons.TypeMismatch)
+    case _ => Builtin.exception(Atoms.Builtins.Eval, List(Quote(ValueHashMap(env)), Quote(ValueExp(this))), Atoms.ExceptionReasons.TypeMismatch)
   }
 }
 
@@ -131,7 +131,9 @@ object ExpExtractorApplyFunction extends ExpExtractorT[ApplyFunction] {
 }
 
 final case class ApplyMacro(m: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyMacro, List(ValueExp(m), ValueExp.ValueListExp(xs))) {
-  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = todo()
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = m.eval match {
+    case _ => todo()
+  }
 }
 
 object ExpExtractorApplyMacro extends ExpExtractorT[ApplyMacro] {
@@ -554,10 +556,13 @@ object BuiltinExtractorBuiltinEval extends BuiltinFunctionBinaryExtractorT[Built
 }
 
 final case class BuiltinApplyFunction(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.ApplyFunction, x, y) {
-  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = (x.eval, y.eval) match {
-    case (ValueClosure(c), ValueList(xs)) => c.apply(xs).getOrElse({
-      exception(Atoms.ExceptionReasons.ArgsMismatch)
-    })
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval match {
+    case ValueClosure(c) => y.eval match {
+      case ValueList(xs) => c.apply(xs).getOrElse({
+        exception(Atoms.ExceptionReasons.ArgsMismatch)
+      })
+      case _ => exception(Atoms.ExceptionReasons.TypeMismatch)
+    }
     case _ => exception(Atoms.ExceptionReasons.TypeMismatch)
   }
 }
