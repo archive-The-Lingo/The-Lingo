@@ -1,5 +1,7 @@
 package lingo.corefp
 
+import lingo.corefp.utils.Nat
+
 sealed abstract class Exp(name: Atom, xs: List[Value]) {
   def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value
 
@@ -72,15 +74,24 @@ case object NotDebugStack extends MaybeDebugStack {
   override def updated(x: Location): NotDebugStack.type = NotDebugStack
 }
 
+object Trivial {
+  private val instance: Value = TaggedSeq(Atoms.Tags.Trivial)
+
+  def apply(): Value = instance
+}
+
 object ValueLocation extends CachedValueT[Location] {
   override val helper = Helper()
 
-  override def internal_apply(x: Location): Value = todo()
+  override def internal_apply(x: Location): Value = x match {
+    case UNIXFileLocation(file, location, Some(name)) => TaggedSeq(Atoms.Tags.UNIXFilePosition, ValueString(file), ValueNat(location), ValueString(name))
+    case UNIXFileLocation(file, location, None) => TaggedSeq(Atoms.Tags.UNIXFilePosition, ValueString(file), ValueNat(location), Trivial())
+  }
 
   override def internal_unapply(x: Value): Option[Location] = todo()
 }
 
-final case class UNIXFileLocation(file: String, location: Int) extends Location
+final case class UNIXFileLocation(file: String, location: Nat, name: Option[String]) extends Location
 
 final case class Located(location: Location, x: Exp) extends Exp(Atoms.Exps.Located, List(ValueLocation(location), ValueExp(x))) {
   override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval(env, debugStack.updated(location))

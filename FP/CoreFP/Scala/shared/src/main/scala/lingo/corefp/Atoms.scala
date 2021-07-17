@@ -18,6 +18,8 @@ object Atoms {
     val Char: Atom = Atom("字符")
     val String: Atom = Atom("字串")
     val Mapping: Atom = Atom("映射")
+    val UNIXFilePosition: Atom = Atom("座標/UNIX文件")
+    val Trivial: Atom = Atom("元")
   }
 
   object Exps {
