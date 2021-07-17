@@ -51,6 +51,7 @@ object Atoms {
     val ElimResourceData: Atom = Atom("資源.值")
     val ElimBoolean: Atom = Atom("若")
     val Equal: Atom = Atom("等？")
+    val Eval:Atom=Atom("算")
   }
 
   object ExceptionReasons {

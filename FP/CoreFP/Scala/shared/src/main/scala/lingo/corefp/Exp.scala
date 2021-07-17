@@ -78,6 +78,12 @@ object Trivial {
   private val instance: Value = TaggedSeq(Atoms.Tags.Trivial)
 
   def apply(): Value = instance
+
+  def unapply(x: Value): Boolean = x match {
+    case TaggedSeq(Atoms.Tags.Trivial) => true
+    case _ => false
+  }
+
 }
 
 object ValueLocation extends CachedValueT[Location] {
@@ -88,7 +94,11 @@ object ValueLocation extends CachedValueT[Location] {
     case UNIXFileLocation(file, location, None) => TaggedSeq(Atoms.Tags.UNIXFilePosition, ValueString(file), ValueNat(location), Trivial())
   }
 
-  override def internal_unapply(x: Value): Option[Location] = todo()
+  override def internal_unapply(x: Value): Option[Location] = x match {
+    case TaggedSeq(Atoms.Tags.UNIXFilePosition, ValueString(file), ValueNat(location), ValueString(name)) => Some(UNIXFileLocation(file, location, Some(name)))
+    case TaggedSeq(Atoms.Tags.UNIXFilePosition, ValueString(file), ValueNat(location), Trivial()) => Some(UNIXFileLocation(file, location, None))
+    case _ => None
+  }
 }
 
 final case class UNIXFileLocation(file: String, location: Nat, name: Option[String]) extends Location
@@ -105,7 +115,12 @@ object ExpExtractorLocated extends ExpExtractorT[Located] {
 }
 
 final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) {
-  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = todo()
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = f.eval match {
+    case ValueClosure(c) => c.apply(xs.map(_.eval)).getOrElse({
+      todo()
+    })
+    case _ => todo()
+  }
 }
 
 object ExpExtractorApplyFunction extends ExpExtractorT[ApplyFunction] {
@@ -144,7 +159,10 @@ object ValueVar extends CachedValueT[Var] {
 
   override protected def internal_apply(x: Var): Value = x.toValue
 
-  override protected def internal_unapply(x: Value): Option[Var] = todo()
+  override protected def internal_unapply(x: Value): Option[Var] = x match {
+    case ValueExp(x: Var) => Some(x)
+    case _ => None
+  }
 }
 
 final case class Function(args: Args, body: Exp) extends Exp(Atoms.Func, List(ValueArgs(args), ValueExp(body))) {
@@ -175,6 +193,7 @@ object ExpExtractorRecursive extends ExpExtractorT[Recursive] {
 }
 
 sealed abstract class Builtin(name: Atom, xs: List[Exp]) extends Exp(Atoms.Builtin, List(name, ValueExp.ValueListExp(xs))) {
+  // todo debugstack
   protected final def exception(env: ValueHashMap.Type, reason: Atom): Value =
     Builtin.exception(this.name, this.xs, env, reason)
 }
@@ -211,6 +230,8 @@ object ExpExtractorBuiltin extends ExpExtractorT[Builtin] {
       case BuiltinExtractorElimResourceData(x) => Some(x)
       case BuiltinExtractorElimBoolean(x) => Some(x)
       case BuiltinExtractorEqual(x) => Some(x)
+      case BuiltinExtractorBuiltinEval(x) => Some(x)
+      case BuiltinExtractorBuiltinApplyFunction(x) => Some(x)
       case _ => None
     }
     case _ => None
@@ -517,4 +538,33 @@ object BuiltinExtractorEqual extends BuiltinFunctionBinaryExtractorT[Equal] {
     case _ => None
   }
 }
-// todo builtin apply/eval
+
+final case class BuiltinEval(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.Builtins.Eval, x, y) {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = (x.eval, y.eval) match {
+    case (ValueHashMap(env), ValueExp(e)) => e.eval(env, implicitly)
+    case _ => exception(env, Atoms.ExceptionReasons.IllegalExp)
+  }
+}
+
+object BuiltinExtractorBuiltinEval extends BuiltinFunctionBinaryExtractorT[BuiltinEval] {
+  override def unapply(x: GeneralBuiltinFunctionBinary): Option[BuiltinEval] = x match {
+    case GeneralBuiltinFunctionBinary(Atoms.Builtins.Eval, x, y) => Some(BuiltinEval(x, y))
+    case _ => None
+  }
+}
+
+final case class BuiltinApplyFunction(x: Exp, y: Exp) extends BuiltinFunctionBinary(Atoms.ApplyFunction, x, y) {
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = (x.eval, y.eval) match {
+    case (ValueClosure(c), ValueList(xs)) => c.apply(xs).getOrElse({
+      exception(env, Atoms.ExceptionReasons.ArgsMismatch)
+    })
+    case _ => exception(env, Atoms.ExceptionReasons.TypeMismatch)
+  }
+}
+
+object BuiltinExtractorBuiltinApplyFunction extends BuiltinFunctionBinaryExtractorT[BuiltinApplyFunction] {
+  override def unapply(x: GeneralBuiltinFunctionBinary): Option[BuiltinApplyFunction] = x match {
+    case GeneralBuiltinFunctionBinary(Atoms.Builtins.Eval, x, y) => Some(BuiltinApplyFunction(x, y))
+    case _ => None
+  }
+}
