@@ -83,7 +83,7 @@ object ValueLocation extends CachedValueT[Location] {
 final case class UNIXFileLocation(file: String, location: Int) extends Location
 
 final case class Located(location: Location, x: Exp) extends Exp(Atoms.Exps.Located, List(ValueLocation(location), ValueExp(x))) {
-  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval
+  override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = x.eval(env, debugStack.updated(location))
 }
 
 object ExpExtractorLocated extends ExpExtractorT[Located] {
