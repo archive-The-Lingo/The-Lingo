@@ -117,9 +117,9 @@ object ExpExtractorLocated extends ExpExtractorT[Located] {
 final case class ApplyFunction(f: Exp, xs: List[Exp]) extends Exp(Atoms.ApplyFunction, List(ValueExp(f), ValueExp.ValueListExp(xs))) {
   override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = f.eval match {
     case ValueClosure(c) => c.apply(xs.map(_.eval)).getOrElse({
-      Builtin.exception(Atoms.Builtins.Eval, List(Quote(ValueHashMap(env)), Quote(ValueExp(this))), Atoms.ExceptionReasons.ArgsMismatch)
+      Builtin.evalException(this, Atoms.ExceptionReasons.ArgsMismatch)
     })
-    case _ => Builtin.exception(Atoms.Builtins.Eval, List(Quote(ValueHashMap(env)), Quote(ValueExp(this))), Atoms.ExceptionReasons.TypeMismatch)
+    case _ => Builtin.evalException(this, Atoms.ExceptionReasons.TypeMismatch)
   }
 }
 
@@ -132,7 +132,10 @@ object ExpExtractorApplyFunction extends ExpExtractorT[ApplyFunction] {
 
 final case class ApplyMacro(m: Exp, xs: List[Exp]) extends Exp(Atoms.Exps.ApplyMacro, List(ValueExp(m), ValueExp.ValueListExp(xs))) {
   override def eval(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = m.eval match {
-    case _ => todo()
+    case ValueMacro(Macro(mc)) => mc.apply(ValueHashMap(env) :: xs.map(_.eval)).getOrElse({
+      Builtin.evalException(this, Atoms.ExceptionReasons.ArgsMismatch)
+    })
+    case _ => Builtin.evalException(this, Atoms.ExceptionReasons.TypeMismatch)
   }
 }
 
@@ -202,6 +205,8 @@ sealed abstract class Builtin(name: Atom, xs: List[Exp]) extends Exp(Atoms.Built
 object Builtin {
   // todo debugstack
   private[corefp] def exception(name: Atom, xs: List[Exp], reason: Atom)(implicit env: ValueHashMap.Type, _debugStack: MaybeDebugStack): Value = ExceptionSeq(Atoms.Builtin, reason, name, ValueExp.ValueListExp(xs), ValueHashMap(env))
+
+  private[corefp] def evalException(x: Exp, reason: Atom)(implicit env: ValueHashMap.Type, debugStack: MaybeDebugStack): Value = Builtin.exception(Atoms.Builtins.Eval, List(Quote(ValueHashMap(env)), Quote(ValueExp(x))), reason)
 }
 
 final case class GeneralBuiltin(name: Atom, xs: List[Exp])
