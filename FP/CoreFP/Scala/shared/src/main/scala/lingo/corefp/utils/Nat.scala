@@ -49,7 +49,8 @@ final class Nat(val bigInt: BigInt)
 
   override def hashCode(): Int = bigInt.hashCode()
 
-  override def equals(that: Any): Boolean = that equals bigInt
+  // comparing values of types Any and scala.math.BigInt using `equals` unsafely bypasses cooperative equality; use `==` instead
+  override def equals(that: Any): Boolean = that == bigInt // that equals bigInt
 
   override def isValidByte = bigInt.isValidByte
 
