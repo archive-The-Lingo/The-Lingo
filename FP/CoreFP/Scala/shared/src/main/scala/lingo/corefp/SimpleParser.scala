@@ -33,12 +33,8 @@ final case class SimpleParser(file: String = "") {
 
   def quote[_: P]: P[Exp] = P("'" ~/ value).map(Quote)
 
-  private def success[T, _: P](x: T): P[T] = todo()
-
-  private def fail[T, _: P](): P[T] = todo()
-
-  def builtin[_: P] = P("@[" ~/ skipWhitespace ~ atom ~ whitespace ~ exps ~ skipWhitespace ~ "]").flatMap(x => GeneralBuiltin(x._1, x._2) match {
-    case GeneralBuiltinExtractor(x) => success(x)
-    case _ => fail()
+  def builtin[_: P]: P[Builtin] = P("@[" ~/ skipWhitespace ~ atom ~ whitespace ~ exps ~ skipWhitespace ~ "]").flatMap(x => GeneralBuiltin(x._1, x._2) match {
+    case GeneralBuiltinExtractor(x) => Pass.map(_ => x)
+    case _ => Fail.opaque("Illegal Builtin")
   })
 }
