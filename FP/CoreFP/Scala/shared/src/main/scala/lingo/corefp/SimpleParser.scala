@@ -9,7 +9,7 @@ final case class SimpleParser(file: String = "") {
 
   def value[_: P]: P[Value] = P(atom | list | tagged)
 
-  def exp[_: P]: P[Exp] = P(applyFunction | applyMacro | quote | builtin)
+  def exp[_: P]: P[Exp] = P(applyFunction | applyMacro | quote | builtin | variable | lambda | rec | comment | located)
 
   // [\u4e00-\u9fa5] is Chinese chars
   private val atomRegex = "(\\w|[-？?/*:><]|[\u4e00-\u9fa5])+".r
@@ -25,16 +25,32 @@ final case class SimpleParser(file: String = "") {
   // todo: dot
   def list[_: P]: P[Value] = P("(" ~/ skipWhitespace ~ values ~ skipWhitespace ~ ")").map(ValueList(_))
 
-  def tagged[_: P]: P[Value] = P("#(" ~/ skipWhitespace ~ value ~ whitespace ~ values ~ skipWhitespace ~ ")").map(x => Tagged(x._1, ValueList(x._2)))
+  def tagged[_: P]: P[Tagged] = P("#(" ~/ skipWhitespace ~ value ~ whitespace ~ values ~ skipWhitespace ~ ")").map(x => Tagged(x._1, ValueList(x._2)))
 
-  def applyFunction[_: P]: P[Exp] = P("[" ~/ skipWhitespace ~ exp ~ whitespace ~ exps ~ skipWhitespace ~ "]").map(x => ApplyFunction(x._1, x._2))
+  def applyFunction[_: P]: P[ApplyFunction] = P("[" ~/ skipWhitespace ~ exp ~ whitespace ~ exps ~ skipWhitespace ~ "]").map(x => ApplyFunction(x._1, x._2))
 
-  def applyMacro[_: P]: P[Exp] = P("{" ~/ skipWhitespace ~ exp ~ whitespace ~ exps ~ skipWhitespace ~ "}").map(x => ApplyMacro(x._1, x._2))
+  def applyMacro[_: P]: P[ApplyMacro] = P("{" ~/ skipWhitespace ~ exp ~ whitespace ~ exps ~ skipWhitespace ~ "}").map(x => ApplyMacro(x._1, x._2))
 
-  def quote[_: P]: P[Exp] = P("'" ~/ value).map(Quote)
+  def quote[_: P]: P[Quote] = P("'" ~/ value).map(Quote)
 
   def builtin[_: P]: P[Builtin] = P("@[" ~/ skipWhitespace ~ atom ~ whitespace ~ exps ~ skipWhitespace ~ "]").flatMap(x => GeneralBuiltin(x._1, x._2) match {
     case GeneralBuiltinExtractor(x) => Pass.map(_ => x)
     case _ => Fail.opaque("Illegal Builtin")
+  })
+
+  def variable[_: P]: P[Var] = P("$" ~/ value).map(Var)
+
+  def lambda[_: P]: P[Function] = P("={" ~/ skipWhitespace ~ value ~ whitespace ~ exp ~ "}").flatMap({
+    case (ValueArgs(args), body) => Pass.map(_ => Function(args, body))
+    case _ => Fail.opaque("Illegal arguments pattern")
+  })
+
+  def rec[_: P]: P[Recursive] = P("*{" ~/ skipWhitespace ~ variable ~ whitespace ~ exp ~ "}").map(x => Recursive(x._1, x._2))
+
+  def comment[_: P]: P[Commented] = P("%{" ~/ skipWhitespace ~ value ~ whitespace ~ exp ~ "}").map(x => Commented(x._1, x._2))
+
+  def located[_: P]: P[Located] = P("~{" ~/ skipWhitespace ~ value ~ whitespace ~ exp ~ "}").flatMap({
+    case (ValueLocation(loc), expr) => Pass.map(_ => Located(loc, expr))
+    case _ => Fail.opaque("Illegal Location")
   })
 }
