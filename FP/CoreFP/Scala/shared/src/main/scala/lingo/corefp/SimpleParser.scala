@@ -1,6 +1,10 @@
 package lingo.corefp
 
-import fastparse._, NoWhitespace._
+import fastparse._
+import NoWhitespace._
+import lingo.corefp.utils.Nat
+
+final case class SimpleParserFailure(expected: String, index: Nat, aggregateMsg: String)
 
 final case class SimpleParser(file: String = "") {
   private def whitespace[_: P] = P(CharsWhileIn(" \r\n\t"))
@@ -9,7 +13,15 @@ final case class SimpleParser(file: String = "") {
 
   def value[_: P]: P[Value] = P(atom | list | tagged)
 
-  def exp[_: P]: P[Exp] = P(applyFunction | applyMacro | quote | builtin | variable | lambda | rec | comment | located)
+  private def valueEnd[_: P]: P[Value] = P(value ~ End)
+
+  def parseValue(x: String): Either[SimpleParserFailure, Value] = parse(x, valueEnd(_)) match {
+    case Parsed.Success(x, _) => Right(x)
+    case Parsed.Failure(expected, failIndex, extra) => Left(SimpleParserFailure(expected, Nat(failIndex), extra.trace().longAggregateMsg))
+    case _ => throw new IllegalStateException() // suppress warning
+  }
+
+  def exp[_: P]: P[Exp] = P((parserLocation ~ (applyFunction | applyMacro | quote | builtin | variable | lambda | rec | comment)).map(x => Located(x._1, x._2)) | located)
 
   // [\u4e00-\u9fa5] is Chinese chars
   private val atomRegex = "(\\w|[-？?/*:><]|[\u4e00-\u9fa5])+".r
@@ -53,4 +65,6 @@ final case class SimpleParser(file: String = "") {
     case (ValueLocation(loc), expr) => Pass.map(_ => Located(loc, expr))
     case _ => Fail.opaque("Illegal Location")
   })
+
+  def parserLocation[_: P]: P[Location] = P(Index).map(x => UNIXFileLocation(file, Nat(x), None))
 }
