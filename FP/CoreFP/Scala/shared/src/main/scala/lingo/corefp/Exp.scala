@@ -215,30 +215,37 @@ trait BuiltinExtractorT[T <: Exp] {
   def unapply(x: GeneralBuiltin): Option[T]
 }
 
+object GeneralBuiltinExtractor {
+  def unapply(x: GeneralBuiltin): Option[Builtin] = x match {
+    case BuiltinExtractorIsAtom(x) => Some(x)
+    case BuiltinExtractorIsEmptyList(x) => Some(x)
+    case BuiltinExtractorIsNonEmptyList(x) => Some(x)
+    case BuiltinExtractorIsTagged(x) => Some(x)
+    case BuiltinExtractorIsException(x) => Some(x)
+    case BuiltinExtractorIsResource(x) => Some(x)
+    case BuiltinExtractorIntroNonEmptyList(x) => Some(x)
+    case BuiltinExtractorElimNonEmptyListHead(x) => Some(x)
+    case BuiltinExtractorElimNonEmptyListTail(x) => Some(x)
+    case BuiltinExtractorIntroTagged(x) => Some(x)
+    case BuiltinExtractorElimTaggedTag(x) => Some(x)
+    case BuiltinExtractorElimTaggedData(x) => Some(x)
+    case BuiltinExtractorIntroException(x) => Some(x)
+    case BuiltinExtractorElimExceptionTag(x) => Some(x)
+    case BuiltinExtractorElimExceptionData(x) => Some(x)
+    case BuiltinExtractorElimResourceTag(x) => Some(x)
+    case BuiltinExtractorElimResourceData(x) => Some(x)
+    case BuiltinExtractorElimBoolean(x) => Some(x)
+    case BuiltinExtractorEqual(x) => Some(x)
+    case BuiltinExtractorBuiltinEval(x) => Some(x)
+    case BuiltinExtractorBuiltinApplyFunction(x) => Some(x)
+    case _ => None
+  }
+}
+
 object ExpExtractorBuiltin extends ExpExtractorT[Builtin] {
   override def unapply(x: GeneralExp): Option[Builtin] = x match {
     case GeneralExp(Atoms.Builtin, List(name: Atom, ValueExp.ValueListExp(xs))) => GeneralBuiltin(name, xs) match {
-      case BuiltinExtractorIsAtom(x) => Some(x)
-      case BuiltinExtractorIsEmptyList(x) => Some(x)
-      case BuiltinExtractorIsNonEmptyList(x) => Some(x)
-      case BuiltinExtractorIsTagged(x) => Some(x)
-      case BuiltinExtractorIsException(x) => Some(x)
-      case BuiltinExtractorIsResource(x) => Some(x)
-      case BuiltinExtractorIntroNonEmptyList(x) => Some(x)
-      case BuiltinExtractorElimNonEmptyListHead(x) => Some(x)
-      case BuiltinExtractorElimNonEmptyListTail(x) => Some(x)
-      case BuiltinExtractorIntroTagged(x) => Some(x)
-      case BuiltinExtractorElimTaggedTag(x) => Some(x)
-      case BuiltinExtractorElimTaggedData(x) => Some(x)
-      case BuiltinExtractorIntroException(x) => Some(x)
-      case BuiltinExtractorElimExceptionTag(x) => Some(x)
-      case BuiltinExtractorElimExceptionData(x) => Some(x)
-      case BuiltinExtractorElimResourceTag(x) => Some(x)
-      case BuiltinExtractorElimResourceData(x) => Some(x)
-      case BuiltinExtractorElimBoolean(x) => Some(x)
-      case BuiltinExtractorEqual(x) => Some(x)
-      case BuiltinExtractorBuiltinEval(x) => Some(x)
-      case BuiltinExtractorBuiltinApplyFunction(x) => Some(x)
+      case GeneralBuiltinExtractor(x) => Some(x)
       case _ => None
     }
     case _ => None

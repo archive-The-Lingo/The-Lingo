@@ -5,13 +5,11 @@ import izumi.reflect.macrortti.LightTypeTag
 import izumi.reflect.macrortti.LTT
 import izumi.reflect.Tag
 
-/*
 object todo {
   def apply[A](): A = {
     throw new java.lang.Exception("WIP")
   }
 }
-*/
 
 object typeOf {
   def apply[T](implicit ev: Tag[T]): LightTypeTag = ev.tag
