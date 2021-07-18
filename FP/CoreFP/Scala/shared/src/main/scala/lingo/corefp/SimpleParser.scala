@@ -5,7 +5,7 @@ import fastparse._, NoWhitespace._
 final case class SimpleParser(file: String = "") {
   private def whitespace[_: P] = P(CharsWhileIn(" \r\n\t"))
 
-  private def skipWhitepace[_: P] = P(CharsWhileIn(" \r\n\t", 0))
+  private def skipWhitespace[_: P] = P(CharsWhileIn(" \r\n\t", 0))
 
   def value[_: P]: P[Value] = P(atom | list | tagged)
 
@@ -18,17 +18,17 @@ final case class SimpleParser(file: String = "") {
 
   def atom[_: P] = P(CharsWhile(isAtomChar).!).map(Atom(_))
 
-  private def values[_: P]: P[List[Value]] = P(skipWhitepace ~ value.rep(sep = whitespace./)).map(xs => xs.toList)
+  private def values[_: P]: P[List[Value]] = P(skipWhitespace ~ value.rep(sep = whitespace./)).map(xs => xs.toList)
 
-  private def exps[_: P]: P[List[Exp]] = P(skipWhitepace ~ exp.rep(sep = whitespace./)).map(xs => xs.toList)
+  private def exps[_: P]: P[List[Exp]] = P(skipWhitespace ~ exp.rep(sep = whitespace./)).map(xs => xs.toList)
 
-  def list[_: P]: P[Value] = P("(" ~/ skipWhitepace ~ values ~ skipWhitepace ~ ")").map(ValueList(_))
+  def list[_: P]: P[Value] = P("(" ~/ skipWhitespace ~ values ~ skipWhitespace ~ ")").map(ValueList(_))
 
-  def tagged[_: P]: P[Value] = P("#(" ~/ skipWhitepace ~ value ~ whitespace ~ values ~ skipWhitepace ~ ")").map(x => Tagged(x._1, ValueList(x._2)))
+  def tagged[_: P]: P[Value] = P("#(" ~/ skipWhitespace ~ value ~ whitespace ~ values ~ skipWhitespace ~ ")").map(x => Tagged(x._1, ValueList(x._2)))
 
-  def applyFunction[_: P]: P[Exp] = P("[" ~/ skipWhitepace ~ exp ~ whitespace ~ exps ~ skipWhitepace ~ "]").map(x => ApplyFunction(x._1, x._2))
+  def applyFunction[_: P]: P[Exp] = P("[" ~/ skipWhitespace ~ exp ~ whitespace ~ exps ~ skipWhitespace ~ "]").map(x => ApplyFunction(x._1, x._2))
 
-  def applyMacro[_: P]: P[Exp] = P("{" ~/ skipWhitepace ~ exp ~ whitespace ~ exps ~ skipWhitepace ~ "}").map(x => ApplyMacro(x._1, x._2))
+  def applyMacro[_: P]: P[Exp] = P("{" ~/ skipWhitespace ~ exp ~ whitespace ~ exps ~ skipWhitespace ~ "}").map(x => ApplyMacro(x._1, x._2))
 
   def quote[_: P]: P[Exp] = P("'" ~/ value).map(Quote)
 }
