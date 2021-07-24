@@ -1,5 +1,7 @@
 # MinimalExp
 
+superset of ToyExp
+
 subset of r7rs
 
 ## Types
@@ -55,3 +57,7 @@ type error is not defined
 + `vector->list` (one operand)
 + `vector-length`
 + `vector-ref`
+
++ `symbol?`
++ `symbol->string`
++ `string->symbol`

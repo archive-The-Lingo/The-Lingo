@@ -15,6 +15,9 @@ not subset of r7rs (`#%record`)
 
 ## Extra Procedures
 
++ `(eqv? x y)`
++ `(equal? x y)`
+
 + `(force x)`
 + `(promise? x)`
 
