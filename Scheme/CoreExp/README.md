@@ -43,8 +43,11 @@ subset of r7rs
 
 + `integer?`
 + `+` `-` `*` `/` (two operands)
+  Division by zero is not defined
 + `=` `<` `>` `<=` `>=` (two operands)
 
 + `vector?`
 + `list->vector`
 + `vector->list` (one operand)
++ `vector-length`
++ `vector-ref`
