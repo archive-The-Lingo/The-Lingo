@@ -1,57 +1,22 @@
 # CoreExp
 
-subset of r7rs
+superset of MinimalExp
 
-## Types
+## Extra Types
 
-+ null
-+ pair
-+ procedure
-+ boolean
-+ symbol
-+ char
-+ string
-+ integer
-+ vector
++ promise
++ #%record
 
-## Syntax
+## Extra Syntax
 
-+ `(f x...)`
-+ `(lambda (x...) body)`
-+ `(quote x)`
-+ `(if b x y)`
-+ `(letrec ((x y) ...) body)`
++ `(delay x)`
 
-## Procedures
+## Extra Procedures
 
-type error is not defined
++ `(force x)`
++ `(promise? x)`
 
-+ `eq?`
-+ `apply`
-
-+ `car`
-+ `cdr`
-+ `pair?`
-+ `cons`
-+ `null?`
-
-+ `boolean?`
-
-+ `string?`
-+ `string->list`
-+ `list->string`
-
-+ `char?`
-+ `char->integer`
-+ `integer->char`
-
-+ `integer?`
-+ `+` `-` `*` `/` (two operands)
-  Division by zero is not defined
-+ `=` `<` `>` `<=` `>=` (two operands)
-
-+ `vector?`
-+ `list->vector`
-+ `vector->list` (one operand)
-+ `vector-length`
-+ `vector-ref`
++ `(#%record? x)`
++ `(#%record name fields)`
++ `(#%record-name x)`
++ `(#%record-fields x)`
