@@ -20,10 +20,14 @@ subset of r7rs
 + `(lambda (x...) body)`
 + `(quote x)`
 + `(if b x y)`
++ `(letrec ((x y) ...) body)`
 
 ## Procedures
 
+type error is not defined
+
 + `eq?`
++ `apply`
 
 + `car`
 + `cdr`
