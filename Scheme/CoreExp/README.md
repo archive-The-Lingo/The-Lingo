@@ -2,6 +2,8 @@
 
 superset of MinimalExp
 
+not subset of r7rs (`#%record`)
+
 ## Extra Types
 
 + promise
@@ -17,6 +19,7 @@ superset of MinimalExp
 + `(promise? x)`
 
 + `(#%record? x)`
-+ `(#%record name fields)`
++ `(#%record name fields)` fields: list
 + `(#%record-name x)`
 + `(#%record-fields x)`
++ `(#%record-field-ref x i)`
