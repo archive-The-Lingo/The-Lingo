@@ -61,7 +61,7 @@
    (cons 'vector->list _vector->list)
    (cons 'vector-length _vector-length)
    (cons 'vector-ref _vector-ref)))
- 
+
 (define (may-force x) (if (promise? x) (force x) x))
 
 (define (_eval x raw-env)
@@ -159,3 +159,5 @@
 (define .id '(lambda (x) x))
 
 (test-check "((id (id id)) 'a)" (evaluate `((,.id (,.id ,.id)) 'a)) 'a)
+
+(test-check "simple letrec" (evaluate `(letrec ((a b) (b 0)) a)) 0)
