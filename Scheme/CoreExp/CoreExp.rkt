@@ -117,3 +117,19 @@
           (if (pair? xs)
               (match-args maybe-rest (cdr main-pattern) (cdr xs) (cons (cons (car main-pattern) (car xs)) env))
               (error "not enough arguments")))))
+
+(define (evaluate x . rest)
+  (cond
+    ((null? rest) (_eval x top-level))
+    ((= (length rest) 1) (_eval x (car rest)))
+    (else (error "evaluate: too many arguments"))))
+
+; ------------- tests ---------
+
+(define (test-check title tested-expression expected-result)
+  (if (equal? tested-expression expected-result)
+      #t
+      (error (string-append "Failed:" title))))
+
+
+(test-check "'(a b c)" (evaluate '(quote (a b c))) '(a b c))
