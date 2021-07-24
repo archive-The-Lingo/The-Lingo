@@ -133,3 +133,11 @@
 
 
 (test-check "'(a b c)" (evaluate '(quote (a b c))) '(a b c))
+
+(define .list '(lambda xs xs))
+
+(test-check "(list 'a 'b 'c)" (evaluate `(,.list (quote a) (quote b) (quote c))) '(a b c))
+
+(define .id '(lambda (x) x))
+
+(test-check "((id (id id)) 'a)" (evaluate `((,.id (,.id ,.id)) 'a)) 'a)
