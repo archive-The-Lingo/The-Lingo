@@ -1,6 +1,6 @@
 # The Scheme Lingo
 
-# Type
+## Type
 
 + null
 + pair
