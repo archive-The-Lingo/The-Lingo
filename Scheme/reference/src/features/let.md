@@ -1,0 +1,5 @@
+# let
+
+## Syntax
+
++ `let`
