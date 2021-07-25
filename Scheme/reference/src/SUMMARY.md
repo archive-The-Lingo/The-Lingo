@@ -11,5 +11,7 @@
     - [minimal-integer](features/minimal-integer.md)
     - [number](features/number.md)
     - [promise](features/promise.md)
+    - [quasiquote](features/quasiquote.md)
+    - [r7rs-small](features/r7rs-small.md)
     - [string](features/string.md)
     - [vector](features/vector.md)
