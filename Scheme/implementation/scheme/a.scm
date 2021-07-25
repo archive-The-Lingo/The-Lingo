@@ -29,6 +29,11 @@
 (define (_vector->list x) (vector->list x))
 (define (_vector-length x) (vector-length x))
 (define (_vector-ref v x) (vector-ref v x))
+#|
+(define (#%make-record-type name count)
+  (let-values (((struct: make ? ref set!) (make-struct-type name #f count 0)))
+    (list make ? (map (lambda (n) (lambda (x) (ref x n))) (range count)))))
+|#
 
 (define top-level
   (list
