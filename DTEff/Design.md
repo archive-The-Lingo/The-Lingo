@@ -69,8 +69,8 @@ There are two types of type markers.
 + Effect
   + io
 + Function Attribute
-  + div?
-  + sized?
+  + div? -> become Value Attribute in lazy languages
+  + sized? -> become Value Attribute in lazy languages
 + Value Attribute
   + erased at runtime / linear
   + not fully type checked
