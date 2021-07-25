@@ -103,3 +103,5 @@ final case class Lambda(id: Identifier, body: Exp) extends Exp
 final case class PiV(domain: TypeOrNotYet, codomain: Closure) extends BaseType
 
 final case class Pi(domain: Exp, domainId: Identifier, codomain: Exp) extends Exp
+
+final case class Rec(id: Identifier, body: Exp) extends Exp
