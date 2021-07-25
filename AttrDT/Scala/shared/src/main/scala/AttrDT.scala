@@ -64,6 +64,8 @@ final case class Zero extends Value
 
 final case class Succ(x: Value) extends Value
 
+final case class NatNum extends BaseType
+
 def natToValue(x: Nat): Value = if (x == 0) Zero else Succ(natToValue(x - 1))
 
 final case class Atom(x: Symbol) extends Value
@@ -74,4 +76,8 @@ final case class Trivial extends BaseType
 
 final case class Cons(a: Value, d: Value) extends Value
 
+final case class Sigma(a: TypeOrNotYet, d: Closure) extends BaseType
+
 final case class Closure(id: NeuVar, body: Value) extends Value
+
+final case class Pi(a: TypeOrNotYet, d: Closure) extends BaseType
