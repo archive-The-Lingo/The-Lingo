@@ -1,7 +1,7 @@
 ;#lang racket
 ;(define-syntax letrec* (syntax-rules () ((_ binds body) (letrec binds body)))); Racket
 ; GNU Guile / Chez Scheme / BiwaScheme / Racket
-; BiwaScheme does not support `(error)`
+; BiwaScheme does not support `(error)` and does not have a real `integer`
 ; Racket does not support letrec*
 ;(define (error . xs) (raise xs)); BiwaScheme
 
