@@ -15,7 +15,7 @@
 + `(quote x)`
 + `(if b x y)`
 
-## Builtin Procedure
+## Procedure
 
 error is not defined
 
