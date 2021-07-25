@@ -145,7 +145,7 @@
              (if (= (length xs) 2)
                  (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
                    (if (no-duplicate (map car parsed-lets))
-                       (letrec ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) letrec-env))
+                       (letrec* ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) letrec-env))
                                 (inner-env (map (lambda (x) (cons (car x) (_e (cdr x) inner-letrec-env env low-letrec-env))) parsed-lets)))
                          (_e body letrec-env (mapping-merge inner-env env) low-letrec-env))
                        (error "eval" "illegal letrec pattern" x)))
@@ -154,7 +154,7 @@
              (if (= (length xs) 2)
                  (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
                    (if (no-duplicate (map car parsed-lets))
-                       (letrec ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) letrec-env))
+                       (letrec* ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) letrec-env))
                                 (make-inner-env (lambda (parsed-lets previous-letrec-env previous-result)
                                                   (if (null? parsed-lets)
                                                       previous-result
@@ -213,7 +213,7 @@
 (define (test-check title tested-expression expected-result)
   (if (equal? tested-expression expected-result)
       #t
-      (error (string-append "Failed:" title))))
+      (error "Failed:" title tested-expression expected-result)))
 
 (test-check "'(a b c)" (evaluate '(quote (a b c))) '(a b c))
 
