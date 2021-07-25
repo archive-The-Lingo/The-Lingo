@@ -14,3 +14,8 @@
 
 + level (n: Nat) ????
 + type-in-type
+
+(Type level=9): (Type level=10)
+
+(Type type-in-type): (Type type-in-type)
+

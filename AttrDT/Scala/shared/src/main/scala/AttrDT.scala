@@ -24,21 +24,17 @@ sealed trait Exp
 
 sealed trait BaseType
 
-final case class AttributeLevel(x: Option[Value])
+sealed trait AttributeLevel
 
-object AttributeLevel {
-  def TypeInType: AttributeLevel = AttributeLevel(None)
-}
+final case class AttributeLevelKnown(x: Value) extends AttributeLevel
 
-final case class AttributeSize(x: Option[Value])
+case object AttributeLevelTypeInType extends AttributeLevel
 
-object AttributeSize {
-  def Diverge: AttributeSize = AttributeSize(None)
+sealed trait AttributeSize
 
-  def apply(x: Option[Value]): AttributeSize = new AttributeSize(x)
+final case class AttributeSizeKnown(x: Value) extends AttributeSize
 
-  def apply(x: NaturalNumber): AttributeSize = new AttributeSize(Some(natToValue(x)))
-}
+case object AttributeSizeFinite extends AttributeSize
 
 sealed trait AttributeUsage
 
@@ -50,7 +46,19 @@ case object AttributeUsageNotLimited extends AttributeUsage
 
 final case class AttributeAssumptions(assumption: Set[TypeOrNotYet])
 
-final case class Attrbutes(level: AttributeLevel, size: Option[AttributeSize], usage: AttributeUsage, dynamic: Boolean, assumptions: AttributeAssumptions)
+sealed trait AttributeDynamic
+
+case object AttributeDynamicYes extends AttributeDynamic
+
+case object AttributeDynamicNo extends AttributeDynamic
+
+sealed trait AttributeDiverge
+
+case object AttributeDivergeYes extends AttributeDiverge
+
+case object AttributeDivergeNo extends AttributeDiverge
+
+final case class Attrbutes(level: AttributeLevel, size: AttributeSize, usage: AttributeUsage, dynamic: AttributeDynamic, diverge: AttributeDiverge, assumptions: AttributeAssumptions)
 
 sealed trait TypeOrNotYet extends Value
 
@@ -62,17 +70,17 @@ sealed trait Neu
 
 final case class NeuVar(x: VarId) extends Neu
 
-final case class ZeroV extends Value
+case object ZeroV extends Value
 
-final case class Zero extends Exp
+case object Zero extends Exp
 
 final case class SuccV(x: Value) extends Value
 
 final case class Succ(x: Exp) extends Exp
 
-final case class NatV extends BaseType
+case object NatV extends BaseType
 
-final case class Nat extends Exp
+case object Nat extends Exp
 
 def natToValue(x: NaturalNumber): Value = if (x == 0) ZeroV else SuccV(natToValue(x - 1))
 
@@ -80,13 +88,13 @@ final case class Atom(x: String) extends Value
 
 final case class Quote(x: String) extends Exp
 
-final case class UnitV extends Value
+case object UnitV extends Value
 
-final case class Unit extends Exp
+case object Unit extends Exp
 
-final case class TrivialV extends BaseType
+case object TrivialV extends BaseType
 
-final case class Trivial extends Exp
+case object Trivial extends Exp
 
 final case class ConsV(a: Value, d: Value) extends Value
 
