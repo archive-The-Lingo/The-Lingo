@@ -1,9 +1,9 @@
 ;#lang racket
+;(define-syntax letrec* (syntax-rules () ((_ binds body) (letrec binds body)))); Racket
 ; GNU Guile / Chez Scheme / BiwaScheme / Racket
 ; BiwaScheme does not support `(error)`
 ; Racket does not support letrec*
 ;(define (error . xs) (raise xs)); BiwaScheme
-;(define-syntax letrec* (syntax-rules () ((_ binds body) (letrec binds body)))); Racket
 
 (define (_eq? x y) (eq? x y))
 (define (_apply f xs) (apply f xs))
@@ -86,6 +86,15 @@
            (mapping-remove k d)
            (cons a (mapping-remove k d)))))
     (else (error "mapping-remove" "illegal mapping" m))))
+(define (mapping-remove* ks m)
+  (cond
+    ((null? m) '())
+    ((pair? m)
+     (let ((a (car m)) (d (cdr m)))
+       (if (memq (car a) ks)
+           (mapping-remove* ks d)
+           (cons a (mapping-remove* ks d)))))
+    (else (error "mapping-remove*" "illegal mapping" m))))
 
 (define (no-duplicate0 x history)
   (cond
@@ -117,7 +126,6 @@
 (define (letrec-env->env letrec-env) (mapping-map (lambda (e) (cons (car e) ((cdr e)))) letrec-env))
 
 (define (_e x letrec-env env low-letrec-env); env: Listof (Symbol * Any) ; letrec-env, low-letrec-env: Listof (Symbol * => Any)
-  ; todo: check duplicates between letrec-env and low-letrec-env
   (cond
     ((null? x) (error "eval" "null"))
     ((symbol? x)
@@ -148,18 +156,18 @@
                  (error "eval" "illegal lambda")))
             ((eq? f 'letrec)
              (if (= (length xs) 2)
-                 (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
+                 (let* ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))) (binds (map car parsed-lets)) (low-letrec-env (mapping-remove* binds low-letrec-env)))
                    (if (no-duplicate (map car parsed-lets))
-                       (letrec* ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) letrec-env))
+                       (letrec* ((inner-letrec-env (mapping-merge (map (lambda (name) (cons name (lambda () (cdr (mapping-assoc name inner-env))))) binds) letrec-env))
                                 (inner-env (map (lambda (x) (cons (car x) (_e (cdr x) inner-letrec-env env low-letrec-env))) parsed-lets)))
                          (_e body letrec-env (mapping-merge inner-env env) low-letrec-env))
                        (error "eval" "illegal letrec pattern" x)))
                  (error "eval" "illegal letrec" x)))
             ((eq? f 'letrec*)
              (if (= (length xs) 2)
-                 (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
+                 (let* ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))) (binds (map car parsed-lets)) (low-letrec-env (mapping-remove* binds low-letrec-env)))
                    (if (no-duplicate (map car parsed-lets))
-                       (letrec* ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) letrec-env))
+                       (letrec* ((inner-letrec-env (mapping-merge (map (lambda (name) (cons name (lambda () (cdr (mapping-assoc name inner-env))))) binds) letrec-env))
                                 (make-inner-env (lambda (parsed-lets previous-letrec-env previous-result)
                                                   (if (null? parsed-lets)
                                                       previous-result
@@ -175,9 +183,9 @@
                  (error "eval" "illegal letrec*" x)))
             ((eq? f '?*letrec-define*)
              (if (= (length xs) 2)
-                 (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
+                 (let* ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))) (binds (map car parsed-lets)) (letrec-env (mapping-remove* binds letrec-env)))
                    (if (no-duplicate (map car parsed-lets))
-                       (letrec* ((inner-low-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) low-letrec-env))
+                       (letrec* ((inner-low-letrec-env (mapping-merge (map (lambda (name) (cons name (lambda () (cdr (mapping-assoc name inner-env))))) binds) low-letrec-env))
                                 (make-inner-env (lambda (parsed-lets previous-low-letrec-env previous-result)
                                                   (if (null? parsed-lets)
                                                       previous-result
