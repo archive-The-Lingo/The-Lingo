@@ -66,3 +66,10 @@ There are two types of type markers.
   + not fully type checked
 
 
++ Effect
+  + io
++ Function Attribute
+  + div?
++ Value Attribute
+  + erased at runtime / linear
+  + not fully type checked
