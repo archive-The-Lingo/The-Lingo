@@ -77,9 +77,9 @@
 (define (apply-args args xs env)
   (cond
     ((pair? args)
-      (if (pair? xs)
-          (apply-args (cdr args) (cdr xs) (mapping-updated (car args) (car xs) env))
-          (error "apply" "not enough arguments")))
+     (if (pair? xs)
+         (apply-args (cdr args) (cdr xs) (mapping-updated (car args) (car xs) env))
+         (error "apply" "not enough arguments")))
     ((null? args)
      (if (null? xs)
          env
@@ -117,15 +117,15 @@
             ((eq? f 'letrec)
              (if (= (length xs) 2)
                  (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
-                   (letrec ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (mapping-assoc name inner-env))))) parsed-lets) letrec-env))
-                            (inner-env (map (lambda (x) (cons (car x) (_e (cdr x) env inner-letrec-env))))))
+                   (letrec ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) letrec-env))
+                            (inner-env (map (lambda (x) (cons (car x) (_e (cdr x) env inner-letrec-env))) parsed-lets)))
                      (_e body (mapping-merge inner-env env) letrec-env)))
                  (error "eval" "illegal letrec" x)))
             ((eq? f 'if)
              (if (= (length xs) 3)
-                (let ((b (car xs)) (x (car (cdr xs))) (y (car (cdr (cdr xs)))))
-                  (if (_e b env letrec-env) (_e x env letrec-env) (_e y env letrec-env)))
-                (error "eval" "illegal if")))))
+                 (let ((b (car xs)) (x (car (cdr xs))) (y (car (cdr (cdr xs)))))
+                   (if (_e b env letrec-env) (_e x env letrec-env) (_e y env letrec-env)))
+                 (error "eval" "illegal if")))))
          (else (apply (_e f env letrec-env) (map (lambda (x) (_e x env empty-mapping)) xs))))))
     (else (error "eval" "illegal expression" x))))
 
@@ -150,7 +150,6 @@
       #t
       (error (string-append "Failed:" title))))
 
-
 (test-check "'(a b c)" (evaluate '(quote (a b c))) '(a b c))
 
 (define .list '(lambda xs xs))
@@ -160,3 +159,11 @@
 (define .id '(lambda (x) x))
 
 (test-check "((id (id id)) 'a)" (evaluate `((,.id (,.id ,.id)) 'a)) 'a)
+
+(test-check
+ "simple letrec"
+ (evaluate
+  '(letrec ((foo (lambda () bar))
+            (bar 7))
+     (cons (foo) bar)))
+ '(7 . 7))
