@@ -124,7 +124,7 @@
          ((symbol? f)
           (cond
             ((mapping-assoc f letrec-env) (error "eval" "the variable will be defined" f))
-            ((mapping-assoc f env) => (lambda (v) (apply (cdr v) (map (lambda (x) (_e x empty-mapping env)) xs))))
+            ((mapping-assoc f env) => (lambda (v) (apply (cdr v) (map (lambda (x) (_e x letrec-env env)) xs))))
             ((eq? f 'quote)
              (if (= (length xs) 1)
                  (car xs)
