@@ -109,7 +109,7 @@
     ((symbol? args) (mapping-updated args xs env))
     (else (error "apply" "illegal arguments pattern"))))
 
-(define (_e x env letrec-env); env: Listof (Symbol * Any) ; letrec-env: Listof (Symbol * => Any)
+(define (_e x letrec-env env); env: Listof (Symbol * Any) ; letrec-env: Listof (Symbol * => Any)
   (cond
     ((null? x) (error "eval" "null"))
     ((symbol? x)
@@ -124,7 +124,7 @@
          ((symbol? f)
           (cond
             ((mapping-assoc f letrec-env) (error "eval" "the variable will be defined" f))
-            ((mapping-assoc f env) => (lambda (v) (apply (cdr v) (map (lambda (x) (_e x env empty-mapping)) xs))))
+            ((mapping-assoc f env) => (lambda (v) (apply (cdr v) (map (lambda (x) (_e x empty-mapping env)) xs))))
             ((eq? f 'quote)
              (if (= (length xs) 1)
                  (car xs)
@@ -133,7 +133,7 @@
              (if (= (length xs) 2)
                  (let ((args (car xs)) (body (car (cdr xs))))
                    (if (and (check-args args) (no-duplicate args))
-                       (lambda xs (_e body (apply-args args xs (mapping-merge (mapping-map (lambda (e) (cons (car e) ((cdr e)))) letrec-env) env)) empty-mapping))
+                       (lambda xs (_e body empty-mapping (apply-args args xs (mapping-merge (mapping-map (lambda (e) (cons (car e) ((cdr e)))) letrec-env) env))))
                        (error "eval" "illegal arguments pattern")))
                  (error "eval" "illegal lambda")))
             ((eq? f 'letrec)
@@ -141,8 +141,8 @@
                  (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
                    (if (no-duplicate (map car parsed-lets))
                        (letrec ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) letrec-env))
-                                (inner-env (map (lambda (x) (cons (car x) (_e (cdr x) env inner-letrec-env))) parsed-lets)))
-                         (_e body (mapping-merge inner-env env) letrec-env))
+                                (inner-env (map (lambda (x) (cons (car x) (_e (cdr x) inner-letrec-env env))) parsed-lets)))
+                         (_e body letrec-env (mapping-merge inner-env env)))
                        (error "eval" "illegal letrec pattern" x)))
                  (error "eval" "illegal letrec" x)))
             ((eq? f 'letrec*)
@@ -158,17 +158,17 @@
                                                              (this-exp (cdr this-let))
                                                              (more-parsed-lets (cdr parsed-lets))
                                                              (this-env (mapping-merge previous-result env)))
-                                                        (make-inner-env more-parsed-lets (mapping-remove this-name previous-letrec-env) (mapping-updated this-name (_e this-exp this-env previous-letrec-env) previous-result))))))
+                                                        (make-inner-env more-parsed-lets (mapping-remove this-name previous-letrec-env) (mapping-updated this-name (_e this-exp previous-letrec-env this-env) previous-result))))))
                                 (inner-env (make-inner-env parsed-lets inner-letrec-env empty-mapping)))
-                         (_e body (mapping-merge inner-env env) letrec-env))
+                         (_e body letrec-env (mapping-merge inner-env env)))
                        (error "eval" "illegal letrec* pattern" x)))
                  (error "eval" "illegal letrec*" x)))
             ((eq? f 'if)
              (if (= (length xs) 3)
                  (let ((b (car xs)) (x (car (cdr xs))) (y (car (cdr (cdr xs)))))
-                   (if (_e b env letrec-env) (_e x env letrec-env) (_e y env letrec-env)))
+                   (if (_e b letrec-env env) (_e x letrec-env env) (_e y letrec-env env)))
                  (error "eval" "illegal if")))))
-         (else (apply (_e f env letrec-env) (map (lambda (x) (_e x env empty-mapping)) xs))))))
+         (else (apply (_e f letrec-env env) (map (lambda (x) (_e x empty-mapping env)) xs))))))
     (else (error "eval" "illegal expression" x))))
 
 (define (parse-let xs); -> Listof (Symbol * Any)
@@ -181,8 +181,8 @@
 
 (define (evaluate x . rest)
   (cond
-    ((null? rest) (_e x top-level empty-mapping))
-    ((= (length rest) 1) (_e x (car rest) empty-mapping))
+    ((null? rest) (_e x empty-mapping top-level))
+    ((= (length rest) 1) (_e x empty-mapping (car rest)))
     (else (error "evaluate" "too many arguments" (cons x rest)))))
 
 ; ------------- tests ---------
