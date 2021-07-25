@@ -1,4 +1,4 @@
-;#lang racket
+; GNU Guile / Chez Scheme
 
 (define (_eq? x y) (eq? x y))
 (define (_apply f xs) (apply f xs))
@@ -172,7 +172,7 @@
              (if (= (length xs) 2)
                  (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
                    (if (no-duplicate (map car parsed-lets))
-                       (letrec ((inner-low-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) low-letrec-env))
+                       (letrec* ((inner-low-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) low-letrec-env))
                                 (make-inner-env (lambda (parsed-lets previous-low-letrec-env previous-result)
                                                   (if (null? parsed-lets)
                                                       previous-result
