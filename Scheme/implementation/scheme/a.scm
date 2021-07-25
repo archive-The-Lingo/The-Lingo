@@ -1,4 +1,5 @@
-; GNU Guile / Chez Scheme
+; GNU Guile / Chez Scheme / BiwaScheme
+; BiwaScheme does not support `(error)`
 
 (define (_eq? x y) (eq? x y))
 (define (_apply f xs) (apply f xs))
