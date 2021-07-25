@@ -6,7 +6,6 @@ To try it out, launch sbt and type:
 
     sbt> crossJS/run
     sbt> crossJVM/run
-    sbt> crossNative/run
 
 More information can be found in the
 [Scala.js documentation](https://www.scala-js.org/doc/project/cross-build.html) and in the [sbt-crossproject](https://github.com/portable-scala/sbt-crossproject) plugin documentation.
