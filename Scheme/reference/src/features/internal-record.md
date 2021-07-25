@@ -9,7 +9,7 @@ depends on [integer](integer)
 ## Procedure
 
 + `(?*record? x)`
-+ `(?*record name fields)` fields: list
++ `(?*record name fields)` fields: list name: symbol
 + `(?*record-name x)`
 + `(?*record-fields x)`
 + `(?*record-field-ref x i)`
