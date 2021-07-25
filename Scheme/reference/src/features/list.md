@@ -10,3 +10,4 @@ depends on [integer](integer)
 + `(list-ref xs k)`
 + `(append xs ys)`
 + `(range n)` `(range n m)`
++ `(map f xs)`
