@@ -1,5 +1,9 @@
-; GNU Guile / Chez Scheme / BiwaScheme
+;#lang racket
+; GNU Guile / Chez Scheme / BiwaScheme / Racket
 ; BiwaScheme does not support `(error)`
+; Racket does not support letrec*
+;(define (error . xs) (raise xs)); BiwaScheme
+;(define-syntax letrec* (syntax-rules () ((_ binds body) (letrec binds body)))); Racket
 
 (define (_eq? x y) (eq? x y))
 (define (_apply f xs) (apply f xs))
