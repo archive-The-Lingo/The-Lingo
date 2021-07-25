@@ -75,3 +75,8 @@ There are two types of type markers.
   + erased at runtime / linear
   + not fully type checked
   + sized?
+
+
+Choice:
+
+Builtin Attributes. Effect not built-in
