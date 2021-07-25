@@ -46,18 +46,32 @@ case object AttributeUsageOnce extends AttributeUsage
 
 case object AttributeUsageNotLimited extends AttributeUsage
 
-final case class AttributeAssumptions(assumption: Set[Type])
+final case class AttributeAssumptions(assumption: Set[TypeOrNotYet])
 
 final case class Attrbutes(level: AttributeLevel, size: Option[AttributeSize], usage: AttributeUsage, dynamic: Boolean, assumptions: AttributeAssumptions)
 
-final case class Type(t: BaseType, attr: Attrbutes) extends Value
+sealed trait TypeOrNotYet extends Value
 
-sealed trait Neu extends Value
+final case class Type(t: BaseType, attr: Attrbutes) extends Value with TypeOrNotYet
+
+final case class NotYetValue(t: TypeOrNotYet, neu: Neu) extends Value with TypeOrNotYet
+
+sealed trait Neu
 
 final case class NeuVar(x: VarId) extends Neu
 
-case object Zero extends Value
+final case class Zero extends Value
 
 final case class Succ(x: Value) extends Value
 
 def natToValue(x: Nat): Value = if (x == 0) Zero else Succ(natToValue(x - 1))
+
+final case class Atom(x: Symbol) extends Value
+
+final case class Unit extends Value
+
+final case class Trivial extends BaseType
+
+final case class Cons(a: Value, d: Value) extends Value
+
+final case class Closure(id: NeuVar, body: Value) extends Value
