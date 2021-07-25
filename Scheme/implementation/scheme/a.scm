@@ -72,6 +72,15 @@
 (define (mapping-map f m) (map f m))
 (define (mapping-merge m1 m2) (append m1 m2))
 (define (mapping-updated k v m) (cons (cons k v) m))
+(define (mapping-remove k m)
+  (cond
+    ((null? m) '())
+    ((pair? m)
+     (let ((a (car m)) (d (cdr m)))
+       (if (eq? k (car a))
+           (mapping-remove k d)
+           (cons a (mapping-remove k d)))))
+    (else (error "mapping-remove" "illegal mapping" m))))
 
 (define (no-duplicate0 x history)
   (cond
@@ -136,6 +145,24 @@
                          (_e body (mapping-merge inner-env env) letrec-env))
                        (error "eval" "illegal letrec pattern" x)))
                  (error "eval" "illegal letrec" x)))
+            ((eq? f 'letrec*)
+             (if (= (length xs) 2)
+                 (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
+                   (if (no-duplicate (map car parsed-lets))
+                       (letrec ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (cdr (mapping-assoc name inner-env)))))) parsed-lets) letrec-env))
+                                (make-inner-env (lambda (parsed-lets previous-letrec-env previous-result)
+                                                  (if (null? parsed-lets)
+                                                      previous-result
+                                                      (let* ((this-let (car parsed-lets))
+                                                             (this-name (car this-let))
+                                                             (this-exp (cdr this-let))
+                                                             (more-parsed-lets (cdr parsed-lets))
+                                                             (this-env (mapping-merge previous-result env)))
+                                                        (make-inner-env more-parsed-lets (mapping-remove this-name previous-letrec-env) (mapping-updated this-name (_e this-exp this-env previous-letrec-env) previous-result))))))
+                                (inner-env (make-inner-env parsed-lets inner-letrec-env empty-mapping)))
+                         (_e body (mapping-merge inner-env env) letrec-env))
+                       (error "eval" "illegal letrec* pattern" x)))
+                 (error "eval" "illegal letrec*" x)))
             ((eq? f 'if)
              (if (= (length xs) 3)
                  (let ((b (car xs)) (x (car (cdr xs))) (y (car (cdr (cdr xs)))))
@@ -179,6 +206,14 @@
  "simple letrec"
  (evaluate
   '(letrec ((foo (lambda () bar))
+            (bar 7))
+     (cons (foo) bar)))
+ '(7 . 7))
+
+(test-check
+ "simple letrec*"
+ (evaluate
+  '(letrec* ((foo (lambda () bar))
             (bar 7))
      (cons (foo) bar)))
  '(7 . 7))
