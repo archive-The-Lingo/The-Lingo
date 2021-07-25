@@ -62,106 +62,86 @@
    (cons 'vector-length _vector-length)
    (cons 'vector-ref _vector-ref)))
 
-#|
-(define (_e x env undef-vars letrec-env); undef-vars: Listof Symbol ; env: Listof (Symbol * Any) ; letrec-env: => Listof (Symbol * Any)
+(define empty-mapping '())
+(define (mapping-assoc k m) (assq k m))
+(define (mapping-map f m) (map f m))
+(define (mapping-merge m1 m2) (append m1 m2))
+(define (mapping-updated k v m) (cons (cons k v) m))
+
+(define (check-args args)
   (cond
+    ((symbol? args) #t)
+    ((null? args) #t)
+    ((pair? args) (and (symbol? (car args)) (check-args (cdr args))))
+    (else #f)))
+(define (apply-args args xs env)
+  (cond
+    ((pair? args)
+      (if (pair? xs)
+          (apply-args (cdr args) (cdr xs) (mapping-updated (car args) (car xs) env))
+          (error "apply" "not enough arguments")))
+    ((null? args)
+     (if (null? xs)
+         env
+         (error "apply" "too many arguments")))
+    ((symbol? args) (mapping-updated args xs env))
+    (else (error "apply" "illegal arguments pattern"))))
+
+(define (_e x env letrec-env); env: Listof (Symbol * Any) ; letrec-env: Listof (Symbol * => Any)
+  (cond
+    ((null? x) (error "eval" "null"))
+    ((symbol? x)
+     (cond
+       ((mapping-assoc x letrec-env) (error "eval" "the variable will be defined" x))
+       ((mapping-assoc x env) => cdr)
+       (else (error "eval" "the variable is not defined" x))))
+    ((or (vector? x) (integer? x) (char? x) (string? x)) x)
     ((list? x)
      (let ((f (car x)) (xs (cdr x)))
        (cond
          ((symbol? f)
           (cond
-            ((memq f undef-vars) (error "eval" "the variable will be defined" f))
-            ((assq f env) => (lambda (v) (apply (cdr v) (map (lambda (x) (_e x env undef-vars letrec-env)) xs))))
+            ((mapping-assoc f letrec-env) (error "eval" "the variable will be defined" f))
+            ((mapping-assoc f env) => (lambda (v) (apply (cdr v) (map (lambda (x) (_e x env empty-mapping)) xs))))
             ((eq? f 'quote)
              (if (= (length xs) 1)
                  (car xs)
                  (error "eval" "illegal quote" x)))
             ((eq? f 'lambda)
              (if (= (length xs) 2)
-                 (let ((parsed-args (parse-args (car xs))) (body (car (cdr xs))))
-                   (let ((maybe-rest (car parsed-args)) (main-pattern (cdr parsed-args)))
-                     (lambda xs
-                       (let ((forced-letrec-env 
-|#
-(define (may-force x) (if (promise? x) (force x) x))
-
-(define (_eval x raw-env)
-  (let ((env (lambda () (may-force raw-env))))
-    (cond
-      ((list? x)
-       (let ((f (car x)) (xs (cdr x)))
-         (cond
-           ((eq? f 'quote)
-            (if (and (pair? xs) (null? (cdr xs)))
-                (car xs)
-                (error "eval: illegal quote")))
-           ((eq? f 'lambda)
-            (if (= (length xs) 2)
-                (let ((parsed-args (parse-args (car xs))) (body (car (cdr xs))))
-                  (let ((maybe-rest (car parsed-args)) (main-pattern (cdr parsed-args)))
-                    (lambda xs (_eval body (match-args maybe-rest main-pattern xs (env))))))
-                (error "eval: illegal lambda")))
-           ((eq? f 'if)
-            (if (= (length xs) 3)
+                 (let ((args (car xs)) (body (car (cdr xs))))
+                   (if (check-args args)
+                       (lambda xs (_e body (apply-args args xs (mapping-merge (mapping-map (lambda (e) (cons (car e) ((cdr e)))) letrec-env) env)) empty-mapping))
+                       (error "eval" "illegal arguments pattern")))
+                 (error "eval" "illegal lambda")))
+            ((eq? f 'letrec)
+             (if (= (length xs) 2)
+                 (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
+                   (letrec ((inner-letrec-env (mapping-merge (map (lambda (x) (let ((name (car x))) (cons name (lambda () (mapping-assoc name inner-env))))) parsed-lets) letrec-env))
+                            (inner-env (map (lambda (x) (cons (car x) (_e (cdr x) env inner-letrec-env))))))
+                     (_e body (mapping-merge inner-env env) letrec-env)))
+                 (error "eval" "illegal letrec" x)))
+            ((eq? f 'if)
+             (if (= (length xs) 3)
                 (let ((b (car xs)) (x (car (cdr xs))) (y (car (cdr (cdr xs)))))
-                  (if (_eval b (env)) (_eval x (env)) (_eval y (env))))
-                (error "eval: illegal if")))
-           ((eq? f 'letrec)
-            (if (= (length xs) 2)
-                (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
-                  (letrec ((inner-env
-                            (delay
-                              (append (map (lambda (element) (cons (car element) (delay (_eval (cdr element) inner-env)))) parsed-lets) (env)))))
-                    (_eval body inner-env)))
-                (error "eval: illegal letrec")))
-           (else (apply (_eval f (env)) (map (lambda (v) (_eval v (env))) xs))))))
-      ((symbol? x)
-       (let ((p (assoc x (env))))
-         (if (eq? p #f)
-             (error "eval: no definition")
-             (may-force (cdr p)))))
-      ((or (integer? x) (vector? x)) x)
-      (else (error "eval: illegal expression")))))
+                  (if (_e b env letrec-env) (_e x env letrec-env) (_e y env letrec-env)))
+                (error "eval" "illegal if")))))
+         (else (apply (_e f env letrec-env) (map (lambda (x) (_e x env empty-mapping)) xs))))))
+    (else (error "eval" "illegal expression" x))))
 
 (define (parse-let xs); -> Listof (Symbol * Any)
   (if (list? xs)
       (map (lambda (element)
              (if (and (list? element) (= (length element) 2) (symbol? (car element)))
                  (cons (car element) (car (cdr element)))
-                 (error "illegal let"))) xs)
-      (error "illegal let")))
-
-(define (parse-args args); -> Maybe Symbol * Listof Symbol
-  (cond
-    ((symbol? args) (cons args '()))
-    ((null? args) (cons #f '()))
-    ((pair? args)
-     (if (symbol? (car args))
-         (let ((r (parse-args (cdr args))))
-           (cons (car r) (cons (car args) (cdr r))))
-         (error "not symbol")))
-    (else (error "illegal arguments pattern"))))
-
-(define (match-args maybe-rest main-pattern xs env)
-  (if (symbol? maybe-rest)
-      (if (null? main-pattern)
-          (cons (cons maybe-rest xs) env)
-          (if (pair? xs)
-              (match-args maybe-rest (cdr main-pattern) (cdr xs) (cons (cons (car main-pattern) (car xs)) env))
-              (error "not enough arguments")))
-      (if (null? main-pattern)
-          (if (null? xs)
-              env
-              (error "too many arguments"))
-          (if (pair? xs)
-              (match-args maybe-rest (cdr main-pattern) (cdr xs) (cons (cons (car main-pattern) (car xs)) env))
-              (error "not enough arguments")))))
+                 (error "eval" "illegal let"))) xs)
+      (error "eval" "illegal let")))
 
 (define (evaluate x . rest)
   (cond
-    ((null? rest) (_eval x top-level))
-    ((= (length rest) 1) (_eval x (car rest)))
-    (else (error "evaluate: too many arguments"))))
+    ((null? rest) (_e x top-level empty-mapping))
+    ((= (length rest) 1) (_e x (car rest) empty-mapping))
+    (else (error "evaluate" "too many arguments" (cons x rest)))))
 
 ; ------------- tests ---------
 
@@ -180,5 +160,3 @@
 (define .id '(lambda (x) x))
 
 (test-check "((id (id id)) 'a)" (evaluate `((,.id (,.id ,.id)) 'a)) 'a)
-
-(test-check "simple letrec" (evaluate `(letrec ((a b) (b 0)) a)) 0)
