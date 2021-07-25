@@ -13,6 +13,7 @@
     - [internal-record](features/internal-record.md)
     - [letrec-star](features/letrec-star.md)
     - [letrec](features/letrec.md)
+    - [library](features/library.md)
     - [minimal-integer](features/minimal-integer.md)
     - [number](features/number.md)
     - [promise](features/promise.md)
