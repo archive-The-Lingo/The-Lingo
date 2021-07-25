@@ -70,6 +70,8 @@ There are two types of type markers.
   + io
 + Function Attribute
   + div?
+  + sized?
 + Value Attribute
   + erased at runtime / linear
   + not fully type checked
+  + sized?
