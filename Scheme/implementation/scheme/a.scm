@@ -1,4 +1,4 @@
-#lang racket
+;#lang racket
 
 (define (_eq? x y) (eq? x y))
 (define (_apply f xs) (apply f xs))
@@ -30,7 +30,7 @@
 (define (_vector-length x) (vector-length x))
 (define (_vector-ref v x) (vector-ref v x))
 #|
-(define (#%make-record-type name count)
+(define (?*make-record-type name count)
   (let-values (((struct: make ? ref set!) (make-struct-type name #f count 0)))
     (list make ? (map (lambda (n) (lambda (x) (ref x n))) (range count)))))
 |#
@@ -168,7 +168,7 @@
                          (_e body letrec-env (mapping-merge inner-env env) low-letrec-env))
                        (error "eval" "illegal letrec* pattern" x)))
                  (error "eval" "illegal letrec*" x)))
-            ((eq? f '#%letrec-define*)
+            ((eq? f '?*letrec-define*)
              (if (= (length xs) 2)
                  (let ((parsed-lets (parse-let (car xs))) (body (car (cdr xs))))
                    (if (no-duplicate (map car parsed-lets))
@@ -184,8 +184,8 @@
                                                         (make-inner-env more-parsed-lets (mapping-remove this-name previous-low-letrec-env) (mapping-updated this-name (_e this-exp letrec-env this-env previous-low-letrec-env) previous-result))))))
                                 (inner-env (make-inner-env parsed-lets inner-low-letrec-env empty-mapping)))
                          (_e body letrec-env (mapping-merge inner-env env) low-letrec-env))
-                       (error "eval" "illegal #%letrec-define* pattern" x)))
-                 (error "eval" "illegal #%letrec-define*" x)))
+                       (error "eval" "illegal ?*letrec-define* pattern" x)))
+                 (error "eval" "illegal ?*letrec-define*" x)))
             ((eq? f 'if)
              (if (= (length xs) 3)
                  (let ((b (car xs)) (x (car (cdr xs))) (y (car (cdr (cdr xs)))))
@@ -217,13 +217,13 @@
 
 (test-check "'(a b c)" (evaluate '(quote (a b c))) '(a b c))
 
-(define .list '(lambda xs xs))
+(define list- '(lambda xs xs))
 
-(test-check "(list 'a 'b 'c)" (evaluate `(,.list (quote a) (quote b) (quote c))) '(a b c))
+(test-check "(list 'a 'b 'c)" (evaluate `(,list- (quote a) (quote b) (quote c))) '(a b c))
 
-(define .id '(lambda (x) x))
+(define id- '(lambda (x) x))
 
-(test-check "((id (id id)) 'a)" (evaluate `((,.id (,.id ,.id)) 'a)) 'a)
+(test-check "((id (id id)) 'a)" (evaluate `((,id- (,id- ,id-)) 'a)) 'a)
 
 (test-check
  "simple letrec"
@@ -241,4 +241,4 @@
      (cons (foo) bar)))
  '(7 . 7))
 
-(test-check "basic #%letrec-define*" (evaluate '(#%letrec-define* ((origin+ +) (+ (lambda (x y) (origin+ x y)))) (+ 1 2))) 3)
+(test-check "basic ?*letrec-define*" (evaluate '(?*letrec-define* ((origin+ +) (+ (lambda (x y) (origin+ x y)))) (+ 1 2))) 3)

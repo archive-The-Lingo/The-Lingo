@@ -2,8 +2,8 @@
 
 ## Syntax
 
-+ `#%letrec-define*`
++ `?*letrec-define*`
   A `letrec*` that behaves like `define`s
   Example:
-  `(#%letrec-define* ((origin+ +) (+ (lambda (x y) (origin+ x y)))) (+ 1 2))`
+  `(?*letrec-define* ((origin+ +) (+ (lambda (x y) (origin+ x y)))) (+ 1 2))`
   `(define origin+ +) (define (+ x y) (origin+ x y)) (+ 1 2)`
