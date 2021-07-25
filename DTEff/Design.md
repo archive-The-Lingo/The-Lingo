@@ -53,3 +53,16 @@ References
 [A Framework for Dependent Types and Effects](https://arxiv.org/abs/1512.08009) 不过这篇论文有关吗？
 
 > On the other hand, we hope it can contribute a small-step towards the ultimate goal of an elegant fully fledged language for certified effectful programming. 
+
+
+## 2
+
+There are two types of type markers.
+
++ function marker
+  + io
++ type marker
+  + erased at runtime / linear
+  + not fully type checked
+
+
