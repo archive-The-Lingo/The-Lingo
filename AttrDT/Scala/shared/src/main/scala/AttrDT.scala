@@ -1,10 +1,14 @@
 package AttrDT
 
+import scala.collection.immutable.HashMap
+
 type Identifier = Symbol
 
 type UniqueIdentifier = Int
 
 type NaturalNumber = Int
+
+final case class Error(x: String) extends Exception(x)
 
 object UniqueIdentifier {
   private var count: UniqueIdentifier = 0
@@ -18,25 +22,35 @@ object UniqueIdentifier {
 
 final case class VarId(id: Identifier, uid: UniqueIdentifier)
 
+final case class Env(inner: HashMap[Identifier, Value])
+
 sealed trait Value
 
-sealed trait Exp
+sealed trait Exp {
+  def eval(env: Env): Value = ???
+
+  def check(env: Env, t: Type): Boolean = ???
+
+  def infer(env: Env): Option[Type] = ???
+}
 
 sealed trait BaseType
 
-sealed trait AttributeLevel
+sealed trait Attribute
+
+sealed trait AttributeLevel extends Attribute
 
 final case class AttributeLevelKnown(x: Value) extends AttributeLevel
 
 case object AttributeLevelTypeInType extends AttributeLevel
 
-sealed trait AttributeSize
+sealed trait AttributeSize extends Attribute
 
 final case class AttributeSizeKnown(x: Value) extends AttributeSize
 
 case object AttributeSizeFinite extends AttributeSize
 
-sealed trait AttributeUsage
+sealed trait AttributeUsage extends Attribute
 
 case object AttributeUsageErased extends AttributeUsage
 
@@ -44,15 +58,15 @@ case object AttributeUsageOnce extends AttributeUsage
 
 case object AttributeUsageNotLimited extends AttributeUsage
 
-final case class AttributeAssumptions(assumption: Set[TypeOrNotYet])
+final case class AttributeAssumptions(assumption: Set[Type]) extends Attribute
 
-sealed trait AttributeDynamic
+sealed trait AttributeDynamic extends Attribute
 
 case object AttributeDynamicYes extends AttributeDynamic
 
 case object AttributeDynamicNo extends AttributeDynamic
 
-sealed trait AttributeDiverge
+sealed trait AttributeDiverge extends Attribute
 
 case object AttributeDivergeYes extends AttributeDiverge
 
@@ -113,3 +127,33 @@ final case class PiV(domain: TypeOrNotYet, codomain: Closure) extends BaseType
 final case class Pi(domain: Exp, domainId: Identifier, codomain: Exp) extends Exp
 
 final case class Rec(id: Identifier, body: Exp) extends Exp
+
+final case class Car(x: Exp) extends Exp
+
+final case class NeuCar(x: NotYetValue) extends Neu
+
+final case class Cdr(x: Exp) extends Exp
+
+final case class NeuCdr(x: NotYetValue) extends Neu
+
+final case class Apply(f: Exp, xs: List[Exp]) extends Exp
+
+final case class NeuApply(f: NotYetValue, xs: List[Value]) extends Neu
+
+case object Universe extends Exp
+
+case object UniverseV extends BaseType
+
+final case class Eq(t: Exp, x: Exp, y: Exp) extends Exp
+
+final case class EqV(t: Type, x: Value, y: Value) extends BaseType
+
+case object Same extends Exp
+
+case object SameV extends Value
+
+final case class Attributed(attr: List[Attribute], t: Exp) extends Exp
+
+case object Absurd extends Exp
+
+case object AbsurdV extends BaseType
