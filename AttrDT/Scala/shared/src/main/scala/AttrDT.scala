@@ -195,6 +195,10 @@ final case class Type(t: BaseType, attr: Attrbutes) extends Value with TypeOrNot
   def mergeAttrbutes(moreAttr: Attrbutes): Type = ???
 }
 
+case object Kind extends Exp
+
+case object KindV extends BaseType
+
 final case class NotYetValue(t: Type, neu: Neu) extends Value with TypeOrNotYet with BaseTypeOrNotYet {
   override def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = other match {
     case NotYetValue(t2, neu2) => t.alpha_eta_equivalent(t2, map) && neu.alpha_eta_equivalent(neu2, map)
@@ -265,8 +269,13 @@ final case class ConsV(a: Value, d: Value) extends Value {
     case ConsV(a1, d1) => a.alpha_eta_equivalent(a1, map) && d.alpha_eta_equivalent(d1, map)
     case NotYetValue(Type(SigmaV(sa, sd), attr), neu) => {
       val newa = NotYetValue(sa.mergeAttrbutes(attr), NeuCar(neu))
-      val newb = NotYetValue(???, NeuCdr(neu))
-      this.alpha_eta_equivalent(ConsV(newa, newb), map)
+      sd.apply(sa) match {
+        case td: Type => {
+          val newb = NotYetValue(td.mergeAttrbutes(attr), NeuCdr(neu))
+          this.alpha_eta_equivalent(ConsV(newa, newb), map)
+        }
+        case _ => throw new Error("not Kind")
+      }
     }
     case _ => false
   }
