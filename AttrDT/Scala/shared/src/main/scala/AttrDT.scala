@@ -1,5 +1,7 @@
 package AttrDT
 
+// 沒有處理遞歸/Diverge
+
 import scala.collection.immutable.HashMap
 
 type Identifier = Symbol
