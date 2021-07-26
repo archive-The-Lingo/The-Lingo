@@ -22,7 +22,23 @@ object UniqueIdentifier {
 
 final case class VarId(id: Identifier, uid: UniqueIdentifier)
 
-final case class Env(inner: HashMap[Identifier, Value])
+object VarId {
+  def gen(id: Identifier): VarId = VarId(id, UniqueIdentifier.gen)
+}
+
+final case class Env(inner: HashMap[Identifier, (Type, Value)]) {
+  def updated(id: Identifier, t: Type, v: Value): Env = Env(inner.updated(id, (t, v)))
+
+  def get(id: Identifier): Option[(Type, Value)] = inner.get(id)
+
+  def getType(id: Identifier): Option[Type] = inner.get(id).map(_._1)
+
+  def getValue(id: Identifier): Option[Value] = inner.get(id).map(_._2)
+}
+
+object Env {
+  val Empty: Env = Env(HashMap())
+}
 
 sealed trait Value {
   def readback(t: Type): Exp = ???
