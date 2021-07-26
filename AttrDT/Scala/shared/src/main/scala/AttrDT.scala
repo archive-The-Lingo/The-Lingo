@@ -62,7 +62,7 @@ sealed trait Value {
 
   def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = ???
 
-  def get_usage(v: VarId): NaturalNumber
+  def get_usage(v: VarId): NaturalNumber = ???
 }
 
 sealed trait Exp {
@@ -78,12 +78,10 @@ sealed trait BaseTypeOrNotYet
 
 sealed trait BaseType extends BaseTypeOrNotYet {
   def alpha_eta_equivalent(other: BaseType, map: AlphaMapping): Boolean = ???
-  def get_usage(v: VarId): NaturalNumber
 }
 
 sealed trait Attribute {
   def alpha_eta_equivalent(other: Attribute, map: AlphaMapping): Boolean
-  def get_usage(v: VarId): NaturalNumber
 }
 
 sealed trait AttributeLevel extends Attribute
@@ -93,12 +91,10 @@ final case class AttributeLevelKnown(x: Value) extends AttributeLevel {
     case AttributeLevelKnown(y) => x.alpha_eta_equivalent(y, map)
     case _ => false
   }
-  override def get_usage(v:VarId):NaturalNumber = x.get_usage(v)
 }
 
 case object AttributeLevelTypeInType extends AttributeLevel {
   override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
-  override def get_usage(_v:VarId):NaturalNumber =0
 }
 
 sealed trait AttributeSize extends Attribute
@@ -108,17 +104,14 @@ final case class AttributeSizeKnown(x: Value) extends AttributeSize {
     case AttributeSizeKnown(y) => x.alpha_eta_equivalent(y, map)
     case _ => false
   }
-  override def get_usage(v:VarId):NaturalNumber = x.get_usage(v)
 }
 
 case object AttributeSizeFinite extends AttributeSize {
   override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
-  override def get_usage(_v:VarId):NaturalNumber =0
 }
 
 sealed trait AttributeUsage extends Attribute {
   override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
-  override def get_usage(_v:VarId):NaturalNumber =0
 }
 
 case object AttributeUsageErased extends AttributeUsage
@@ -126,18 +119,6 @@ case object AttributeUsageErased extends AttributeUsage
 case object AttributeUsageOnce extends AttributeUsage
 
 case object AttributeUsageNotLimited extends AttributeUsage
-
-sealed trait AttributeSelfUsage extends Attribute {
-  override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
-  override def get_usage(_v:VarId):NaturalNumber =0
-}
-
-case object AttributeSelfUsageErased extends AttributeUsage
-
-case object AttributeSelfUsageOnce extends AttributeUsage
-
-case object AttributeSelfUsageNotLimited extends AttributeUsage
-
 
 final case class AttributeAssumptions(assumptions: Set[Type]) extends Attribute {
   override def alpha_eta_equivalent(other: Attribute, map: AlphaMapping): Boolean = other match {
@@ -147,27 +128,23 @@ final case class AttributeAssumptions(assumptions: Set[Type]) extends Attribute 
     }
     case _ => false
   }
-  override def get_usage(v:VarId):NaturalNumber = assumptions.map(_.get_usage(v)).sum
 }
 
 sealed trait AttributeDiverge extends Attribute {
   override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
-  override def get_usage(_v:VarId):NaturalNumber =0
 }
 
 case object AttributeDivergeYes extends AttributeDiverge
 
 case object AttributeDivergeNo extends AttributeDiverge
 
-final case class Attrbutes(level: AttributeLevel, size: AttributeSize, usage: AttributeUsage, selfUsage: AttributeSelfUsage, diverge: AttributeDiverge, assumptions: AttributeAssumptions) {
+final case class Attrbutes(level: AttributeLevel, size: AttributeSize, usage: AttributeUsage, diverge: AttributeDiverge, assumptions: AttributeAssumptions) {
   def alpha_eta_equivalent(other: Attrbutes, map: AlphaMapping): Boolean =
     level.alpha_eta_equivalent(other.level, map) &&
       size.alpha_eta_equivalent(other.size, map) &&
       usage.alpha_eta_equivalent(other.usage, map) &&
-      selfUsage.alpha_eta_equivalent(other.selfUsage, map) &&
       diverge.alpha_eta_equivalent(other.diverge, map) &&
       assumptions.alpha_eta_equivalent(other.assumptions, map)
-  def get_usage(v: VarId): NaturalNumber = level.get_usage(v)+size.get_usage(v)+usage.get_usage(v)+selfUsage.get_usage(v)+diverge.get_usage(v)+assumptions.get_usage(v)
 }
 
 sealed trait TypeOrNotYet extends Value
@@ -177,7 +154,6 @@ final case class Type(t: BaseType, attr: Attrbutes) extends Value with TypeOrNot
     case Type(t2, attr2) => t.alpha_eta_equivalent(t2, map) && attr.alpha_eta_equivalent(attr2, map)
     case _ => false
   }
-  override def get_usage(v: VarId): NaturalNumber = t.get_usage(v)+attr.get_usage(v)
 }
 
 final case class NotYetValue(t: Type, neu: Neu) extends Value with TypeOrNotYet with BaseTypeOrNotYet {
@@ -185,7 +161,6 @@ final case class NotYetValue(t: Type, neu: Neu) extends Value with TypeOrNotYet 
     case NotYetValue(t2, neu2) => t.alpha_eta_equivalent(t2, map) && neu.alpha_eta_equivalent(neu2, map)
     case _ => other.alpha_eta_equivalent(this, map.reverse) // eta
   }
-  override def get_usage(v: VarId): NaturalNumber = t.get_usage(v)+neu.get_usage(v)
 }
 
 sealed trait Neu {
