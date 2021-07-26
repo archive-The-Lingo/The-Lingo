@@ -24,7 +24,9 @@ final case class VarId(id: Identifier, uid: UniqueIdentifier)
 
 final case class Env(inner: HashMap[Identifier, Value])
 
-sealed trait Value
+sealed trait Value {
+  def readback(t: Type): Exp = ???
+}
 
 sealed trait Exp {
   def eval(env: Env): Value = ???
