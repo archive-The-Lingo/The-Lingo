@@ -41,29 +41,34 @@ object Env {
 }
 
 final case class AlphaMapping(inner: HashMap[VarId, VarId], reverseMap: HashMap[VarId, VarId]) {
-  def has(a:VarId,b:VarId):Boolean = inner.get(a) match {
+  def has(a: VarId, b: VarId): Boolean = inner.get(a) match {
     case Some(b0) => b == b0
     case None => false
   }
-  def add(a:VarId,b:VarId):AlphaMapping = inner.get(a) match {
-    case Some(b0) => if (b==b0) this else throw Error("duplicate")
+
+  def add(a: VarId, b: VarId): AlphaMapping = inner.get(a) match {
+    case Some(b0) => if (b == b0) this else throw Error("duplicate")
     case None => reverseMap.get(b) match {
-      case Some(a0) => if (a==a0) throw Error("Illegal State") else throw Error("duplicate")
-      case None => AlphaMapping(inner.updated(a,b),reverseMap.updated(b,a))
+      case Some(a0) => if (a == a0) throw Error("Illegal State") else throw Error("duplicate")
+      case None => AlphaMapping(inner.updated(a, b), reverseMap.updated(b, a))
     }
   }
-  def reverse:AlphaMapping = AlphaMapping(reverseMap,inner)
+
+  def reverse: AlphaMapping = AlphaMapping(reverseMap, inner)
 }
 
 sealed trait Value {
   def readback(t: Type): Exp = ???
 
   def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = ???
+
+  def get_usage(v: VarId): NaturalNumber = ???
 }
 
 sealed trait Exp {
   def eval(env: Env): Value = ???
 
+  // usage is not checked here
   def check(env: Env, t: Type): Boolean = ???
 
   def infer(env: Env): Option[Type] = None
@@ -177,7 +182,7 @@ case object Zero extends Exp
 
 final case class SuccV(x: Value) extends Value {
   override def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = other match {
-    case SuccV(y) => x.alpha_eta_equivalent(y,map)
+    case SuccV(y) => x.alpha_eta_equivalent(y, map)
     case _ => false
   }
 }
@@ -197,7 +202,9 @@ final case class Sym(x: String) extends Value {
 }
 
 final case class Quote(x: String) extends Exp
+
 case object Atom extends Exp
+
 case object AtomV extends BaseType {
   override def alpha_eta_equivalent(other: BaseType, _map: AlphaMapping): Boolean = this == other
 }
