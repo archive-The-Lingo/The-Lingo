@@ -110,7 +110,12 @@ sealed trait Attribute {
   def alpha_eta_equivalent(other: Attribute, map: AlphaMapping): Boolean
 }
 
-sealed trait AttributeLevel extends Attribute
+sealed trait AttributeLevel extends Attribute {
+  def merge(other: AttributeLevel): AttributeLevel = (this, other) match {
+    case (AttributeLevelTypeInType, _) | (_, AttributeLevelTypeInType) => AttributeLevelTypeInType
+    case _ => ???
+  }
+}
 
 final case class AttributeLevelKnown(x: Value) extends AttributeLevel {
   override def alpha_eta_equivalent(other: Attribute, map: AlphaMapping): Boolean = other match {
