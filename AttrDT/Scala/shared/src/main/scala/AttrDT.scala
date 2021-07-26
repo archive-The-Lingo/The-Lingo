@@ -125,14 +125,6 @@ final case class AttributeAssumptions(assumptions: Set[Type]) extends Attribute 
   }
 }
 
-sealed trait AttributeDynamic extends Attribute {
-  override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
-}
-
-case object AttributeDynamicYes extends AttributeDynamic
-
-case object AttributeDynamicNo extends AttributeDynamic
-
 sealed trait AttributeDiverge extends Attribute {
   override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
 }
@@ -141,12 +133,11 @@ case object AttributeDivergeYes extends AttributeDiverge
 
 case object AttributeDivergeNo extends AttributeDiverge
 
-final case class Attrbutes(level: AttributeLevel, size: AttributeSize, usage: AttributeUsage, dynamic: AttributeDynamic, diverge: AttributeDiverge, assumptions: AttributeAssumptions) {
+final case class Attrbutes(level: AttributeLevel, size: AttributeSize, usage: AttributeUsage, diverge: AttributeDiverge, assumptions: AttributeAssumptions) {
   def alpha_eta_equivalent(other: Attrbutes, map: AlphaMapping): Boolean =
     level.alpha_eta_equivalent(other.level, map) &&
       size.alpha_eta_equivalent(other.size, map) &&
       usage.alpha_eta_equivalent(other.usage, map) &&
-      dynamic.alpha_eta_equivalent(other.dynamic, map) &&
       diverge.alpha_eta_equivalent(other.diverge, map) &&
       assumptions.alpha_eta_equivalent(other.assumptions, map)
 }
