@@ -57,12 +57,28 @@ final case class AlphaMapping(inner: HashMap[VarId, VarId], reverseMap: HashMap[
   def reverse: AlphaMapping = AlphaMapping(reverseMap, inner)
 }
 
+sealed trait SpecialUsage
+
+case object SpecialUsageErased extends SpecialUsage
+
+case object SpecialUsageOnce extends SpecialUsage
+
+final case class UsageMap(inner: HashMap[VarId, SpecialUsage]) {
+  def use(x: VarId): Option[UsageMap] = inner.get(x) match {
+    case None => Some(this)
+    case Some(SpecialUsageErased) => None
+    case Some(SpecialUsageOnce) => Some(UsageMap(inner.removed(x)))
+  }
+}
+
+type UsageUpdate = Set[VarId] // used <once>
+
 sealed trait Value {
   def readback(t: Type): Exp = ???
 
   def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = ???
 
-  def get_usage(v: VarId): NaturalNumber = ???
+  def check_usage(t: Type, usageMap: UsageMap): Option[UsageMap] = ???
 }
 
 sealed trait Exp {
@@ -120,6 +136,16 @@ case object AttributeUsageOnce extends AttributeUsage
 
 case object AttributeUsageNotLimited extends AttributeUsage
 
+sealed trait AttributeSelfUsage extends Attribute {
+  override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
+}
+
+case object AttributeSelfUsageErased extends AttributeSelfUsage
+
+case object AttributeSelfUsageOnce extends AttributeSelfUsage
+
+case object AttributeSelfUsageNotLimited extends AttributeSelfUsage
+
 final case class AttributeAssumptions(assumptions: Set[Type]) extends Attribute {
   override def alpha_eta_equivalent(other: Attribute, map: AlphaMapping): Boolean = other match {
     case AttributeAssumptions(otherAssumptions) if assumptions.size == otherAssumptions.size => {
@@ -138,11 +164,12 @@ case object AttributeDivergeYes extends AttributeDiverge
 
 case object AttributeDivergeNo extends AttributeDiverge
 
-final case class Attrbutes(level: AttributeLevel, size: AttributeSize, usage: AttributeUsage, diverge: AttributeDiverge, assumptions: AttributeAssumptions) {
+final case class Attrbutes(level: AttributeLevel, size: AttributeSize, usage: AttributeUsage, selfUsage: AttributeSelfUsage, diverge: AttributeDiverge, assumptions: AttributeAssumptions) {
   def alpha_eta_equivalent(other: Attrbutes, map: AlphaMapping): Boolean =
     level.alpha_eta_equivalent(other.level, map) &&
       size.alpha_eta_equivalent(other.size, map) &&
       usage.alpha_eta_equivalent(other.usage, map) &&
+      selfUsage.alpha_eta_equivalent(other.selfUsage, map) &&
       diverge.alpha_eta_equivalent(other.diverge, map) &&
       assumptions.alpha_eta_equivalent(other.assumptions, map)
 }
