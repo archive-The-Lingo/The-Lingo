@@ -59,7 +59,11 @@ object AlphaMapping {
 
 // uses Identifier
 sealed trait Exp {
+  def weakHeadNormalForm: Exp = ???
 }
+
+// is neutral if appers in normal form
+sealed trait ExpNeu extends Exp
 
 sealed trait AlphaEtaEqual {
 
@@ -70,7 +74,12 @@ sealed trait Core {
   def alpha_eta_equals(other: Core, map: AlphaMapping): Boolean = this == other
 
   final def alpha_eta_equals(other: Core): Boolean = this.alpha_eta_equals(other, AlphaMapping.Empty)
+
+  def weakHeadNormalForm: Core = ???
 }
+
+// is neutral if appers in normal form
+sealed trait CoreNeu extends Core
 
 sealed trait Attr {
   def alpha_eta_equals(other: Attr, map: AlphaMapping): Boolean = this == other
@@ -78,23 +87,58 @@ sealed trait Attr {
   final def alpha_eta_equals(other: Attr): Boolean = this.alpha_eta_equals(other, AlphaMapping.Empty)
 }
 
+private sealed trait NatParseResult
+
+private case class NatParseResult_Just(x: NaturalNumber) extends NatParseResult
+
+private case class NatParseResult_SuccNeu(x: NaturalNumber, neu: CoreNeu) extends NatParseResult
+
+private def parseNat(x: Core): Option[NatParseResult] = x.weakHeadNormalForm match {
+  case Cores.Zero() => Some(NatParseResult_Just(0))
+  case Cores.Succ(x) => parseNat(x) map {
+    case NatParseResult_Just(v) => NatParseResult_Just(v + 1)
+    case NatParseResult_SuccNeu(v, neu) => NatParseResult_SuccNeu(v + 1, neu)
+  }
+  case neu: CoreNeu => Some(NatParseResult_SuccNeu(0, neu))
+  case _ => None
+}
+
+private def natToCore(x: NaturalNumber, base: Core = Cores.Zero()): Core = if (x == 0) base else Cores.Succ(natToCore(x - 1))
+
+def mergeTwoNat(x: Core, y: Core): Option[Core] = if (x == y) Some(x) else (for {x <- parseNat(x); y <- parseNat(y)} yield (x, y)) flatMap {
+  case (NatParseResult_Just(x), NatParseResult_Just(y)) => Some(natToCore(x.max(y)))
+  case (NatParseResult_SuccNeu(x, xNeu), NatParseResult_SuccNeu(y, yNeu)) => if (xNeu == yNeu) Some(natToCore(x.max(y), xNeu)) else None
+  // following are required and work pretty well if y is zero
+  case (NatParseResult_SuccNeu(x, xNeu), NatParseResult_Just(y)) => Some(natToCore(x.max(y), xNeu))
+  case (NatParseResult_Just(y), NatParseResult_SuccNeu(x, xNeu)) => Some(natToCore(x.max(y), xNeu))
+}
+
 sealed trait AttrLevel extends Attr {
   def merge(other: AttrLevel): AttrLevel = (this, other) match {
     case (_, AttrLevel_UniverseInUniverse()) | (AttrLevel_UniverseInUniverse(), _) => AttrLevel_UniverseInUniverse()
-    case (x: AttrLevel_Known, y: AttrLevel_Known) => x.merge0(y)
+    case (AttrLevel_Known(x), AttrLevel_Known(y)) => mergeTwoNat(x, y) match {
+      case Some(r) => AttrLevel_Known(r)
+      case None => AttrLevel_UniverseInUniverse()
+    }
   }
 }
 
 final case class AttrLevel_UniverseInUniverse() extends AttrLevel
 
 final case class AttrLevel_Known(level: Core) extends AttrLevel {
-  def merge0(other: AttrLevel_Known): AttrLevel_Known = ???
+  override def alpha_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
+    case AttrLevel_Known(otherLevel) => level.alpha_eta_equals(otherLevel, map)
+    case _ => false
+  }
 }
 
 sealed trait AttrSize extends Attr {
   def merge(other: AttrSize): AttrSize = (this, other) match {
     case (_, AttrSize_UnknownFinite()) | (AttrSize_UnknownFinite(), _) => AttrSize_UnknownFinite()
-    case (x: AttrSize_Known, y: AttrSize_Known) => x.merge0(y)
+    case (AttrSize_Known(x), AttrSize_Known(y)) => mergeTwoNat(x, y) match {
+      case Some(r) => AttrSize_Known(r)
+      case None => AttrSize_UnknownFinite()
+    }
   }
 }
 
@@ -105,8 +149,6 @@ final case class AttrSize_Known(size: Core) extends AttrSize {
     case AttrSize_Known(otherSize) => size.alpha_eta_equals(otherSize, map)
     case _ => false
   }
-
-  def merge0(other: AttrSize_Known): AttrSize_Known = ???
 }
 
 sealed trait AttrUsage extends Attr {
@@ -191,7 +233,17 @@ final case class Type(universe: Core, attrs: Attrs) extends Core {
 }
 
 object Exps {
+  final case class Var(x: Identifier) extends ExpNeu
+
+  final case class Zero() extends Exp
+
+  final case class Succ(x: Exp) extends Exp
 }
 
 object Cores {
+  final case class Var(x: VarId) extends CoreNeu
+
+  final case class Zero() extends Core
+
+  final case class Succ(x: Core) extends Core
 }
