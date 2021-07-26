@@ -78,13 +78,25 @@ sealed trait Attr {
   final def alpha_eta_equals(other: Attr): Boolean = this.alpha_eta_equals(other, AlphaMapping.Empty)
 }
 
-sealed trait AttrLevel extends Attr
+sealed trait AttrLevel extends Attr {
+  def merge(other: AttrLevel): AttrLevel = (this, other) match {
+    case (_, AttrLevel_UniverseInUniverse()) | (AttrLevel_UniverseInUniverse(), _) => AttrLevel_UniverseInUniverse()
+    case (x: AttrLevel_Known, y: AttrLevel_Known) => x.merge0(y)
+  }
+}
 
 final case class AttrLevel_UniverseInUniverse() extends AttrLevel
 
-final case class AttrLevel_Known(level: Core) extends AttrLevel
+final case class AttrLevel_Known(level: Core) extends AttrLevel {
+  def merge0(other: AttrLevel_Known): AttrLevel_Known = ???
+}
 
-sealed trait AttrSize extends Attr
+sealed trait AttrSize extends Attr {
+  def merge(other: AttrSize): AttrSize = (this, other) match {
+    case (_, AttrSize_UnknownFinite()) | (AttrSize_UnknownFinite(), _) => AttrSize_UnknownFinite()
+    case (x: AttrSize_Known, y: AttrSize_Known) => x.merge0(y)
+  }
+}
 
 final case class AttrSize_UnknownFinite() extends AttrSize
 
@@ -93,6 +105,8 @@ final case class AttrSize_Known(size: Core) extends AttrSize {
     case AttrSize_Known(otherSize) => size.alpha_eta_equals(otherSize, map)
     case _ => false
   }
+
+  def merge0(other: AttrSize_Known): AttrSize_Known = ???
 }
 
 sealed trait AttrUsage extends Attr {
@@ -124,7 +138,7 @@ final case class AttrSelfUsage_Once() extends AttrSelfUsage
 final case class AttrSelfUsage_Unlimited() extends AttrSelfUsage
 
 final case class AttrAssumptions(assumptions: Set[Type]) extends Attr {
-  def merge(other: this.type): this.type = ???
+  def merge(other: AttrAssumptions): AttrAssumptions = AttrAssumptions.safeApply(assumptions.union(other.assumptions))
 
   override def alpha_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
     case AttrAssumptions(otherAssumptions) if assumptions.size == otherAssumptions.size => {
@@ -134,12 +148,16 @@ final case class AttrAssumptions(assumptions: Set[Type]) extends Attr {
     case _ => false
   }
 }
+
 object AttrAssumptions {
-  private def distinct(xs:List[Type]):List[Type] = xs match {
+  private def distinct(xs: List[Type]): List[Type] = xs match {
     case Nil => Nil
     case x :: xs => x :: distinct(xs.filterNot(x.alpha_eta_equals(_)))
   }
-  def apply(assumptions: Set[Type]) = new AttrAssumptions(Set.empty.concat(distinct(assumptions.toList)))
+
+  def safeApply(assumptions: Set[Type]): AttrAssumptions = new AttrAssumptions(Set.empty.concat(distinct(assumptions.toList)))
+
+  def apply(assumptions: Set[Type]): AttrAssumptions = safeApply(assumptions)
 }
 
 sealed trait AttrDiverge extends Attr {
@@ -154,7 +172,15 @@ final case class AttrDiverge_Yes() extends AttrDiverge
 final case class AttrDiverge_No() extends AttrDiverge
 
 final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge) {
-  def alpha_eta_equals(other: Attrs, map: AlphaMapping): Boolean = ???
+  def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge))
+
+  def alpha_eta_equals(other: Attrs, map: AlphaMapping): Boolean =
+    level.alpha_eta_equals(other.level, map) &&
+      size.alpha_eta_equals(other.size, map) &&
+      usage.alpha_eta_equals(other.usage, map) &&
+      selfUsage.alpha_eta_equals(other.selfUsage, map) &&
+      assumptions.alpha_eta_equals(other.assumptions, map) &&
+      diverge.alpha_eta_equals(other.diverge, map)
 }
 
 final case class Type(universe: Core, attrs: Attrs) extends Core {
