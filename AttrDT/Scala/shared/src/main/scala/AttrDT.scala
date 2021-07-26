@@ -67,7 +67,7 @@ final case class UsageMap(inner: HashMap[VarId, SpecialUsage]) {
   def use(x: VarId): Option[UsageMap] = inner.get(x) match {
     case None => Some(this)
     case Some(SpecialUsageErased) => None
-    case Some(SpecialUsageOnce) => Some(UsageMap(inner.removed(x)))
+    case Some(SpecialUsageOnce) => Some(UsageMap(inner.updated(x, SpecialUsageErased)))
   }
 }
 
