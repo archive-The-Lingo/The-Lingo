@@ -40,12 +40,25 @@ object Env {
   val Empty: Env = Env(HashMap())
 }
 
-final case class AlphaMapping(inner: HashMap[VarId, VarId])
+final case class AlphaMapping(inner: HashMap[VarId, VarId], reverseMap: HashMap[VarId, VarId]) {
+  def has(a:VarId,b:VarId):Boolean = inner.get(a) match {
+    case Some(b0) => b == b0
+    case None => false
+  }
+  def add(a:VarId,b:VarId):AlphaMapping = inner.get(a) match {
+    case Some(b0) => if (b==b0) this else throw Error("duplicate")
+    case None => reverseMap.get(b) match {
+      case Some(a0) => if (a==a0) throw Error("Illegal State") else throw Error("duplicate")
+      case None => AlphaMapping(inner.updated(a,b),reverseMap.updated(b,a))
+    }
+  }
+  def reverse:AlphaMapping = AlphaMapping(reverseMap,inner)
+}
 
 sealed trait Value {
   def readback(t: Type): Exp = ???
 
-  def alpha_equivalent(other: Value, map: AlphaMapping): Boolean = ???
+  def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = ???
 }
 
 sealed trait Exp {
@@ -56,23 +69,45 @@ sealed trait Exp {
   def infer(env: Env): Option[Type] = None
 }
 
-sealed trait BaseType
+sealed trait BaseTypeOrNotYet
 
-sealed trait Attribute
+sealed trait BaseType extends BaseTypeOrNotYet {
+  def alpha_eta_equivalent(other: BaseType, map: AlphaMapping): Boolean = ???
+}
+
+sealed trait Attribute {
+  def alpha_eta_equivalent(other: Attribute, map: AlphaMapping): Boolean
+}
 
 sealed trait AttributeLevel extends Attribute
 
-final case class AttributeLevelKnown(x: Value) extends AttributeLevel
+final case class AttributeLevelKnown(x: Value) extends AttributeLevel {
+  override def alpha_eta_equivalent(other: Attribute, map: AlphaMapping): Boolean = other match {
+    case AttributeLevelKnown(y) => x.alpha_eta_equivalent(y, map)
+    case _ => false
+  }
+}
 
-case object AttributeLevelTypeInType extends AttributeLevel
+case object AttributeLevelTypeInType extends AttributeLevel {
+  override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
+}
 
 sealed trait AttributeSize extends Attribute
 
-final case class AttributeSizeKnown(x: Value) extends AttributeSize
+final case class AttributeSizeKnown(x: Value) extends AttributeSize {
+  override def alpha_eta_equivalent(other: Attribute, map: AlphaMapping): Boolean = other match {
+    case AttributeSizeKnown(y) => x.alpha_eta_equivalent(y, map)
+    case _ => false
+  }
+}
 
-case object AttributeSizeFinite extends AttributeSize
+case object AttributeSizeFinite extends AttributeSize {
+  override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
+}
 
-sealed trait AttributeUsage extends Attribute
+sealed trait AttributeUsage extends Attribute {
+  override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
+}
 
 case object AttributeUsageErased extends AttributeUsage
 
@@ -80,55 +115,111 @@ case object AttributeUsageOnce extends AttributeUsage
 
 case object AttributeUsageNotLimited extends AttributeUsage
 
-final case class AttributeAssumptions(assumption: Set[Type]) extends Attribute
+final case class AttributeAssumptions(assumptions: Set[Type]) extends Attribute {
+  override def alpha_eta_equivalent(other: Attribute, map: AlphaMapping): Boolean = other match {
+    case AttributeAssumptions(otherAssumptions) if assumptions.size == otherAssumptions.size => {
+      val bs = otherAssumptions.toList
+      assumptions.toList.permutations.exists((as) => as.zip(bs).forall({ case (x, y) => x.alpha_eta_equivalent(y, map) }))
+    }
+    case _ => false
+  }
+}
 
-sealed trait AttributeDynamic extends Attribute
+sealed trait AttributeDynamic extends Attribute {
+  override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
+}
 
 case object AttributeDynamicYes extends AttributeDynamic
 
 case object AttributeDynamicNo extends AttributeDynamic
 
-sealed trait AttributeDiverge extends Attribute
+sealed trait AttributeDiverge extends Attribute {
+  override def alpha_eta_equivalent(other: Attribute, _map: AlphaMapping): Boolean = this == other
+}
 
 case object AttributeDivergeYes extends AttributeDiverge
 
 case object AttributeDivergeNo extends AttributeDiverge
 
-final case class Attrbutes(level: AttributeLevel, size: AttributeSize, usage: AttributeUsage, dynamic: AttributeDynamic, diverge: AttributeDiverge, assumptions: AttributeAssumptions)
+final case class Attrbutes(level: AttributeLevel, size: AttributeSize, usage: AttributeUsage, dynamic: AttributeDynamic, diverge: AttributeDiverge, assumptions: AttributeAssumptions) {
+  def alpha_eta_equivalent(other: Attrbutes, map: AlphaMapping): Boolean =
+    level.alpha_eta_equivalent(other.level, map) &&
+      size.alpha_eta_equivalent(other.size, map) &&
+      usage.alpha_eta_equivalent(other.usage, map) &&
+      dynamic.alpha_eta_equivalent(other.dynamic, map) &&
+      diverge.alpha_eta_equivalent(other.diverge, map) &&
+      assumptions.alpha_eta_equivalent(other.assumptions, map)
+}
 
 sealed trait TypeOrNotYet extends Value
 
-final case class Type(t: BaseType, attr: Attrbutes) extends Value with TypeOrNotYet
+final case class Type(t: BaseType, attr: Attrbutes) extends Value with TypeOrNotYet {
+  override def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = other match {
+    case Type(t2, attr2) => t.alpha_eta_equivalent(t2, map) && attr.alpha_eta_equivalent(attr2, map)
+    case _ => false
+  }
+}
 
-final case class NotYetValue(t: TypeOrNotYet, neu: Neu) extends Value with TypeOrNotYet
+final case class NotYetValue(t: Type, neu: Neu) extends Value with TypeOrNotYet with BaseTypeOrNotYet {
+  override def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = other match {
+    case NotYetValue(t2, neu2) => t.alpha_eta_equivalent(t2, map) && neu.alpha_eta_equivalent(neu2, map)
+    case _ => other.alpha_eta_equivalent(this, map.reverse) // eta
+  }
+}
 
-sealed trait Neu
+sealed trait Neu {
+  def alpha_eta_equivalent(other: Neu, map: AlphaMapping): Boolean = ???
+}
 
-final case class NeuVar(x: VarId) extends Neu
+final case class NeuVar(x: VarId) extends Neu {
+  override def alpha_eta_equivalent(other: Neu, map: AlphaMapping): Boolean = other match {
+    case NeuVar(y) => map.has(x, y)
+    case _ => false
+  }
+}
 
-case object ZeroV extends Value
+case object ZeroV extends Value {
+  override def alpha_eta_equivalent(other: Value, _map: AlphaMapping): Boolean = this == other
+}
 
 case object Zero extends Exp
 
-final case class SuccV(x: Value) extends Value
+final case class SuccV(x: Value) extends Value {
+  override def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = other match {
+    case SuccV(y) => x.alpha_eta_equivalent(y,map)
+    case _ => false
+  }
+}
 
 final case class Succ(x: Exp) extends Exp
 
-case object NatV extends BaseType
+case object NatV extends BaseType {
+  override def alpha_eta_equivalent(other: BaseType, _map: AlphaMapping): Boolean = this == other
+}
 
 case object Nat extends Exp
 
 def natToValue(x: NaturalNumber): Value = if (x == 0) ZeroV else SuccV(natToValue(x - 1))
 
-final case class Atom(x: String) extends Value
+final case class Sym(x: String) extends Value {
+  override def alpha_eta_equivalent(other: Value, _map: AlphaMapping): Boolean = this == other
+}
 
 final case class Quote(x: String) extends Exp
+case object Atom extends Exp
+case object AtomV extends BaseType {
+  override def alpha_eta_equivalent(other: BaseType, _map: AlphaMapping): Boolean = this == other
+}
 
-case object UnitV extends Value
+case object UnitV extends Value {
+  override def alpha_eta_equivalent(other: Value, _map: AlphaMapping): Boolean = this == other
+}
 
 case object Unit extends Exp
 
-case object TrivialV extends BaseType
+case object TrivialV extends BaseType {
+  override def alpha_eta_equivalent(other: BaseType, _map: AlphaMapping): Boolean = this == other
+}
 
 case object Trivial extends Exp
 
