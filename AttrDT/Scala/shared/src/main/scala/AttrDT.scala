@@ -40,8 +40,12 @@ object Env {
   val Empty: Env = Env(HashMap())
 }
 
+final case class AlphaMapping(inner: HashMap[VarId, VarId])
+
 sealed trait Value {
   def readback(t: Type): Exp = ???
+
+  def alpha_equivalent(other: Value, map: AlphaMapping): Boolean = ???
 }
 
 sealed trait Exp {
@@ -49,7 +53,7 @@ sealed trait Exp {
 
   def check(env: Env, t: Type): Boolean = ???
 
-  def infer(env: Env): Option[Type] = ???
+  def infer(env: Env): Option[Type] = None
 }
 
 sealed trait BaseType
