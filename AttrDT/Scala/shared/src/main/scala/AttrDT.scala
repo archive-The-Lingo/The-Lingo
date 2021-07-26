@@ -132,15 +132,15 @@ final case class Rec(id: Identifier, body: Exp) extends Exp
 
 final case class Car(x: Exp) extends Exp
 
-final case class NeuCar(x: NotYetValue) extends Neu
+final case class NeuCar(x: Neu) extends Neu
 
 final case class Cdr(x: Exp) extends Exp
 
-final case class NeuCdr(x: NotYetValue) extends Neu
+final case class NeuCdr(x: Neu) extends Neu
 
 final case class Apply(f: Exp, xs: List[Exp]) extends Exp
 
-final case class NeuApply(f: NotYetValue, xs: List[Value]) extends Neu
+final case class NeuApply(f: Neu, xs: List[Value]) extends Neu
 
 case object Universe extends Exp
 
