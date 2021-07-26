@@ -69,6 +69,16 @@ final case class UsageMap(inner: HashMap[VarId, SpecialUsage]) {
     case Some(SpecialUsageErased) => None
     case Some(SpecialUsageOnce) => Some(UsageMap(inner.updated(x, SpecialUsageErased)))
   }
+
+  def markErased(x: VarId): UsageMap = inner.get(x) match {
+    case None => UsageMap(inner.updated(x, SpecialUsageErased))
+    case Some(_) => throw Error("duplicate")
+  }
+
+  def markOnce(x: VarId): UsageMap = inner.get(x) match {
+    case None => UsageMap(inner.updated(x, SpecialUsageOnce))
+    case Some(_) => throw Error("duplicate")
+  }
 }
 
 type UsageUpdate = Set[VarId] // used <once>
@@ -76,7 +86,7 @@ type UsageUpdate = Set[VarId] // used <once>
 sealed trait Value {
   def readback(t: Type): Exp = ???
 
-  def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = ???
+  def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean
 
   def check_usage(t: Type, usageMap: UsageMap): Option[UsageMap] = ???
 }
@@ -181,6 +191,8 @@ final case class Type(t: BaseType, attr: Attrbutes) extends Value with TypeOrNot
     case Type(t2, attr2) => t.alpha_eta_equivalent(t2, map) && attr.alpha_eta_equivalent(attr2, map)
     case _ => false
   }
+
+  def mergeAttrbutes(moreAttr: Attrbutes): Type = ???
 }
 
 final case class NotYetValue(t: Type, neu: Neu) extends Value with TypeOrNotYet with BaseTypeOrNotYet {
@@ -248,15 +260,29 @@ case object TrivialV extends BaseType {
 
 case object Trivial extends Exp
 
-final case class ConsV(a: Value, d: Value) extends Value
+final case class ConsV(a: Value, d: Value) extends Value {
+  override def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = other match {
+    case ConsV(a1, d1) => a.alpha_eta_equivalent(a1, map) && d.alpha_eta_equivalent(d1, map)
+    case NotYetValue(Type(SigmaV(sa, sd), attr), neu) => {
+      val newa = NotYetValue(sa.mergeAttrbutes(attr), NeuCar(neu))
+      val newb = NotYetValue(???, NeuCdr(neu))
+      this.alpha_eta_equivalent(ConsV(newa, newb), map)
+    }
+    case _ => false
+  }
+}
 
 final case class Cons(a: Exp, d: Exp) extends Exp
 
-final case class SigmaV(a: TypeOrNotYet, d: Closure) extends BaseType
+final case class SigmaV(a: Type, d: Closure) extends BaseType
 
 final case class Sigma(a: Exp, aId: Identifier, d: Exp) extends Exp
 
-final case class Closure(id: NeuVar, body: Value) extends Value
+final case class Closure(id: NeuVar, body: Value) extends Value {
+  def apply(x: Value): Value = ???
+
+  override def alpha_eta_equivalent(other: Value, map: AlphaMapping): Boolean = ???
+}
 
 final case class Lambda(id: Identifier, body: Exp) extends Exp
 
@@ -288,7 +314,9 @@ final case class EqV(t: Type, x: Value, y: Value) extends BaseType
 
 case object Same extends Exp
 
-case object SameV extends Value
+case object SameV extends Value {
+  override def alpha_eta_equivalent(other: Value, _map: AlphaMapping): Boolean = this == other
+}
 
 final case class Attributed(attr: List[Attribute], t: Exp) extends Exp
 
