@@ -248,7 +248,7 @@ object AttrAssumptions {
     case x :: xs => x :: distinct(xs.filterNot(x.alpha_eta_equals(_)))
   }
 
-  def safeApply(assumptions: Set[Type]): AttrAssumptions = new AttrAssumptions(Set.empty.concat(distinct(assumptions.toList)))
+  def safeApply(assumptions: Set[Type]): AttrAssumptions = new AttrAssumptions(Set.empty.concat(distinct(assumptions.toList).map(_.erased)))
 
   def apply(assumptions: Set[Type]): AttrAssumptions = safeApply(assumptions)
 }
@@ -282,6 +282,8 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
   final def alpha_eta_equals(other: Attrs): Boolean = this.alpha_eta_equals(other, AlphaMapping.Empty)
 
   def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base)
+
+  def erased: Attrs = Attrs(level, size, AttrUsage_Erased(), selfUsage, assumptions, diverge)
 }
 
 object Attrs {
@@ -297,6 +299,8 @@ final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInfera
   def subsetOrEqual(other: Type): Boolean = universe.alpha_eta_equals(other.universe) && (attrs.alpha_eta_equals(other.attrs) || attrs.merge(other.attrs).alpha_eta_equals(attrs))
 
   override def inf(context: Context): Type = Type(Cores.Universe(), attrs.upper)
+
+  def erased: Type = Type(universe, attrs.erased)
 }
 
 object Exps {
