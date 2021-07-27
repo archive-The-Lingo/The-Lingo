@@ -647,12 +647,15 @@ object Cores {
             case Pi(arg, argId, result) => arg.evalToType(context) match {
               case Some(t@Type(_, argAttrs)) => {
                 val resultContext = context.updated(argId, t)
+
+                def resultDiverge = result.evalToType(resultContext) match {
+                  case Some(Type(_, resultAttrs)) => resultAttrs.diverge == AttrDiverge_Yes()
+                  case None => false
+                }
+
                 argAttrs.size match {
-                  case AttrSize_Infinite() | AttrSize_UnknownFinite() => result.evalToType(resultContext) match {
-                    case Some(Type(_, resultAttrs)) => resultAttrs.diverge == AttrDiverge_Yes()
-                    case None => false
-                  }
-                  case AttrSize_Known(size) => ???
+                  case AttrSize_Infinite() | AttrSize_UnknownFinite() => resultDiverge
+                  case AttrSize_Known(size) => t.attrs.recpi == AttrRecPi_Yes() || resultDiverge
                 }
               }
               case None => false
