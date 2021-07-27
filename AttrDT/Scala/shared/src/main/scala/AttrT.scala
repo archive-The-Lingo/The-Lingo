@@ -83,13 +83,43 @@ sealed trait Core {
 
   final def alpha_beta_eta_equals(other: Core): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
 
-  def weakHeadNormalForm: Core = ???
+  def weakHeadNormalForm: Core = {
+    val next = this.beta
+    if (next == this) {
+      this
+    } else {
+      next.weakHeadNormalForm
+    }
+  }
 
-  def infer(context: Context): Option[Type] = None
+  def beta: Core = this
 
-  def check(context: Context, t: Type): Boolean
+  def infer(context: Context): Option[Type] = {
+    val next = this.beta
+    if (next == this) {
+      None
+    } else {
+      next.infer(context)
+    }
+  }
 
-  def evalToType(context: Context): Option[Type] = None
+  def check(context: Context, t: Type): Boolean = {
+    val next = this.beta
+    if (next == this) {
+      false
+    } else {
+      next.check(context, t)
+    }
+  }
+
+  def evalToType(context: Context): Option[Type] = {
+    val next = this.beta
+    if (next == this) {
+      None
+    } else {
+      next.evalToType(context)
+    }
+  }
 }
 
 sealed trait CoreInferable extends Core {
