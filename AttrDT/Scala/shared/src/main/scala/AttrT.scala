@@ -27,6 +27,10 @@ object VarId {
 }
 
 final case class Context(inner: HashMap[VarId, (Type, Option[Core])]) {
+  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(inner.updated(id, (t, v)))
+
+  def updated(id: Cores.Var, t: Type, v: Option[Core]): Context = this.updated(id.x, t, v)
+
   def updated(id: VarId, t: Type, v: Core): Context = Context(inner.updated(id, (t, Some(v))))
 
   def updated(id: VarId, t: Type): Context = Context(inner.updated(id, (t, None)))
@@ -35,7 +39,11 @@ final case class Context(inner: HashMap[VarId, (Type, Option[Core])]) {
 
   def get(id: VarId): Option[(Type, Option[Core])] = inner.get(id)
 
+  def get(id: Cores.Var): Option[(Type, Option[Core])] = this.get(id.x)
+
   def getType(id: VarId): Option[Type] = inner.get(id).map(_._1)
+
+  def getType(v: Cores.Var): Option[Type] = this.getType(v.x)
 
   def getValue(id: VarId): Option[Core] = inner.get(id).map(_._2).flatten
 
@@ -394,6 +402,10 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
   def sized(size: Core): Attrs = Attrs(level, AttrSize_Known(size), usage, selfUsage, assumptions, diverge, recpi)
 
   def typeInType: Attrs = Attrs(AttrLevel_UniverseInUniverse(), size, usage, selfUsage, assumptions, diverge, recpi)
+
+  def notRecPi: Attrs = Attrs(level, size, usage, selfUsage, assumptions, diverge, AttrRecPi_No())
+
+  def setRecPi: Attrs = Attrs(level, size, usage, selfUsage, assumptions, diverge, AttrRecPi_Yes())
 }
 
 object Attrs {
@@ -409,6 +421,8 @@ final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInfera
   def subsetOrEqual(other: Type): Boolean = universe.alpha_beta_eta_equals(other.universe) && (attrs.alpha_beta_eta_equals(other.attrs) || attrs.merge(other.attrs).alpha_beta_eta_equals(attrs))
 
   def upperType: Type = Type(Cores.Universe(), attrs.upper)
+
+  def attrsMap(f: Attrs => Attrs): Type = Type(universe, f(attrs))
 
   override def inf(context: Context): Type = upperType
 
@@ -482,7 +496,7 @@ object Exps {
     }
   }
 
-  abstract class Rec(val id: Var, val kind: Exp, val x: Exp) {
+  sealed abstract class Rec(val id: Var, val kind: Exp, val x: Exp) {
     def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec
   }
 
@@ -608,7 +622,7 @@ object Cores {
     override def check(context: Context, t: Type): Boolean = ???
   }
 
-  abstract class Rec(val id: Var, val kind: Core, val x: Core)
+  sealed abstract class Rec(val id: Var, val kind: Core, val x: Core)
 
   final case class RecCodata(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x)
 
@@ -633,7 +647,7 @@ object Cores {
     }
 
     override def check(context: Context, t: Type): Boolean = this.checkBindings(context) match {
-      case Some(innerContext) => x.check(innerContext, t)
+      case Some(innerContext) => x.check(Letrec.removeRecPiForLetrecBody(innerContext, bindings.toList), t)
       case None => false
     }
   }
@@ -665,6 +679,15 @@ object Cores {
         }
       }
       case None => false
+    }
+
+    private def removeRecPiForLetrecBody(context: Context, binds: List[Rec]): Context = binds match {
+      case Nil => context
+      case RecCodata(_, _, _) :: xs => removeRecPiForLetrecBody(context, xs)
+      case RecPi(id, _, _) :: xs => context.get(id) match {
+        case None => removeRecPiForLetrecBody(context, xs)
+        case Some((t, v)) => removeRecPiForLetrecBody(context.updated(id, t.attrsMap(_.notRecPi), v), xs)
+      }
     }
   }
 }
