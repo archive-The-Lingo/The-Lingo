@@ -89,19 +89,21 @@ sealed trait Core {
 
   final def alpha_beta_eta_equals(other: Core): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
 
-  def weakHeadNormalForm: Core = {
-    val next = this.beta
+  def weakHeadNormalForm(context: Context): Core = {
+    val next = this.reduce(context)
     if (next == this) {
       this
     } else {
-      next.weakHeadNormalForm
+      next.weakHeadNormalForm(context)
     }
   }
 
-  def beta: Core = this
+  def weakHeadNormalForm: Core = this.weakHeadNormalForm(Context.Empty)
+
+  def reduce(context: Context): Core = this
 
   def infer(context: Context): Option[Type] = {
-    val next = this.beta
+    val next = this.reduce(context)
     if (next == this) {
       None
     } else {
@@ -112,7 +114,7 @@ sealed trait Core {
   def check(context: Context, t: Type): Boolean = this.infer(context) match {
     case Some(t0) => t.alpha_beta_eta_equals(t0)
     case None => {
-      val next = this.beta
+      val next = this.reduce(context)
       if (next == this) {
         false
       } else {
@@ -125,7 +127,7 @@ sealed trait Core {
   //  Some(Type(this.subst(context), ???))
   //} else
   def evalToType(context: Context): Option[Type] = {
-    val next = this.beta
+    val next = this.reduce(context)
     if (next == this) {
       None
     } else {
@@ -133,12 +135,12 @@ sealed trait Core {
     }
   }
 
-  final def betaMatch[A](f: Core => Option[A]): Option[A] = f(this) orElse {
-    val next = this.beta
+  final def reducingMatch[A](context: Context, f: Core => Option[A]): Option[A] = f(this) orElse {
+    val next = this.reduce(context)
     if (next == this) {
       None
     } else {
-      next.betaMatch(f)
+      next.reducingMatch(context, f)
     }
   }
 }
@@ -508,19 +510,19 @@ object Cores {
 
   final case class Car(x: Core) extends CoreNeu {
     override def infer(context: Context): Option[Type] = x.infer(context) flatMap {
-      case Type(uni, attrs) => uni betaMatch {
+      case Type(uni, attrs) => uni.reducingMatch(context, {
         case Pi(a, id, d) => a.evalToType(context)
         case _ => None
-      }
+      })
     }
   }
 
   final case class Cdr(x: Core) extends CoreNeu {
     override def infer(context: Context): Option[Type] = x.infer(context) flatMap {
-      case Type(uni, attrs) => uni betaMatch {
+      case Type(uni, attrs) => uni.reducingMatch(context, {
         case Pi(a, id, d) => a.evalToType(context).flatMap((at) => d.evalToType(context.updated(id, at)))
         case _ => None
-      }
+      })
     }
   }
 
