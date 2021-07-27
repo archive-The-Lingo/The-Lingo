@@ -36,6 +36,10 @@ final case class Context(inner: HashMap[VarId, (Type, Exp)]) {
   def getValue(id: VarId): Option[Exp] = inner.get(id).map(_._2)
 }
 
+object Context {
+  val Empty = Context(HashMap())
+}
+
 final case class AlphaMapping(inner: HashMap[VarId, VarId], reverseMap: HashMap[VarId, VarId]) {
   def has(a: VarId, b: VarId): Boolean = inner.get(a) match {
     case Some(b0) => b == b0
@@ -61,7 +65,9 @@ object AlphaMapping {
 sealed trait Exp {
   def weakHeadNormalForm: Exp = ???
 
-  def toCore(scope: HashMap[Identifier, VarId]): Core
+  def toCore(scope: HashMap[Identifier, VarId]): Core = this.toCore
+
+  def toCore: Core = this.toCore(HashMap())
 }
 
 // is neutral if appers in normal form
@@ -78,6 +84,20 @@ sealed trait Core {
   final def alpha_eta_equals(other: Core): Boolean = this.alpha_eta_equals(other, AlphaMapping.Empty)
 
   def weakHeadNormalForm: Core = ???
+
+  def infer(context: Context): Option[Type] = None
+
+  def check(context: Context, t: Type): Boolean
+}
+
+sealed trait CoreInferable extends Core {
+  final override def infer(context: Context): Option[Type] = Some(inf(context))
+
+  def inf(context: Context): Type = this.inf
+
+  def inf: Type = this.inf(Context.Empty)
+
+  final override def check(context: Context, t: Type): Boolean = t.subsetOrEqual(this.inf(context))
 }
 
 // is neutral if appers in normal form
@@ -123,6 +143,15 @@ sealed trait AttrLevel extends Attr {
       case None => AttrLevel_UniverseInUniverse()
     }
   }
+
+  def upper: AttrLevel = this match {
+    case AttrLevel_UniverseInUniverse() => AttrLevel_UniverseInUniverse()
+    case AttrLevel_Known(level) => AttrLevel_Known(Cores.Succ(level))
+  }
+}
+
+object AttrLevel {
+  val Base = AttrLevel_Known(Cores.Zero())
 }
 
 final case class AttrLevel_UniverseInUniverse() extends AttrLevel
@@ -144,6 +173,10 @@ sealed trait AttrSize extends Attr {
   }
 }
 
+object AttrSize {
+  val Base = AttrSize_Known(Cores.Zero())
+}
+
 final case class AttrSize_UnknownFinite() extends AttrSize
 
 final case class AttrSize_Known(size: Core) extends AttrSize {
@@ -161,6 +194,10 @@ sealed trait AttrUsage extends Attr {
   }
 }
 
+object AttrUsage {
+  val Base = AttrUsage_Unlimited()
+}
+
 final case class AttrUsage_Erased() extends AttrUsage
 
 final case class AttrUsage_Once() extends AttrUsage
@@ -173,6 +210,16 @@ sealed trait AttrSelfUsage extends Attr {
     case (AttrSelfUsage_Once(), _) | (_, AttrSelfUsage_Once()) => AttrSelfUsage_Once()
     case (AttrSelfUsage_Unlimited(), AttrSelfUsage_Unlimited()) => AttrSelfUsage_Unlimited()
   }
+
+  def upper: AttrUsage = this match {
+    case AttrSelfUsage_Erased() => AttrUsage_Erased()
+    case AttrSelfUsage_Once() => AttrUsage_Once()
+    case AttrSelfUsage_Unlimited() => AttrUsage_Unlimited()
+  }
+}
+
+object AttrSelfUsage {
+  val Base = AttrSelfUsage_Unlimited()
 }
 
 final case class AttrSelfUsage_Erased() extends AttrSelfUsage
@@ -194,6 +241,8 @@ final case class AttrAssumptions(assumptions: Set[Type]) extends Attr {
 }
 
 object AttrAssumptions {
+  def Base = AttrAssumptions(Set())
+
   private def distinct(xs: List[Type]): List[Type] = xs match {
     case Nil => Nil
     case x :: xs => x :: distinct(xs.filterNot(x.alpha_eta_equals(_)))
@@ -211,6 +260,10 @@ sealed trait AttrDiverge extends Attr {
   }
 }
 
+object AttrDiverge {
+  val Base = AttrDiverge_No()
+}
+
 final case class AttrDiverge_Yes() extends AttrDiverge
 
 final case class AttrDiverge_No() extends AttrDiverge
@@ -225,13 +278,25 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
       selfUsage.alpha_eta_equals(other.selfUsage, map) &&
       assumptions.alpha_eta_equals(other.assumptions, map) &&
       diverge.alpha_eta_equals(other.diverge, map)
+
+  final def alpha_eta_equals(other: Attrs): Boolean = this.alpha_eta_equals(other, AlphaMapping.Empty)
+
+  def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base)
 }
 
-final case class Type(universe: Core, attrs: Attrs) extends Core {
+object Attrs {
+  val Base = Attrs(AttrLevel.Base, AttrSize.Base, AttrUsage.Base, AttrSelfUsage.Base, AttrAssumptions.Base, AttrDiverge.Base)
+}
+
+final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInferable {
   override def alpha_eta_equals(other: Core, map: AlphaMapping): Boolean = other match {
     case Type(otherUniverse, otherAttrs) => universe.alpha_eta_equals(otherUniverse, map) && attrs.alpha_eta_equals(otherAttrs, map)
     case _ => false
   }
+
+  def subsetOrEqual(other: Type): Boolean = universe.alpha_eta_equals(other.universe) && (attrs.alpha_eta_equals(other.attrs) || attrs.merge(other.attrs).alpha_eta_equals(attrs))
+
+  override def inf(context: Context): Type = Type(Cores.Universe(), attrs.upper)
 }
 
 object Exps {
@@ -243,18 +308,43 @@ object Exps {
   }
 
   final case class Zero() extends Exp {
-    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Zero()
+    override def toCore: Core = Cores.Zero()
   }
 
   final case class Succ(x: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Succ(x.toCore(scope))
   }
+
+  final case class Nat() extends Exp {
+    override def toCore: Core = Cores.Nat()
+  }
+
+  final case class Universe() extends Exp {
+    override def toCore: Core = Cores.Universe()
+  }
 }
 
 object Cores {
-  final case class Var(x: VarId) extends CoreNeu
+  final case class Var(x: VarId) extends CoreNeu with CoreInferable {
+    override def inf(context: Context): Type = context.getType(x) match {
+      case Some(t) => t
+      case None => throw new Error("no definition $x")
+    }
+  }
 
-  final case class Zero() extends Core
+  final case class Zero() extends Core with CoreInferable {
+    override def inf: Type = Type(Nat(), Attrs.Base)
+  }
 
-  final case class Succ(x: Core) extends Core
+  final case class Nat() extends Core with CoreInferable {
+    override def inf: Type = ???
+  }
+
+  final case class Succ(x: Core) extends Core with CoreInferable {
+    override def inf(context: Context): Type = ???
+  }
+
+  final case class Universe() extends Core with CoreInferable {
+    override def inf: Type = Type(Universe(), Attrs.Base.upper)
+  }
 }
