@@ -79,9 +79,9 @@ sealed trait AlphaEtaEqual {
 
 // uses VarId
 sealed trait Core {
-  def alpha_eta_eval_equals(other: Core, map: AlphaMapping): Boolean = this == other
+  def alpha_beta_eta_equals(other: Core, map: AlphaMapping): Boolean = this == other
 
-  final def alpha_eta_eval_equals(other: Core): Boolean = this.alpha_eta_eval_equals(other, AlphaMapping.Empty)
+  final def alpha_beta_eta_equals(other: Core): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
 
   def weakHeadNormalForm: Core = ???
 
@@ -106,9 +106,9 @@ sealed trait CoreInferable extends Core {
 sealed trait CoreNeu extends Core
 
 sealed trait Attr {
-  def alpha_eta_eval_equals(other: Attr, map: AlphaMapping): Boolean = this == other
+  def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = this == other
 
-  final def alpha_eta_eval_equals(other: Attr): Boolean = this.alpha_eta_eval_equals(other, AlphaMapping.Empty)
+  final def alpha_beta_eta_equals(other: Attr): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
 }
 
 private sealed trait NatParseResult
@@ -159,8 +159,8 @@ object AttrLevel {
 final case class AttrLevel_UniverseInUniverse() extends AttrLevel
 
 final case class AttrLevel_Known(level: Core) extends AttrLevel {
-  override def alpha_eta_eval_equals(other: Attr, map: AlphaMapping): Boolean = other match {
-    case AttrLevel_Known(otherLevel) => level.alpha_eta_eval_equals(otherLevel, map)
+  override def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
+    case AttrLevel_Known(otherLevel) => level.alpha_beta_eta_equals(otherLevel, map)
     case _ => false
   }
 }
@@ -182,8 +182,8 @@ object AttrSize {
 final case class AttrSize_UnknownFinite() extends AttrSize
 
 final case class AttrSize_Known(size: Core) extends AttrSize {
-  override def alpha_eta_eval_equals(other: Attr, map: AlphaMapping): Boolean = other match {
-    case AttrSize_Known(otherSize) => size.alpha_eta_eval_equals(otherSize, map)
+  override def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
+    case AttrSize_Known(otherSize) => size.alpha_beta_eta_equals(otherSize, map)
     case _ => false
   }
 }
@@ -233,10 +233,10 @@ final case class AttrSelfUsage_Unlimited() extends AttrSelfUsage
 final case class AttrAssumptions(assumptions: Set[Type]) extends Attr {
   def merge(other: AttrAssumptions): AttrAssumptions = AttrAssumptions.safeApply(assumptions.union(other.assumptions))
 
-  override def alpha_eta_eval_equals(other: Attr, map: AlphaMapping): Boolean = other match {
+  override def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
     case AttrAssumptions(otherAssumptions) if assumptions.size == otherAssumptions.size => {
       val bs = otherAssumptions.toList
-      assumptions.toList.permutations.exists((as) => as.zip(bs).forall({ case (x, y) => x.alpha_eta_eval_equals(y, map) }))
+      assumptions.toList.permutations.exists((as) => as.zip(bs).forall({ case (x, y) => x.alpha_beta_eta_equals(y, map) }))
     }
     case _ => false
   }
@@ -247,7 +247,7 @@ object AttrAssumptions {
 
   private def distinct(xs: List[Type]): List[Type] = xs match {
     case Nil => Nil
-    case x :: xs => x :: distinct(xs.filterNot(x.alpha_eta_eval_equals(_)))
+    case x :: xs => x :: distinct(xs.filterNot(x.alpha_beta_eta_equals(_)))
   }
 
   def safeApply(assumptions: Set[Type]): AttrAssumptions = new AttrAssumptions(Set.empty.concat(distinct(assumptions.toList).map(_.erased)))
@@ -273,15 +273,15 @@ final case class AttrDiverge_No() extends AttrDiverge
 final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge) {
   def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge))
 
-  def alpha_eta_eval_equals(other: Attrs, map: AlphaMapping): Boolean =
-    level.alpha_eta_eval_equals(other.level, map) &&
-      size.alpha_eta_eval_equals(other.size, map) &&
-      usage.alpha_eta_eval_equals(other.usage, map) &&
-      selfUsage.alpha_eta_eval_equals(other.selfUsage, map) &&
-      assumptions.alpha_eta_eval_equals(other.assumptions, map) &&
-      diverge.alpha_eta_eval_equals(other.diverge, map)
+  def alpha_beta_eta_equals(other: Attrs, map: AlphaMapping): Boolean =
+    level.alpha_beta_eta_equals(other.level, map) &&
+      size.alpha_beta_eta_equals(other.size, map) &&
+      usage.alpha_beta_eta_equals(other.usage, map) &&
+      selfUsage.alpha_beta_eta_equals(other.selfUsage, map) &&
+      assumptions.alpha_beta_eta_equals(other.assumptions, map) &&
+      diverge.alpha_beta_eta_equals(other.diverge, map)
 
-  final def alpha_eta_eval_equals(other: Attrs): Boolean = this.alpha_eta_eval_equals(other, AlphaMapping.Empty)
+  final def alpha_beta_eta_equals(other: Attrs): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
 
   def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base)
 
@@ -297,12 +297,12 @@ object Attrs {
 }
 
 final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInferable {
-  override def alpha_eta_eval_equals(other: Core, map: AlphaMapping): Boolean = other match {
-    case Type(otherUniverse, otherAttrs) => universe.alpha_eta_eval_equals(otherUniverse, map) && attrs.alpha_eta_eval_equals(otherAttrs, map)
+  override def alpha_beta_eta_equals(other: Core, map: AlphaMapping): Boolean = other match {
+    case Type(otherUniverse, otherAttrs) => universe.alpha_beta_eta_equals(otherUniverse, map) && attrs.alpha_beta_eta_equals(otherAttrs, map)
     case _ => false
   }
 
-  def subsetOrEqual(other: Type): Boolean = universe.alpha_eta_eval_equals(other.universe) && (attrs.alpha_eta_eval_equals(other.attrs) || attrs.merge(other.attrs).alpha_eta_eval_equals(attrs))
+  def subsetOrEqual(other: Type): Boolean = universe.alpha_beta_eta_equals(other.universe) && (attrs.alpha_beta_eta_equals(other.attrs) || attrs.merge(other.attrs).alpha_beta_eta_equals(attrs))
 
   override def inf(context: Context): Type = Type(Cores.Universe(), attrs.upper)
 
