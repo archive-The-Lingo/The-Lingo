@@ -220,6 +220,7 @@ final case class AttrLevel_Known(level: Core) extends AttrLevel {
 
 sealed trait AttrSize extends Attr {
   def merge(other: AttrSize): AttrSize = (this, other) match {
+    case (_, AttrSize_Infinite()) | (AttrSize_Infinite(), _) => AttrSize_Infinite()
     case (_, AttrSize_UnknownFinite()) | (AttrSize_UnknownFinite(), _) => AttrSize_UnknownFinite()
     case (AttrSize_Known(x), AttrSize_Known(y)) => mergeTwoNat(x, y) match {
       case Some(r) => AttrSize_Known(r)
@@ -233,6 +234,8 @@ object AttrSize {
 }
 
 final case class AttrSize_UnknownFinite() extends AttrSize
+
+final case class AttrSize_Infinite() extends AttrSize
 
 final case class AttrSize_Known(size: Core) extends AttrSize {
   override def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
