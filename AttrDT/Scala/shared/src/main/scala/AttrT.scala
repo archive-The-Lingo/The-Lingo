@@ -580,25 +580,29 @@ object Cores {
 
     private def checkBindings(context: Context): Option[Context] = {
       val innerContext0 = context.concat(bindings.toList.map(x => x.kind.evalToType.map(t => (x.id.x, t, x.x))).flatten)
-      def step(innerContext:Context)= context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext).map(t => (x.id.x, t, x.x))).flatten)
+
+      def step(innerContext: Context) = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext).map(t => (x.id.x, t, x.x))).flatten)
+
       val innerContext = step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(innerContext0))))))))))))))))
-      if(bindings.forall(Letrec.checkBinding(innerContext,_))) {
+      if (bindings.forall(Letrec.checkBinding(innerContext, _))) {
         Some(innerContext)
-      }else{
+      } else {
         None
       }
     }
+
     override def check(context: Context, t: Type): Boolean = this.checkBindings(context) match {
-      case Some(innerContext) => x.check(innerContext,t)
+      case Some(innerContext) => x.check(innerContext, t)
       case None => false
     }
   }
+
   object Letrec {
-    private def checkBinding(context:Context,bind: Rec): Boolean = bind.kind.evalToType(context) match {
+    private def checkBinding(context: Context, bind: Rec): Boolean = bind.kind.evalToType(context) match {
       case Some(t) => {
         bind match {
-          case RecCodata(id,_,x) => t.attrs.size == AttrSize_Infinite()
-          case RecPi(id,_,x) => ???
+          case RecCodata(id, _, x) => t.attrs.size == AttrSize_Infinite()
+          case RecPi(id, _, x) => ???
         }
       }
       case None => false
