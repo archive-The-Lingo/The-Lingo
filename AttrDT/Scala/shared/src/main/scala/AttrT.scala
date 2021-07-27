@@ -1,6 +1,7 @@
 package AttrT
 
 import scala.collection.immutable.HashMap
+import scala.language.implicitConversions
 
 type Identifier = Symbol
 
@@ -9,6 +10,42 @@ type UniqueIdentifier = Int
 type NaturalNumber = Int
 
 final case class Error(x: String) extends Exception(x)
+
+sealed abstract class Err(x: String) extends Exception(x)
+
+final case class ErrCantInfer(context: Context, x: Core) extends Err(s"can't infer $x in the context $context")
+
+final case class ErrCheckFailed(context: Context, expectedType: Core, x: Core, realType: Core) extends Err(s"check $x failed in the context $context expect $expectedType, got $realType")
+
+final case class ErrExpected(context: Context, expectedType: String, x: Core, realType: Core) extends Err(s"expect $x to be $expectedType in the context $context, got $realType")
+
+final case class ErrTypeUnknown(context: Context, x: Cores.Var) extends Err(s"the type of $x is unknown in the context $context")
+
+final case class ErrCantEvalToType(context: Context, x: Core) extends Err(s"$x in the context $context can't be a type")
+final case class ErrLetrec(context:Context,x:Core) extends Err(s"illegal letrec $x in the context $context")
+
+type Maybe[T] = Either[Err, T]
+private implicit def someToRight[T, U](x: Some[T]): Right[U, T] = x match {
+  case Some(x) => Right(x)
+}
+private implicit def eitherToBoolean[T, U](x: Either[T, U]): Boolean = x match {
+  case Right(_) => true
+  case Left(_) => false
+}
+private implicit def eitherErase[T, U](x: Either[T, U]): Either[T, Unit] = x match {
+  case Right(_) => Right(())
+  case Left(v) => Left(v)
+}
+
+private implicit final class EitherAnd[T, U](self: Either[T, U]) {
+  def and[U1](other: => Either[T, U1]): Either[T, (U, U1)] = self match {
+    case Left(x) => Left(x)
+    case Right(a) => other match {
+      case Left(x) => Left(x)
+      case Right(b) => Right((a, b))
+    }
+  }
+}
 
 object UniqueIdentifier {
   private var count: UniqueIdentifier = 0
@@ -115,21 +152,25 @@ sealed trait Core {
 
   def reduce(context: Context): Core = this
 
-  def infer(context: Context): Option[Type] = {
+  def infer(context: Context): Maybe[Type] = {
     val next = this.reduce(context)
     if (next == this) {
-      None
+      Left(ErrCantInfer(context, this))
     } else {
       next.infer(context)
     }
   }
 
-  def check(context: Context, t: Type): Boolean = this.infer(context) match {
-    case Some(t0) => t.alpha_beta_eta_equals(t0)
-    case None => {
+  def check(context: Context, t: Type): Maybe[Unit] = this.infer(context) match {
+    case Right(t0) => if (t.alpha_beta_eta_equals(t0)) {
+      Right(())
+    } else {
+      Left(ErrCheckFailed(context, t, this, t0))
+    }
+    case Left(err) => {
       val next = this.reduce(context)
       if (next == this) {
-        false
+        Left(err)
       } else {
         next.check(context, t)
       }
@@ -139,16 +180,16 @@ sealed trait Core {
   //if (this.check(context, Cores.UniverseInfinite)) {
   //  Some(Type(this.subst(context), ???))
   //} else
-  def evalToType(context: Context): Option[Type] = {
+  def evalToType(context: Context): Maybe[Type] = {
     val next = this.reduce(context)
     if (next == this) {
-      None
+      Left(ErrCantEvalToType(context, this))
     } else {
       next.evalToType(context)
     }
   }
 
-  def evalToType: Option[Type] = evalToType(Context.Empty)
+  def evalToType: Maybe[Type] = evalToType(Context.Empty)
 
   final def reducingMatch[A](context: Context, f: Core => Option[A]): Option[A] = f(this) orElse {
     val next = this.reduce(context)
@@ -157,6 +198,18 @@ sealed trait Core {
     } else {
       next.reducingMatch(context, f)
     }
+  }
+
+  final def reducingMatch[A](context: Context, f: Core => Maybe[A]): Maybe[A] = f(this) match {
+    case Left(err) => {
+      val next = this.reduce(context)
+      if (next == this) {
+        Left(err)
+      } else {
+        next.reducingMatch(context, f)
+      }
+    }
+    case Right(v) => Right(v)
   }
 
   final def reducingMatch(context: Context, f: Core => Boolean): Boolean = f(this) || {
@@ -170,13 +223,20 @@ sealed trait Core {
 }
 
 sealed trait CoreInferable extends Core {
-  final override def infer(context: Context): Option[Type] = Some(inf(context))
+  final override def infer(context: Context): Maybe[Type] = Some(inf(context))
 
   def inf(context: Context): Type = this.inf
 
   def inf: Type = this.inf(Context.Empty)
 
-  final override def check(context: Context, t: Type): Boolean = t.subsetOrEqual(this.inf(context))
+  final override def check(context: Context, t: Type): Maybe[Unit] = {
+    val realT = this.inf(context)
+    if (t.subsetOrEqual(realT)) {
+      Right(())
+    } else {
+      Left(ErrCheckFailed(context, t, this, realT))
+    }
+  }
 }
 
 // is neutral if appers in normal form
@@ -519,6 +579,14 @@ object Exps {
       Cores.Letrec(bindings.map(_.toCore(ctx)), x.toCore(ctx))
     }
   }
+
+  final case class Lambda(arg: Exp, body: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Lambda(arg.toCore(scope), body.toCore(scope))
+  }
+
+  final case class Apply(f: Exp, x: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Apply(f.toCore(scope), x.toCore(scope))
+  }
 }
 
 private def transverse[A](xs: List[Option[A]]): Option[List[A]] = xs match {
@@ -529,7 +597,10 @@ private def transverse[A](xs: List[Option[A]]): Option[List[A]] = xs match {
 
 object Cores {
   final case class Var(x: VarId) extends CoreNeu {
-    override def infer(context: Context): Option[Type] = context.getType(x)
+    override def infer(context: Context): Maybe[Type] = context.getType(x) match {
+      case Some(t) => Right(t)
+      case None => Left(ErrTypeUnknown(context, this))
+    }
   }
 
   private val NatT: Type = Type(Nat())
@@ -563,63 +634,59 @@ object Cores {
   }
 
   final case class MakeKind(x: Core) extends Core {
-    override def evalToType(context: Context): Option[Type] = if (x.check(context, UniverseInfinite)) {
-      Some(Type(x, Attrs.Base))
+    override def evalToType(context: Context): Maybe[Type] = (x.check(context, UniverseInfinite)).flatMap(_ => {
+      Right(Type(x, Attrs.Base))
+    })
+
+    override def check(context: Context, t: Type): Maybe[Unit] = if (t.universe.alpha_beta_eta_equals(Kind())) {
+      x.check(context, Type(Universe(), t.attrs))
     } else {
-      None
+      Left(ErrCheckFailed(context, t, this, Kind()))
     }
 
-    override def check(context: Context, t: Type): Boolean = t.universe.alpha_beta_eta_equals(Kind()) && x.check(context, Type(Universe(), t.attrs))
-
-    override def infer(context: Context): Option[Type] = if (x.check(context, UniverseInfinite)) {
+    override def infer(context: Context): Maybe[Type] = x.check(context, UniverseInfinite).flatMap(_ => {
       x.infer(context) map {
         case Type(_, attrs) => Type(Kind(), attrs.upper)
       }
-    } else {
-      None
-    }
+    })
   }
 
   final case class AttrSize(size: Core, kind: Core) extends Core {
-    override def check(context: Context, t: Type): Boolean = size.check(context, NatT) && kind.check(context, KindInfinite) && kind.check(context, t)
+    override def check(context: Context, t: Type): Maybe[Unit] = size.check(context, NatT) and kind.check(context, KindInfinite) and kind.check(context, t)
 
-    override def infer(context: Context): Option[Type] = if (size.check(context, NatT) && kind.check(context, KindInfinite)) {
+    override def infer(context: Context): Maybe[Type] = (size.check(context, NatT) and kind.check(context, KindInfinite)).flatMap(_ => {
       kind.infer(context) // evalToType(context).map(_.upperType)
-    } else {
-      None
-    }
+    })
 
-    override def evalToType(context: Context): Option[Type] = if (size.check(context, NatT)) {
+    override def evalToType(context: Context): Maybe[Type] = (size.check(context, NatT)).flatMap(_ => {
       kind.evalToType(context).map(_.sized(size))
-    } else {
-      None
-    }
+    })
   }
 
   final case class Cons(x: Core, y: Core) extends Core {
-    override def check(context: Context, t: Type): Boolean = ???
+    override def check(context: Context, t: Type): Maybe[Unit] = ???
   }
 
   final case class Car(x: Core) extends CoreNeu {
-    override def infer(context: Context): Option[Type] = x.infer(context) flatMap {
+    override def infer(context: Context): Maybe[Type] = x.infer(context) flatMap {
       case Type(uni, attrs) => uni.reducingMatch(context, {
         case Pi(a, id, d) => a.evalToType(context)
-        case _ => None
+        case wrong => Left(ErrExpected(context, "Pi", x, wrong))
       })
     }
   }
 
   final case class Cdr(x: Core) extends CoreNeu {
-    override def infer(context: Context): Option[Type] = x.infer(context) flatMap {
+    override def infer(context: Context): Maybe[Type] = x.infer(context) flatMap {
       case Type(uni, attrs) => uni.reducingMatch(context, {
         case Pi(a, id, d) => a.evalToType(context).flatMap((at) => d.evalToType(context.updated(id, at)))
-        case _ => None
+        case wrong => Left(ErrExpected(context, "Pi", x, wrong))
       })
     }
   }
 
   final case class Pi(x: Core, id: Var, y: Core) extends Core {
-    override def check(context: Context, t: Type): Boolean = ???
+    override def check(context: Context, t: Type): Maybe[Unit] = ???
   }
 
   sealed abstract class Rec(val id: Var, val kind: Core, val x: Core)
@@ -634,9 +701,9 @@ object Cores {
     }
 
     private def checkBindings(context: Context): Option[Context] = {
-      val innerContext0 = context.concat(bindings.toList.map(x => x.kind.evalToType.map(t => (x.id.x, t, x.x))).flatten)
+      val innerContext0 = context.concat(bindings.toList.map(x => x.kind.evalToType.map(t => (x.id.x, t, x.x))).map(_.toOption).flatten)
 
-      def step(innerContext: Context) = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext).map(t => (x.id.x, t, x.x))).flatten)
+      def step(innerContext: Context) = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext).map(t => (x.id.x, t, x.x))).map(_.toOption).flatten)
 
       val innerContext = step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(innerContext0))))))))))))))))
       if (bindings.forall(Letrec.checkBinding(innerContext, _))) {
@@ -646,25 +713,25 @@ object Cores {
       }
     }
 
-    override def check(context: Context, t: Type): Boolean = this.checkBindings(context) match {
+    override def check(context: Context, t: Type): Maybe[Unit] = this.checkBindings(context) match {
       case Some(innerContext) => x.check(Letrec.removeRecPiForLetrecBody(innerContext, bindings.toList), t)
-      case None => false
+      case None => Left(ErrLetrec(context,this))
     }
   }
 
   object Letrec {
     private def checkBinding(context: Context, bind: Rec): Boolean = bind.kind.evalToType(context) match {
-      case Some(t) => {
+      case Right(t) => {
         bind match {
           case RecCodata(id, _, x) => t.attrs.size == AttrSize_Infinite()
           case RecPi(id, _, x) => t.universe.reducingMatch(context, {
             case Pi(arg, argId, result) => arg.evalToType(context) match {
-              case Some(t@Type(_, argAttrs)) => {
+              case Right(t@Type(_, argAttrs)) => {
                 val resultContext = context.updated(argId, t)
 
                 def resultDiverge = result.evalToType(resultContext) match {
-                  case Some(Type(_, resultAttrs)) => resultAttrs.diverge == AttrDiverge_Yes()
-                  case None => false
+                  case Right(Type(_, resultAttrs)) => resultAttrs.diverge == AttrDiverge_Yes()
+                  case Left(_) => false
                 }
 
                 argAttrs.size match {
@@ -672,13 +739,13 @@ object Cores {
                   case AttrSize_Known(size) => t.attrs.recpi == AttrRecPi_Yes() || resultDiverge
                 }
               }
-              case None => false
+              case Left(_) => false
             }
             case _ => false
           })
         }
       }
-      case None => false
+      case Left(_) => false
     }
 
     private def removeRecPiForLetrecBody(context: Context, binds: List[Rec]): Context = binds match {
@@ -689,5 +756,14 @@ object Cores {
         case Some((t, v)) => removeRecPiForLetrecBody(context.updated(id, t.attrsMap(_.notRecPi), v), xs)
       }
     }
+  }
+
+  final case class Lambda(arg: Core, body: Core) extends Core
+
+  final case class Apply(f: Core, x: Core) extends CoreNeu {
+    override def reduce(context: Context): Core = f.reducingMatch(context, {
+      case Lambda(arg, body) => ???
+      case _ => None
+    }) getOrElse this
   }
 }
