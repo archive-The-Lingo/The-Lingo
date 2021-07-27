@@ -578,18 +578,30 @@ object Cores {
       throw new Error("letrec: duplicate id")
     }
 
-    private def checkBindings(context: Context): Boolean = {
+    private def checkBindings(context: Context): Option[Context] = {
       val innerContext0 = context.concat(bindings.toList.map(x => x.kind.evalToType.map(t => (x.id.x, t, x.x))).flatten)
-      val innerContext1 = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext0).map(t => (x.id.x, t, x.x))).flatten)
-      val innerContext2 = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext1).map(t => (x.id.x, t, x.x))).flatten)
-      val innerContext3 = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext2).map(t => (x.id.x, t, x.x))).flatten)
-      val innerContext4 = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext3).map(t => (x.id.x, t, x.x))).flatten)
-      transverse(bindings.toList.map(x => x.kind.evalToType(innerContext4).map(t => (x.id, t, x.x)))) match {
-        case Some(innerContext) => {
-          ???
-        }
-        case None => false
+      def step(innerContext:Context)= context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext).map(t => (x.id.x, t, x.x))).flatten)
+      val innerContext = step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(innerContext0))))))))))))))))
+      if(bindings.forall(Letrec.checkBinding(innerContext,_))) {
+        Some(innerContext)
+      }else{
+        None
       }
+    }
+    override def check(context: Context, t: Type): Boolean = this.checkBindings(context) match {
+      case Some(innerContext) => x.check(innerContext,t)
+      case None => false
+    }
+  }
+  object Letrec {
+    private def checkBinding(context:Context,bind: Rec): Boolean = bind.kind.evalToType(context) match {
+      case Some(t) => {
+        bind match {
+          case RecCodata(id,_,x) => t.attrs.size == AttrSize_Infinite()
+          case RecPi(id,_,x) => ???
+        }
+      }
+      case None => false
     }
   }
 }
