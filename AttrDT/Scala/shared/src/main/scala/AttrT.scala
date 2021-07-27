@@ -26,14 +26,18 @@ object VarId {
   def gen(id: Identifier): VarId = VarId(id, UniqueIdentifier.gen)
 }
 
-final case class Context(inner: HashMap[VarId, (Type, Exp)]) {
-  def updated(id: VarId, t: Type, v: Exp): Context = Context(inner.updated(id, (t, v)))
+final case class Context(inner: HashMap[VarId, (Type, Option[Core])]) {
+  def updated(id: VarId, t: Type, v: Core): Context = Context(inner.updated(id, (t, Some(v))))
 
-  def get(id: VarId): Option[(Type, Exp)] = inner.get(id)
+  def updated(id: VarId, t: Type): Context = Context(inner.updated(id, (t, None)))
+
+  def updated(id: Cores.Var, t: Type): Context = this.updated(id.x, t)
+
+  def get(id: VarId): Option[(Type, Option[Core])] = inner.get(id)
 
   def getType(id: VarId): Option[Type] = inner.get(id).map(_._1)
 
-  def getValue(id: VarId): Option[Exp] = inner.get(id).map(_._2)
+  def getValue(id: VarId): Option[Core] = inner.get(id).map(_._2).flatten
 }
 
 object Context {
@@ -79,6 +83,8 @@ sealed trait AlphaEtaEqual {
 
 // uses VarId
 sealed trait Core {
+  //def subst(context: Context): Core = ???
+
   def alpha_beta_eta_equals(other: Core, map: AlphaMapping): Boolean = this == other
 
   final def alpha_beta_eta_equals(other: Core): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
@@ -103,21 +109,36 @@ sealed trait Core {
     }
   }
 
-  def check(context: Context, t: Type): Boolean = {
-    val next = this.beta
-    if (next == this) {
-      false
-    } else {
-      next.check(context, t)
+  def check(context: Context, t: Type): Boolean = this.infer(context) match {
+    case Some(t0) => t.alpha_beta_eta_equals(t0)
+    case None => {
+      val next = this.beta
+      if (next == this) {
+        false
+      } else {
+        next.check(context, t)
+      }
     }
   }
 
+  //if (this.check(context, Cores.UniverseInfinite)) {
+  //  Some(Type(this.subst(context), ???))
+  //} else
   def evalToType(context: Context): Option[Type] = {
     val next = this.beta
     if (next == this) {
       None
     } else {
       next.evalToType(context)
+    }
+  }
+
+  final def betaMatch[A](f: Core => Option[A]): Option[A] = f(this) orElse {
+    val next = this.beta
+    if (next == this) {
+      None
+    } else {
+      next.betaMatch(f)
     }
   }
 }
@@ -357,6 +378,8 @@ object Exps {
       case Some(v) => Cores.Var(v)
       case None => throw new Error("no definition $x")
     }
+
+    def gen: Cores.Var = Cores.Var(VarId.gen(x))
   }
 
   final case class Zero() extends Exp {
@@ -386,6 +409,25 @@ object Exps {
   final case class AttrSize(size: Exp, kind: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.AttrSize(size.toCore(scope), kind.toCore(scope))
   }
+
+  final case class Cons(x: Exp, y: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Cons(x.toCore(scope), y.toCore(scope))
+  }
+
+  final case class Car(x: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Car(x.toCore(scope))
+  }
+
+  final case class Cdr(x: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Cdr(x.toCore(scope))
+  }
+
+  final case class Pi(x: Exp, id: Var, y: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = {
+      val id0 = id.gen
+      Cores.Pi(x.toCore(scope), id0, y.toCore(scope.updated(id.x, id0.x)))
+    }
+  }
 }
 
 object Cores {
@@ -407,7 +449,7 @@ object Cores {
   }
 
   private val Universe0: Type = Type(Universe())
-  private val UniverseInfinite: Type = Universe0.typeInType
+  private[AttrT] val UniverseInfinite: Type = Universe0.typeInType
   private val Universe1: Type = Universe0.upperType
   private val Kind0: Type = Type(Kind())
   private val KindInfinite: Type = Kind0.typeInType
@@ -458,5 +500,31 @@ object Cores {
     } else {
       None
     }
+  }
+
+  final case class Cons(x: Core, y: Core) extends Core {
+    override def check(context: Context, t: Type): Boolean = ???
+  }
+
+  final case class Car(x: Core) extends CoreNeu {
+    override def infer(context: Context): Option[Type] = x.infer(context) flatMap {
+      case Type(uni, attrs) => uni betaMatch {
+        case Pi(a, id, d) => a.evalToType(context)
+        case _ => None
+      }
+    }
+  }
+
+  final case class Cdr(x: Core) extends CoreNeu {
+    override def infer(context: Context): Option[Type] = x.infer(context) flatMap {
+      case Type(uni, attrs) => uni betaMatch {
+        case Pi(a, id, d) => a.evalToType(context).flatMap((at) => d.evalToType(context.updated(id, at)))
+        case _ => None
+      }
+    }
+  }
+
+  final case class Pi(x: Core, id: Var, y: Core) extends Core {
+    override def check(context: Context, t: Type): Boolean = ???
   }
 }
