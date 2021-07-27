@@ -38,6 +38,11 @@ final case class Context(inner: HashMap[VarId, (Type, Option[Core])]) {
   def getType(id: VarId): Option[Type] = inner.get(id).map(_._1)
 
   def getValue(id: VarId): Option[Core] = inner.get(id).map(_._2).flatten
+
+  def concat(xs: List[(VarId, Type, Core)]): Context = xs match {
+    case Nil => this
+    case (id, t, v) :: xs => this.updated(id, t, v).concat(xs)
+  }
 }
 
 object Context {
@@ -134,6 +139,8 @@ sealed trait Core {
       next.evalToType(context)
     }
   }
+
+  def evalToType: Option[Type] = evalToType(Context.Empty)
 
   final def reducingMatch[A](context: Context, f: Core => Option[A]): Option[A] = f(this) orElse {
     val next = this.reduce(context)
@@ -453,18 +460,21 @@ object Exps {
     private val recScope: List[(Identifier, VarId)] = bindings.toList.map(_.id).map((id) => (id.x, id.gen.x))
 
     override def toCore(scope: HashMap[Identifier, VarId]): Core = {
-      val ctx: HashMap[Identifier, VarId] = scope ++ recScope
+      val ctx: HashMap[Identifier, VarId] = scope.concat(recScope)
       Cores.Letrec(bindings.map(_.toCore(ctx)), x.toCore(ctx))
     }
   }
 }
 
+private def transverse[A](xs: List[Option[A]]): Option[List[A]] = xs match {
+  case Nil => Some(Nil)
+  case Some(x) :: xs => transverse(xs).map(x :: _)
+  case None :: _ => None
+}
+
 object Cores {
-  final case class Var(x: VarId) extends CoreNeu with CoreInferable {
-    override def inf(context: Context): Type = context.getType(x) match {
-      case Some(t) => t
-      case None => throw new Error("no definition $x")
-    }
+  final case class Var(x: VarId) extends CoreNeu {
+    override def infer(context: Context): Option[Type] = context.getType(x)
   }
 
   private val NatT: Type = Type(Nat())
@@ -566,6 +576,20 @@ object Cores {
   final case class Letrec(bindings: Set[Rec], x: Core) extends Core {
     if (bindings.size != bindings.toList.distinctBy(_.id).length) {
       throw new Error("letrec: duplicate id")
+    }
+
+    private def checkBindings(context: Context): Boolean = {
+      val innerContext0 = context.concat(bindings.toList.map(x => x.kind.evalToType.map(t => (x.id.x, t, x.x))).flatten)
+      val innerContext1 = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext0).map(t => (x.id.x, t, x.x))).flatten)
+      val innerContext2 = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext1).map(t => (x.id.x, t, x.x))).flatten)
+      val innerContext3 = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext2).map(t => (x.id.x, t, x.x))).flatten)
+      val innerContext4 = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext3).map(t => (x.id.x, t, x.x))).flatten)
+      transverse(bindings.toList.map(x => x.kind.evalToType(innerContext4).map(t => (x.id, t, x.x)))) match {
+        case Some(innerContext) => {
+          ???
+        }
+        case None => false
+      }
     }
   }
 }
