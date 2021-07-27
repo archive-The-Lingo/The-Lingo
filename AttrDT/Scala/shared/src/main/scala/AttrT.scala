@@ -304,7 +304,9 @@ final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInfera
 
   def subsetOrEqual(other: Type): Boolean = universe.alpha_beta_eta_equals(other.universe) && (attrs.alpha_beta_eta_equals(other.attrs) || attrs.merge(other.attrs).alpha_beta_eta_equals(attrs))
 
-  override def inf(context: Context): Type = Type(Cores.Universe(), attrs.upper)
+  def upperType: Type = Type(Cores.Universe(), attrs.upper)
+
+  override def inf(context: Context): Type = upperType
 
   def erased: Type = Type(universe, attrs.erased)
 
@@ -347,6 +349,10 @@ object Exps {
     override def toCore: Core = Cores.Kind()
   }
 
+  final case class MakeKind(x: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.MakeKind(x.toCore(scope))
+  }
+
   final case class AttrSize(size: Exp, kind: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.AttrSize(size.toCore(scope), kind.toCore(scope))
   }
@@ -371,8 +377,10 @@ object Cores {
   }
 
   private val Universe0: Type = Type(Universe())
-  private val Universe1: Type = Type(Universe(), Attrs.Base.upper)
-  private val UniverseInfinite: Type = Type(Universe()).typeInType
+  private val UniverseInfinite: Type = Universe0.typeInType
+  private val Universe1: Type = Universe0.upperType
+  private val Kind0: Type = Type(Kind())
+  private val KindInfinite: Type = Kind0.typeInType
 
   final case class Nat() extends Core with CoreInferable {
     override def inf: Type = Universe0
@@ -388,11 +396,29 @@ object Cores {
     override def inf: Type = Universe1
   }
 
-  final case class AttrSize(size: Core, kind: Core) extends Core {
-    override def check(context: Context, t: Type): Boolean = size.check(context, NatT) && kind.check(context, UniverseInfinite) && kind.check(context, t)
+  final case class MakeKind(x: Core) extends Core {
+    override def evalToType(context: Context): Option[Type] = if (x.check(context, UniverseInfinite)) {
+      Some(Type(x, Attrs.Base))
+    } else {
+      None
+    }
 
-    override def infer(context: Context): Option[Type] = if (size.check(context, NatT) && kind.check(context, UniverseInfinite)) {
-      kind.infer(context)
+    override def check(context: Context, t: Type): Boolean = t.universe.alpha_beta_eta_equals(Kind()) && x.check(context, Type(Universe(), t.attrs))
+
+    override def infer(context: Context): Option[Type] = if (x.check(context, UniverseInfinite)) {
+      x.infer(context) map {
+        case Type(_, attrs) => Type(Kind(), attrs.upper)
+      }
+    } else {
+      None
+    }
+  }
+
+  final case class AttrSize(size: Core, kind: Core) extends Core {
+    override def check(context: Context, t: Type): Boolean = size.check(context, NatT) && kind.check(context, KindInfinite) && kind.check(context, t)
+
+    override def infer(context: Context): Option[Type] = if (size.check(context, NatT) && kind.check(context, KindInfinite)) {
+      kind.infer(context) // evalToType(context).map(_.upperType)
     } else {
       None
     }
