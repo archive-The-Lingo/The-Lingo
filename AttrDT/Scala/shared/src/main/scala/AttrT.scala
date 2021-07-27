@@ -243,6 +243,11 @@ sealed trait AttrSize extends Attr {
       case None => AttrSize_UnknownFinite()
     }
   }
+
+  def succ: AttrSize = this match {
+    case AttrSize_Infinite() | AttrSize_UnknownFinite() => this
+    case AttrSize_Known(x) => AttrSize_Known(Cores.Succ(x))
+  }
 }
 
 object AttrSize {
@@ -342,8 +347,34 @@ final case class AttrDiverge_Yes() extends AttrDiverge
 
 final case class AttrDiverge_No() extends AttrDiverge
 
-final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge) {
-  def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge))
+sealed trait AttrRecPi extends Attr {
+  def merge(other: AttrRecPi): AttrRecPi = (this, other) match {
+    case (_, AttrRecPi_Yes()) | (AttrRecPi_Yes(), _) => AttrRecPi_Yes()
+    case (AttrRecPi_No(), AttrRecPi_No()) => AttrRecPi_No()
+  }
+}
+
+object AttrRecPi {
+  val Base = AttrRecPi_No()
+}
+
+final case class AttrRecPi_Yes() extends AttrRecPi
+
+final case class AttrRecPi_No() extends AttrRecPi
+
+final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge, recpi: AttrRecPi) {
+  def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge), recpi.merge(other.recpi))
+
+  // pi is not plain
+  // plain: sigma either ...
+  def validPlainSubtype(subtype: Attrs): Boolean =
+    this.level.merge(subtype.level).alpha_beta_eta_equals(this.level) &&
+      this.size.merge(subtype.size.succ).alpha_beta_eta_equals(this.size) &&
+      this.usage.merge(subtype.usage).alpha_beta_eta_equals(this.usage) &&
+      this.selfUsage.merge(subtype.selfUsage).alpha_beta_eta_equals(this.selfUsage) &&
+      this.assumptions.merge(subtype.assumptions).alpha_beta_eta_equals(this.assumptions) &&
+      this.diverge.merge(subtype.diverge).alpha_beta_eta_equals(this.diverge) &&
+      true // no need to check recpi
 
   def alpha_beta_eta_equals(other: Attrs, map: AlphaMapping): Boolean =
     level.alpha_beta_eta_equals(other.level, map) &&
@@ -351,21 +382,22 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
       usage.alpha_beta_eta_equals(other.usage, map) &&
       selfUsage.alpha_beta_eta_equals(other.selfUsage, map) &&
       assumptions.alpha_beta_eta_equals(other.assumptions, map) &&
-      diverge.alpha_beta_eta_equals(other.diverge, map)
+      diverge.alpha_beta_eta_equals(other.diverge, map) &&
+      recpi.alpha_beta_eta_equals(other.recpi, map)
 
   final def alpha_beta_eta_equals(other: Attrs): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
 
-  def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base)
+  def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base, AttrRecPi.Base)
 
-  def erased: Attrs = Attrs(level, size, AttrUsage_Erased(), selfUsage, assumptions, diverge)
+  def erased: Attrs = Attrs(level, size, AttrUsage_Erased(), selfUsage, assumptions, diverge, recpi)
 
-  def sized(size: Core): Attrs = Attrs(level, AttrSize_Known(size), usage, selfUsage, assumptions, diverge)
+  def sized(size: Core): Attrs = Attrs(level, AttrSize_Known(size), usage, selfUsage, assumptions, diverge, recpi)
 
-  def typeInType: Attrs = Attrs(AttrLevel_UniverseInUniverse(), size, usage, selfUsage, assumptions, diverge)
+  def typeInType: Attrs = Attrs(AttrLevel_UniverseInUniverse(), size, usage, selfUsage, assumptions, diverge, recpi)
 }
 
 object Attrs {
-  val Base = Attrs(AttrLevel.Base, AttrSize.Base, AttrUsage.Base, AttrSelfUsage.Base, AttrAssumptions.Base, AttrDiverge.Base)
+  val Base = Attrs(AttrLevel.Base, AttrSize.Base, AttrUsage.Base, AttrSelfUsage.Base, AttrAssumptions.Base, AttrDiverge.Base, AttrRecPi.Base)
 }
 
 final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInferable {
