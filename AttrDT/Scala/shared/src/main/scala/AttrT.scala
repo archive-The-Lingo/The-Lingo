@@ -60,6 +60,8 @@ object AlphaMapping {
 // uses Identifier
 sealed trait Exp {
   def weakHeadNormalForm: Exp = ???
+
+  def toCore(scope: HashMap[Identifier, VarId]): Core
 }
 
 // is neutral if appers in normal form
@@ -233,11 +235,20 @@ final case class Type(universe: Core, attrs: Attrs) extends Core {
 }
 
 object Exps {
-  final case class Var(x: Identifier) extends ExpNeu
+  final case class Var(x: Identifier) extends ExpNeu {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = scope.get(x) match {
+      case Some(v) => Cores.Var(v)
+      case None => throw new Error("no definition $x")
+    }
+  }
 
-  final case class Zero() extends Exp
+  final case class Zero() extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Zero()
+  }
 
-  final case class Succ(x: Exp) extends Exp
+  final case class Succ(x: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Succ(x.toCore(scope))
+  }
 }
 
 object Cores {
