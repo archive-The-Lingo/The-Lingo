@@ -88,6 +88,8 @@ sealed trait Core {
   def infer(context: Context): Option[Type] = None
 
   def check(context: Context, t: Type): Boolean
+
+  def evalToType(context: Context): Option[Type] = None
 }
 
 sealed trait CoreInferable extends Core {
@@ -284,6 +286,10 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
   def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base)
 
   def erased: Attrs = Attrs(level, size, AttrUsage_Erased(), selfUsage, assumptions, diverge)
+
+  def sized(size: Core): Attrs = Attrs(level, AttrSize_Known(size), usage, selfUsage, assumptions, diverge)
+
+  def typeInType: Attrs = Attrs(AttrLevel_UniverseInUniverse(), size, usage, selfUsage, assumptions, diverge)
 }
 
 object Attrs {
@@ -301,6 +307,16 @@ final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInfera
   override def inf(context: Context): Type = Type(Cores.Universe(), attrs.upper)
 
   def erased: Type = Type(universe, attrs.erased)
+
+  def sized(size: Core): Type = Type(universe, attrs.sized(size))
+
+  def typeInType: Type = Type(universe, attrs.typeInType)
+}
+
+object Type {
+  def apply(universe: Core, attrs: Attrs) = new Type(universe, attrs)
+
+  def apply(universe: Core) = new Type(universe, Attrs.Base)
 }
 
 object Exps {
@@ -326,6 +342,14 @@ object Exps {
   final case class Universe() extends Exp {
     override def toCore: Core = Cores.Universe()
   }
+
+  final case class Kind() extends Exp {
+    override def toCore: Core = Cores.Kind()
+  }
+
+  final case class AttrSize(size: Exp, kind: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.AttrSize(size.toCore(scope), kind.toCore(scope))
+  }
 }
 
 object Cores {
@@ -336,19 +360,47 @@ object Cores {
     }
   }
 
-  final case class Zero() extends Core with CoreInferable {
-    override def inf: Type = Type(Nat(), Attrs.Base)
-  }
+  private val NatT: Type = Type(Nat())
 
-  final case class Nat() extends Core with CoreInferable {
-    override def inf: Type = ???
+  final case class Zero() extends Core with CoreInferable {
+    override def inf: Type = NatT
   }
 
   final case class Succ(x: Core) extends Core with CoreInferable {
-    override def inf(context: Context): Type = ???
+    override def inf(context: Context): Type = NatT
   }
 
+  private val Universe0: Type = Type(Universe())
+  private val Universe1: Type = Type(Universe(), Attrs.Base.upper)
+  private val UniverseInfinite: Type = Type(Universe()).typeInType
+
+  final case class Nat() extends Core with CoreInferable {
+    override def inf: Type = Universe0
+  }
+
+  // type without attributes
   final case class Universe() extends Core with CoreInferable {
-    override def inf: Type = Type(Universe(), Attrs.Base.upper)
+    override def inf: Type = Universe1
+  }
+
+  // type with attributes
+  final case class Kind() extends Core with CoreInferable {
+    override def inf: Type = Universe1
+  }
+
+  final case class AttrSize(size: Core, kind: Core) extends Core {
+    override def check(context: Context, t: Type): Boolean = size.check(context, NatT) && kind.check(context, UniverseInfinite) && kind.check(context, t)
+
+    override def infer(context: Context): Option[Type] = if (size.check(context, NatT) && kind.check(context, UniverseInfinite)) {
+      kind.infer(context)
+    } else {
+      None
+    }
+
+    override def evalToType(context: Context): Option[Type] = if (size.check(context, NatT)) {
+      kind.evalToType(context).map(_.sized(size))
+    } else {
+      None
+    }
   }
 }
