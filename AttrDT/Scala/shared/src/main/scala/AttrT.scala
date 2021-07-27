@@ -379,7 +379,7 @@ object Type {
 
 object Exps {
   final case class Var(x: Identifier) extends ExpNeu {
-    override def toCore(scope: HashMap[Identifier, VarId]): Core = scope.get(x) match {
+    override def toCore(scope: HashMap[Identifier, VarId]): Cores.Var = scope.get(x) match {
       case Some(v) => Cores.Var(v)
       case None => throw new Error("no definition $x")
     }
@@ -431,6 +431,30 @@ object Exps {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = {
       val id0 = id.gen
       Cores.Pi(x.toCore(scope), id0, y.toCore(scope.updated(id.x, id0.x)))
+    }
+  }
+
+  abstract class Rec(val id: Var, val kind: Exp, val x: Exp) {
+    def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec
+  }
+
+  final case class RecCodata(override val id: Var, override val kind: Exp, override val x: Exp) extends Rec(id, kind, x) {
+    override def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec = Cores.RecCodata(id.toCore(scope), kind.toCore(scope), x.toCore(scope))
+  }
+
+  final case class RecPi(override val id: Var, override val kind: Exp, override val x: Exp) extends Rec(id, kind, x) {
+    override def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec = Cores.RecPi(id.toCore(scope), kind.toCore(scope), x.toCore(scope))
+  }
+
+  final case class Letrec(bindings: Set[Rec], x: Exp) extends Exp {
+    if (bindings.size != bindings.toList.distinctBy(_.id).length) {
+      throw new Error("letrec: duplicate id")
+    }
+    private val recScope: List[(Identifier, VarId)] = bindings.toList.map(_.id).map((id) => (id.x, id.gen.x))
+
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = {
+      val ctx: HashMap[Identifier, VarId] = scope ++ recScope
+      Cores.Letrec(bindings.map(_.toCore(ctx)), x.toCore(ctx))
     }
   }
 }
@@ -531,5 +555,17 @@ object Cores {
 
   final case class Pi(x: Core, id: Var, y: Core) extends Core {
     override def check(context: Context, t: Type): Boolean = ???
+  }
+
+  abstract class Rec(val id: Var, val kind: Core, val x: Core)
+
+  final case class RecCodata(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x)
+
+  final case class RecPi(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x)
+
+  final case class Letrec(bindings: Set[Rec], x: Core) extends Core {
+    if (bindings.size != bindings.toList.distinctBy(_.id).length) {
+      throw new Error("letrec: duplicate id")
+    }
   }
 }
