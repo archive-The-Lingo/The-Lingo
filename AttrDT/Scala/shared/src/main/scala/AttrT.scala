@@ -259,6 +259,10 @@ sealed trait Core {
   }
 }
 
+sealed trait CoreType extends Core {
+  final override def infer(context: Context): Maybe[Type] = this.evalToType(context).map(_.upperType)
+}
+
 // is neutral if appers in normal form
 sealed trait CoreNeu extends Core
 
@@ -635,24 +639,18 @@ object Cores {
   private val Kind0: Type = Type(Kind())
   private val KindInfinite: Type = Kind0.typeInType
 
-  final case class Nat() extends Core {
-    override def infer(context: Context): Maybe[Type] = Right(Universe0)
-
+  final case class Nat() extends Core with CoreType {
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
   // type without attributes
-  final case class Universe() extends Core {
-    override def infer(context: Context): Maybe[Type] = Right(Universe1)
-
-    override def evalToType(context: Context): Maybe[Type] = Right(Type(this, Attrs.Base.upper))
+  final case class Universe() extends Core with CoreType {
+    override def evalToType(context: Context): Maybe[Type] = Right(Universe0)
   }
 
   // type with attributes
-  final case class Kind() extends Core {
-    override def infer(context: Context): Maybe[Type] = Right(Universe1)
-
-    override def evalToType(context: Context): Maybe[Type] = Right(Type(this, Attrs.Base.upper))
+  final case class Kind() extends Core with CoreType {
+    override def evalToType(context: Context): Maybe[Type] = Right(Kind0)
   }
 
   final case class MakeKind(x: Core) extends Core {
@@ -718,7 +716,7 @@ object Cores {
     }
   }
 
-  final case class Sigma(x: Core, id: Var, y: Core) extends Core {
+  final case class Sigma(x: Core, id: Var, y: Core) extends Core with CoreType {
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
@@ -739,7 +737,7 @@ object Cores {
     def checkWithRecSize(context: Context, t: Type, recSize: Core): Maybe[Unit] = ???
   }
 
-  final case class Pi(x: Core, id: Var, y: Core) extends Core {
+  final case class Pi(x: Core, id: Var, y: Core) extends Core with CoreType {
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
