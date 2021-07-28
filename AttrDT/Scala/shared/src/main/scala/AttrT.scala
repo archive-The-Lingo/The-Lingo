@@ -889,7 +889,7 @@ object Cores {
   }
 
   object Letrec {
-    private def scanIfRec(bindings: HashMap[Var, RecData], id: Var, history: Set[Core], current: Core): Boolean =
+    private def scanIfRec(bindings: HashMap[Var, Rec], id: Var, history: Set[Core], current: Core): Boolean =
       if (history.contains(current)) {
         false
       } else {
@@ -907,10 +907,10 @@ object Cores {
         }
       }
 
-    private def checkIfInfinite(bindings: Set[Rec], bind: RecData): Boolean = if (!bindings.contains(bind)) {
+    private def checkIfInfinite(bindings: Set[Rec], bind: Rec): Boolean = if (!bindings.contains(bind)) {
       throw new IllegalArgumentException("bindings must contain bind")
     } else {
-      scanIfRec(HashMap().concat(bindings.map({ case x: RecData => Some(x): Option[RecData]; case _ => None: Option[RecData] }).flatten.map(r => (r.id, r))), bind.id, Set(), bind.x)
+      scanIfRec(HashMap().concat(bindings.map(r => (r.id, r))), bind.id, Set(), bind.x)
     }
 
     private def checkBinding(context: Context, bind: Rec, letrec: Letrec): Maybe[Context] = bind.kind.evalToType(context).flatMap(bindType => {
