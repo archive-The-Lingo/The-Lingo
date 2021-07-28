@@ -64,26 +64,26 @@ object VarId {
   def gen(id: Identifier): VarId = VarId(id, UniqueIdentifier.gen)
 }
 
-final case class Context(inner: HashMap[VarId, (Type, Option[Core])]) {
-  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(inner.updated(id, (t, v)))
+final case class Context(context: HashMap[VarId, (Type, Option[Core])]) {
+  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(context.updated(id, (t, v)))
 
   def updated(id: Cores.Var, t: Type, v: Option[Core]): Context = this.updated(id.x, t, v)
 
-  def updated(id: VarId, t: Type, v: Core): Context = Context(inner.updated(id, (t, Some(v))))
+  def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))))
 
-  def updated(id: VarId, t: Type): Context = Context(inner.updated(id, (t, None)))
+  def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)))
 
   def updated(id: Cores.Var, t: Type): Context = this.updated(id.x, t)
 
-  def get(id: VarId): Option[(Type, Option[Core])] = inner.get(id)
+  def get(id: VarId): Option[(Type, Option[Core])] = context.get(id)
 
   def get(id: Cores.Var): Option[(Type, Option[Core])] = this.get(id.x)
 
-  def getType(id: VarId): Option[Type] = inner.get(id).map(_._1)
+  def getType(id: VarId): Option[Type] = context.get(id).map(_._1)
 
   def getType(v: Cores.Var): Option[Type] = this.getType(v.x)
 
-  def getValue(id: VarId): Option[Core] = inner.get(id).map(_._2).flatten
+  def getValue(id: VarId): Option[Core] = context.get(id).map(_._2).flatten
 
   def concat(xs: List[(VarId, Type, Core)]): Context = xs match {
     case Nil => this
