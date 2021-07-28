@@ -176,7 +176,7 @@ type Subst = HashMap[Cores.Var, Core]
 sealed trait Core {
   def subst(s: Subst): Core
 
-  def scanPlain(v: Cores.Var): NaturalNumber
+  def scanVar(v: Cores.Var): NaturalNumber
 
   final def subst(v: Cores.Var, x: Core): Core = this.subst(HashMap((v, x)))
 
@@ -337,7 +337,7 @@ object AttrLevel {
 final case class AttrLevel_UniverseInUniverse() extends AttrLevel
 
 final case class AttrLevel_Known(level: Core) extends AttrLevel {
-  override def scanPlain(v: Cores.Var): NaturalNumber = level.scanPlain(v)
+  override def scanPlain(v: Cores.Var): NaturalNumber = level.scanVar(v)
 
   override def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
     case AttrLevel_Known(otherLevel) => level.alpha_beta_eta_equals(otherLevel, map)
@@ -375,7 +375,7 @@ final case class AttrSize_UnknownFinite() extends AttrSize
 final case class AttrSize_Infinite() extends AttrSize
 
 final case class AttrSize_Known(size: Core) extends AttrSize {
-  override def scanPlain(v: Cores.Var): NaturalNumber = size.scanPlain(v)
+  override def scanPlain(v: Cores.Var): NaturalNumber = size.scanVar(v)
 
   override def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
     case AttrSize_Known(otherSize) => size.alpha_beta_eta_equals(otherSize, map)
@@ -430,7 +430,7 @@ final case class AttrSelfUsage_Once() extends AttrSelfUsage
 final case class AttrSelfUsage_Unlimited() extends AttrSelfUsage
 
 final case class AttrAssumptions(assumptions: Set[Type]) extends Attr {
-  override def scanPlain(v: Cores.Var): NaturalNumber = assumptions.map(_.scanPlain(v)).sum
+  override def scanPlain(v: Cores.Var): NaturalNumber = assumptions.map(_.scanVar(v)).sum
 
   def subst(s: Subst): AttrAssumptions = AttrAssumptions.safeApply(assumptions.map(_.subst(s)))
 
@@ -520,7 +520,7 @@ object Attrs {
 final case class Type(universe: Core, attrs: Attrs) extends Core {
   override def subst(s: Subst): Type = Type(universe.subst(s), attrs.subst(s))
 
-  override def scanPlain(v: Cores.Var): NaturalNumber = universe.scanPlain(v) + attrs.scanPlain(v)
+  override def scanVar(v: Cores.Var): NaturalNumber = universe.scanVar(v) + attrs.scanPlain(v)
 
   override def alpha_beta_eta_equals(other: Core, map: AlphaMapping): Boolean = other match {
     case Type(otherUniverse, otherAttrs) => universe.alpha_beta_eta_equals(otherUniverse, map) && attrs.alpha_beta_eta_equals(otherAttrs, map)
@@ -665,7 +665,7 @@ private def transverse[A](xs: List[Option[A]]): Option[List[A]] = xs match {
 
 object Cores {
   final case class Var(x: VarId) extends CoreNeu {
-    override def scanPlain(v: Cores.Var): NaturalNumber = if (x == v) 1 else 0
+    override def scanVar(v: Cores.Var): NaturalNumber = if (x == v) 1 else 0
 
     override def subst(s: Subst): Core = s.getOrElse(this, this)
 
@@ -678,7 +678,7 @@ object Cores {
   private val NatT: Type = Type(Nat())
 
   final case class Zero() extends Core {
-    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+    override def scanVar(v: Cores.Var): NaturalNumber = 0
 
     override def subst(s: Subst): Zero = this
 
@@ -686,7 +686,7 @@ object Cores {
   }
 
   final case class Succ(x: Core) extends Core {
-    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v)
 
     override def subst(s: Subst): Succ = Succ(x.subst(s))
 
@@ -700,7 +700,7 @@ object Cores {
   private val KindInfinite: Type = Kind0.typeInType
 
   final case class Nat() extends Core with CoreType {
-    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+    override def scanVar(v: Cores.Var): NaturalNumber = 0
 
     override def subst(s: Subst): Nat = this
 
@@ -709,7 +709,7 @@ object Cores {
 
   // type without attributes
   final case class Universe() extends Core with CoreType {
-    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+    override def scanVar(v: Cores.Var): NaturalNumber = 0
 
     override def subst(s: Subst): Universe = this
 
@@ -718,7 +718,7 @@ object Cores {
 
   // type with attributes
   final case class Kind() extends Core with CoreType {
-    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+    override def scanVar(v: Cores.Var): NaturalNumber = 0
 
     override def subst(s: Subst): Kind = this
 
@@ -726,7 +726,7 @@ object Cores {
   }
 
   final case class MakeKind(x: Core) extends Core {
-    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v)
 
     override def subst(s: Subst): MakeKind = MakeKind(x.subst(s))
 
@@ -748,7 +748,7 @@ object Cores {
   }
 
   final case class AttrSize(size: Core, kind: Core) extends Core {
-    override def scanPlain(v: Cores.Var): NaturalNumber = size.scanPlain(v) + kind.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = size.scanVar(v) + kind.scanVar(v)
 
     override def subst(s: Subst): AttrSize = AttrSize(size.subst(s), kind.subst(s))
 
@@ -764,7 +764,7 @@ object Cores {
   }
 
   final case class Cons(x: Core, y: Core) extends Core {
-    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v) + y.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v) + y.scanVar(v)
 
     override def subst(s: Subst): Cons = Cons(x.subst(s), y.subst(s))
 
@@ -783,7 +783,7 @@ object Cores {
   }
 
   final case class Car(x: Core) extends CoreNeu {
-    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v)
 
     override def subst(s: Subst): Car = Car(x.subst(s))
 
@@ -796,7 +796,7 @@ object Cores {
   }
 
   final case class Cdr(x: Core) extends CoreNeu {
-    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v)
 
     override def subst(s: Subst): Cdr = Cdr(x.subst(s))
 
@@ -809,7 +809,7 @@ object Cores {
   }
 
   final case class Sigma(x: Core, id: Var, y: Core) extends Core with CoreType {
-    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v) + y.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v) + y.scanVar(v)
 
     override def subst(s: Subst): Sigma = Sigma(x.subst(s), id, y.subst(s))
 
@@ -817,7 +817,7 @@ object Cores {
   }
 
   final case class Lambda(arg: Var, body: Core) extends Core {
-    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+    override def scanVar(v: Cores.Var): NaturalNumber = body.scanVar(v)
 
     override def subst(s: Subst): Lambda = Lambda(arg, body.subst(s))
 
@@ -837,7 +837,7 @@ object Cores {
   }
 
   final case class Pi(x: Core, id: Var, y: Core) extends Core with CoreType {
-    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v) + y.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v) + y.scanVar(v)
 
     override def subst(s: Subst): Pi = Pi(x.subst(s), id, y.subst(s))
 
@@ -845,7 +845,7 @@ object Cores {
   }
 
   sealed abstract class Rec(val id: Var, val kind: Core, val x: Core) {
-    def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+    def scanPlain(v: Cores.Var): NaturalNumber = x.scanVar(v)
 
     def subst(s: Subst): Rec
   }
@@ -859,7 +859,7 @@ object Cores {
   }
 
   final case class Letrec(bindings: Set[Rec], x: Core) extends Core {
-    override def scanPlain(v: Cores.Var): NaturalNumber = bindings.map(_.scanPlain(v)).sum + x.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = bindings.map(_.scanPlain(v)).sum + x.scanVar(v)
 
     if (bindings.size != bindings.toList.distinctBy(_.id).length) {
       throw new Error("letrec: duplicate id")
@@ -896,7 +896,7 @@ object Cores {
         if (!bindings.forall((v, r) => v == r.id)) {
           throw new IllegalArgumentException("Illegal bindings")
         }
-        val nextScan = bindings.keySet.filterNot(current.scanPlain(_) == 0)
+        val nextScan = bindings.keySet.filterNot(current.scanVar(_) == 0)
         if (nextScan.contains(id)) {
           true
         } else {
@@ -952,7 +952,7 @@ object Cores {
   }
 
   final case class Apply(f: Core, x: Core) extends CoreNeu {
-    override def scanPlain(v: Cores.Var): NaturalNumber = f.scanPlain(v) + x.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = f.scanVar(v) + x.scanVar(v)
 
     override def subst(s: Subst): Apply = Apply(f.subst(s), x.subst(s))
 
@@ -966,7 +966,7 @@ object Cores {
   }
 
   final case class The(t: Core, x: Core) extends Core {
-    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v)
 
     override def subst(s: Subst): The = The(t.subst(s), x.subst(s))
 
@@ -976,7 +976,7 @@ object Cores {
   }
 
   final case class InternalThe(t: Type, x: Core) extends Core {
-    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v)
 
     override def subst(s: Subst): InternalThe = InternalThe(t.subst(s), x.subst(s))
 
