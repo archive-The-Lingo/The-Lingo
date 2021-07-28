@@ -199,7 +199,7 @@ sealed trait Core {
   }
 
   def check(context: Context, t: Type): Maybe[Unit] = this.infer(context) match {
-    case Right(t0) => if (t.alpha_beta_eta_equals(t0)) {
+    case Right(t0) => if (t.subsetOrEqual(t0)) {
       Right(())
     } else {
       Left(ErrCheckFailed(context, t, this, t0))
@@ -255,23 +255,6 @@ sealed trait Core {
       false
     } else {
       next.reducingMatch(context, f)
-    }
-  }
-}
-
-sealed trait CoreInferable extends Core {
-  final override def infer(context: Context): Maybe[Type] = Some(inf(context))
-
-  def inf(context: Context): Type = this.inf
-
-  def inf: Type = this.inf(Context.Empty)
-
-  final override def check(context: Context, t: Type): Maybe[Unit] = {
-    val realT = this.inf(context)
-    if (t.subsetOrEqual(realT)) {
-      Right(())
-    } else {
-      Left(ErrCheckFailed(context, t, this, realT))
     }
   }
 }
@@ -490,7 +473,7 @@ object Attrs {
   val Base = Attrs(AttrLevel.Base, AttrSize.Base, AttrUsage.Base, AttrSelfUsage.Base, AttrAssumptions.Base, AttrDiverge.Base)
 }
 
-final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInferable {
+final case class Type(universe: Core, attrs: Attrs) extends Core {
   override def alpha_beta_eta_equals(other: Core, map: AlphaMapping): Boolean = other match {
     case Type(otherUniverse, otherAttrs) => universe.alpha_beta_eta_equals(otherUniverse, map) && attrs.alpha_beta_eta_equals(otherAttrs, map)
     case _ => false
@@ -510,7 +493,7 @@ final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInfera
 
   def attrsMap(f: Attrs => Attrs): Type = Type(universe, f(attrs))
 
-  override def inf(context: Context): Type = upperType
+  override def infer(context: Context): Maybe[Type] = Right(upperType)
 
   def erased: Type = Type(universe, attrs.erased)
 
@@ -638,12 +621,12 @@ object Cores {
 
   private val NatT: Type = Type(Nat())
 
-  final case class Zero() extends Core with CoreInferable {
-    override def inf: Type = NatT
+  final case class Zero() extends Core {
+    override def infer(context: Context): Maybe[Type] = Right(NatT)
   }
 
-  final case class Succ(x: Core) extends Core with CoreInferable {
-    override def inf(context: Context): Type = NatT
+  final case class Succ(x: Core) extends Core {
+    override def infer(context: Context): Maybe[Type] = Right(NatT)
   }
 
   private val Universe0: Type = Type(Universe())
@@ -652,22 +635,22 @@ object Cores {
   private val Kind0: Type = Type(Kind())
   private val KindInfinite: Type = Kind0.typeInType
 
-  final case class Nat() extends Core with CoreInferable {
-    override def inf: Type = Universe0
+  final case class Nat() extends Core {
+    override def infer(context: Context): Maybe[Type] = Right(Universe0)
 
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
   // type without attributes
-  final case class Universe() extends Core with CoreInferable {
-    override def inf: Type = Universe1
+  final case class Universe() extends Core {
+    override def infer(context: Context): Maybe[Type] = Right(Universe1)
 
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this, Attrs.Base.upper))
   }
 
   // type with attributes
-  final case class Kind() extends Core with CoreInferable {
-    override def inf: Type = Universe1
+  final case class Kind() extends Core {
+    override def infer(context: Context): Maybe[Type] = Right(Universe1)
 
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this, Attrs.Base.upper))
   }
@@ -757,6 +740,7 @@ object Cores {
   }
 
   final case class Pi(x: Core, id: Var, y: Core) extends Core {
+    override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
   sealed abstract class Rec(val id: Var, val kind: Core, val x: Core)
