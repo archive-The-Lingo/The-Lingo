@@ -68,14 +68,14 @@ object VarId {
   def gen(id: Identifier): VarId = VarId(id, UniqueIdentifier.gen)
 }
 
-final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: Set[VarId], recSize: Option[Core]) {
-  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(context.updated(id, (t, v)), recPis, recSize)
+final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: Set[VarId], recSize: Option[Core], recs: Set[VarId]) {
+  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(context.updated(id, (t, v)), recPis, recSize, recs)
 
   def updated(id: Cores.Var, t: Type, v: Option[Core]): Context = this.updated(id.x, t, v)
 
-  def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))), recPis, recSize)
+  def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))), recPis, recSize, recs)
 
-  def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)), recPis, recSize)
+  def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)), recPis, recSize, recs)
 
   def updated(id: Cores.Var, t: Type): Context = this.updated(id.x, t)
 
@@ -94,21 +94,35 @@ final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: 
     case (id, t, v) :: xs => this.updated(id, t, v).concat(xs)
   }
 
-  def addRecPis(xs: Set[VarId]): Context = Context(context, recPis.union(xs), recSize)
+  def addRecPis(xs: Set[VarId]): Context = Context(context, recPis.union(xs), recSize, recs)
+
+  def addRecPi(x: VarId): Context = Context(context, recPis.incl(x), recSize, recs)
+
+  def addRecPi(x: Cores.Var): Context = this.addRecPi(x.x)
 
   def isRecPi(x: VarId): Boolean = recPis.contains(x)
 
   def isRecPi(x: Cores.Var): Boolean = this.isRecPi(x.x)
 
-  def clearRecSize: Context = Context(context, recPis, None)
+  def clearRecSize: Context = Context(context, recPis, None, recs)
 
-  def setRecSize(x: Core): Context = Context(context, recPis, Some(x))
+  def setRecSize(x: Core): Context = Context(context, recPis, Some(x), recs)
 
   def getRecSize: Option[Core] = recSize
+
+  def addRecs(xs: Set[VarId]): Context = Context(context, recPis, recSize, recs.union(xs))
+
+  def addRec(x: VarId): Context = Context(context, recPis, recSize, recs.incl(x))
+
+  def addRec(x: Cores.Var): Context = this.addRec(x.x)
+
+  def isRec(x: VarId): Boolean = recs.contains(x)
+
+  def isRec(x: Cores.Var): Boolean = this.isRec(x.x)
 }
 
 object Context {
-  val Empty = Context(HashMap(), Set(), None)
+  val Empty = Context(HashMap(), Set(), None, Set())
 }
 
 final case class AlphaMapping(inner: HashMap[VarId, VarId], reverseMap: HashMap[VarId, VarId]) {
@@ -556,8 +570,8 @@ object Exps {
     def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec
   }
 
-  final case class RecCodata(override val id: Var, override val kind: Exp, override val x: Exp) extends Rec(id, kind, x) {
-    override def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec = Cores.RecCodata(id.toCore(scope), kind.toCore(scope), x.toCore(scope))
+  final case class RecData(override val id: Var, override val kind: Exp, override val x: Exp) extends Rec(id, kind, x) {
+    override def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec = Cores.RecData(id.toCore(scope), kind.toCore(scope), x.toCore(scope))
   }
 
   final case class RecPi(override val id: Var, override val kind: Exp, override val x: Exp) extends Rec(id, kind, x) {
@@ -687,7 +701,7 @@ object Cores {
 
   sealed abstract class Rec(val id: Var, val kind: Core, val x: Core)
 
-  final case class RecCodata(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x)
+  final case class RecData(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x)
 
   final case class RecPi(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x)
 
@@ -702,16 +716,12 @@ object Cores {
       def step(stepContext: Context) = context.concat(bindings.toList.map(x => x.kind.evalToType(stepContext).map(t => (x.id.x, t, x.x))).map(_.toOption).flatten)
 
       val innerContext = step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(innerContext0))))))))))))))))
-      val init: Maybe[Set[Var]] = Right(Set())
 
-      def check(stepContext: Context): Maybe[Set[Var]] = bindings.toList.map(Letrec.checkBinding(stepContext, _)).foldLeft(init)((s, n) => (s and n).map((s, n) => n match {
-        case Some(v) => s.incl(v)
-        case None => s
-      }))
+      def check(stepContext: Context): Maybe[Context] = bindings.toList.foldLeft(Right(stepContext): Maybe[Context])((c, rec) => c.flatMap(ctx => Letrec.checkBinding(ctx, rec)))
 
       for {
-        vs <- check(innerContext)
-        vs0 <- check(innerContext.addRecPis(vs.map(_.x)))
+        ctx1 <- check(innerContext)
+        _ <- check(ctx1)
       } yield innerContext
     }
 
@@ -722,10 +732,10 @@ object Cores {
   }
 
   object Letrec {
-    private def checkBinding(context: Context, bind: Rec): Maybe[Option[Var]] = bind.kind.evalToType(context).flatMap(bindType => {
+    private def checkBinding(context: Context, bind: Rec): Maybe[Context] = bind.kind.evalToType(context).flatMap(bindType => {
       bind.x.check(context, bindType).flatMap(_ => {
         bind match {
-          case RecCodata(id, _, _) => Right(None) // if (bindType.attrs.size == AttrSize_Infinite()) Right(None) else Left(ErrExpectedCodata(context, bind, bindType)) // it might not be a codata
+          case RecData(id, _, _) => if (bindType.attrs.size == AttrSize_Infinite()) Right(context) else Right(context.addRec(id))
           case RecPi(id, _, bindBody) => bindBody.reducingMatch(context, {
             case lambda: Lambda =>
               bindType.universe.reducingMatch(context, {
@@ -739,8 +749,8 @@ object Cores {
                     }
 
                     argAttrs.size match {
-                      case AttrSize_Infinite() | AttrSize_UnknownFinite() => if (resultDiverge) Right(None) else Left(ErrDiverge(context, bind))
-                      case AttrSize_Known(size) => if (resultDiverge) Right(None) else lambda.checkWithRecSize(context, bindType, size).flatMap(_ => Right(Some(id)))
+                      case AttrSize_Infinite() | AttrSize_UnknownFinite() => if (resultDiverge) Right(context) else Left(ErrDiverge(context, bind))
+                      case AttrSize_Known(size) => if (resultDiverge) Right(context) else lambda.checkWithRecSize(context, bindType, size).flatMap(_ => Right(context.addRecPi(id)))
                     }
                   }
                   case Left(err) => Left(err)
