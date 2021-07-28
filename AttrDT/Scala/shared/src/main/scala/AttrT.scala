@@ -22,7 +22,8 @@ final case class ErrExpected(context: Context, expectedType: String, x: Core, re
 final case class ErrTypeUnknown(context: Context, x: Cores.Var) extends Err(s"the type of $x is unknown in the context $context")
 
 final case class ErrCantEvalToType(context: Context, x: Core) extends Err(s"$x in the context $context can't be a type")
-final case class ErrLetrec(context:Context,x:Core) extends Err(s"illegal letrec $x in the context $context")
+
+final case class ErrLetrec(context: Context, x: Core) extends Err(s"illegal letrec $x in the context $context")
 
 type Maybe[T] = Either[Err, T]
 private implicit def someToRight[T, U](x: Some[T]): Right[U, T] = x match {
@@ -715,7 +716,7 @@ object Cores {
 
     override def check(context: Context, t: Type): Maybe[Unit] = this.checkBindings(context) match {
       case Some(innerContext) => x.check(Letrec.removeRecPiForLetrecBody(innerContext, bindings.toList), t)
-      case None => Left(ErrLetrec(context,this))
+      case None => Left(ErrLetrec(context, this))
     }
   }
 
