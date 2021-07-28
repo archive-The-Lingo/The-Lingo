@@ -176,6 +176,8 @@ type Subst = HashMap[Cores.Var, Core]
 sealed trait Core {
   def subst(s: Subst): Core
 
+  def scanPlain(v: Cores.Var): NaturalNumber
+
   final def subst(v: Cores.Var, x: Core): Core = this.subst(HashMap((v, x)))
 
   final def subst(v: Cores.Var, t: Type, x: Core): Core = this.subst(HashMap((v, Cores.InternalThe(t, x))))
@@ -275,6 +277,8 @@ sealed trait CoreType extends Core {
 sealed trait CoreNeu extends Core
 
 sealed trait Attr {
+  def scanPlain(v: Cores.Var): NaturalNumber = 0
+
   def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = this == other
 
   final def alpha_beta_eta_equals(other: Attr): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
@@ -333,6 +337,8 @@ object AttrLevel {
 final case class AttrLevel_UniverseInUniverse() extends AttrLevel
 
 final case class AttrLevel_Known(level: Core) extends AttrLevel {
+  override def scanPlain(v: Cores.Var): NaturalNumber = level.scanPlain(v)
+
   override def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
     case AttrLevel_Known(otherLevel) => level.alpha_beta_eta_equals(otherLevel, map)
     case _ => false
@@ -369,6 +375,8 @@ final case class AttrSize_UnknownFinite() extends AttrSize
 final case class AttrSize_Infinite() extends AttrSize
 
 final case class AttrSize_Known(size: Core) extends AttrSize {
+  override def scanPlain(v: Cores.Var): NaturalNumber = size.scanPlain(v)
+
   override def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
     case AttrSize_Known(otherSize) => size.alpha_beta_eta_equals(otherSize, map)
     case _ => false
@@ -422,6 +430,8 @@ final case class AttrSelfUsage_Once() extends AttrSelfUsage
 final case class AttrSelfUsage_Unlimited() extends AttrSelfUsage
 
 final case class AttrAssumptions(assumptions: Set[Type]) extends Attr {
+  override def scanPlain(v: Cores.Var): NaturalNumber = assumptions.map(_.scanPlain(v)).sum
+
   def subst(s: Subst): AttrAssumptions = AttrAssumptions.safeApply(assumptions.map(_.subst(s)))
 
   def merge(other: AttrAssumptions): AttrAssumptions = AttrAssumptions.safeApply(assumptions.union(other.assumptions))
@@ -466,6 +476,8 @@ final case class AttrDiverge_Yes() extends AttrDiverge
 final case class AttrDiverge_No() extends AttrDiverge
 
 final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge) {
+  def scanPlain(v: Cores.Var): NaturalNumber = List(level, size, usage, selfUsage, assumptions, diverge).map(_.scanPlain(v)).sum
+
   def subst(s: Subst): Attrs = Attrs(level.subst(s), size.subst(s), usage.subst(s), selfUsage.subst(s), assumptions.subst(s), diverge.subst(s))
 
   def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge))
@@ -507,6 +519,8 @@ object Attrs {
 
 final case class Type(universe: Core, attrs: Attrs) extends Core {
   override def subst(s: Subst): Type = Type(universe.subst(s), attrs.subst(s))
+
+  override def scanPlain(v: Cores.Var): NaturalNumber = universe.scanPlain(v) + attrs.scanPlain(v)
 
   override def alpha_beta_eta_equals(other: Core, map: AlphaMapping): Boolean = other match {
     case Type(otherUniverse, otherAttrs) => universe.alpha_beta_eta_equals(otherUniverse, map) && attrs.alpha_beta_eta_equals(otherAttrs, map)
@@ -651,6 +665,8 @@ private def transverse[A](xs: List[Option[A]]): Option[List[A]] = xs match {
 
 object Cores {
   final case class Var(x: VarId) extends CoreNeu {
+    override def scanPlain(v: Cores.Var): NaturalNumber = if (x == v) 1 else 0
+
     override def subst(s: Subst): Core = s.getOrElse(this, this)
 
     override def infer(context: Context): Maybe[Type] = context.getType(x) match {
@@ -662,12 +678,16 @@ object Cores {
   private val NatT: Type = Type(Nat())
 
   final case class Zero() extends Core {
+    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+
     override def subst(s: Subst): Zero = this
 
     override def infer(context: Context): Maybe[Type] = Right(NatT)
   }
 
   final case class Succ(x: Core) extends Core {
+    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+
     override def subst(s: Subst): Succ = Succ(x.subst(s))
 
     override def infer(context: Context): Maybe[Type] = Right(NatT)
@@ -680,6 +700,8 @@ object Cores {
   private val KindInfinite: Type = Kind0.typeInType
 
   final case class Nat() extends Core with CoreType {
+    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+
     override def subst(s: Subst): Nat = this
 
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
@@ -687,6 +709,8 @@ object Cores {
 
   // type without attributes
   final case class Universe() extends Core with CoreType {
+    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+
     override def subst(s: Subst): Universe = this
 
     override def evalToType(context: Context): Maybe[Type] = Right(Universe0)
@@ -694,12 +718,16 @@ object Cores {
 
   // type with attributes
   final case class Kind() extends Core with CoreType {
+    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+
     override def subst(s: Subst): Kind = this
 
     override def evalToType(context: Context): Maybe[Type] = Right(Kind0)
   }
 
   final case class MakeKind(x: Core) extends Core {
+    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+
     override def subst(s: Subst): MakeKind = MakeKind(x.subst(s))
 
     override def evalToType(context: Context): Maybe[Type] = (x.check(context, UniverseInfinite)).flatMap(_ => {
@@ -720,6 +748,8 @@ object Cores {
   }
 
   final case class AttrSize(size: Core, kind: Core) extends Core {
+    override def scanPlain(v: Cores.Var): NaturalNumber = size.scanPlain(v) + kind.scanPlain(v)
+
     override def subst(s: Subst): AttrSize = AttrSize(size.subst(s), kind.subst(s))
 
     override def check(context: Context, t: Type): Maybe[Unit] = size.check(context, NatT) and kind.check(context, KindInfinite) and kind.check(context, t)
@@ -734,6 +764,8 @@ object Cores {
   }
 
   final case class Cons(x: Core, y: Core) extends Core {
+    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v) + y.scanPlain(v)
+
     override def subst(s: Subst): Cons = Cons(x.subst(s), y.subst(s))
 
     override def check(context: Context, t: Type): Maybe[Unit] = t.universe.reducingMatch(context, {
@@ -751,6 +783,8 @@ object Cores {
   }
 
   final case class Car(x: Core) extends CoreNeu {
+    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+
     override def subst(s: Subst): Car = Car(x.subst(s))
 
     override def infer(context: Context): Maybe[Type] = x.infer(context) flatMap {
@@ -762,6 +796,8 @@ object Cores {
   }
 
   final case class Cdr(x: Core) extends CoreNeu {
+    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+
     override def subst(s: Subst): Cdr = Cdr(x.subst(s))
 
     override def infer(context: Context): Maybe[Type] = x.infer(context) flatMap {
@@ -773,12 +809,16 @@ object Cores {
   }
 
   final case class Sigma(x: Core, id: Var, y: Core) extends Core with CoreType {
+    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v) + y.scanPlain(v)
+
     override def subst(s: Subst): Sigma = Sigma(x.subst(s), id, y.subst(s))
 
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
   final case class Lambda(arg: Var, body: Core) extends Core {
+    override def scanPlain(v: Cores.Var): NaturalNumber = 0
+
     override def subst(s: Subst): Lambda = Lambda(arg, body.subst(s))
 
     override def check(context: Context, t: Type): Maybe[Unit] = t.universe.reducingMatch(context, {
@@ -797,12 +837,16 @@ object Cores {
   }
 
   final case class Pi(x: Core, id: Var, y: Core) extends Core with CoreType {
+    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v) + y.scanPlain(v)
+
     override def subst(s: Subst): Pi = Pi(x.subst(s), id, y.subst(s))
 
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
   sealed abstract class Rec(val id: Var, val kind: Core, val x: Core) {
+    def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+
     def subst(s: Subst): Rec
   }
 
@@ -815,6 +859,8 @@ object Cores {
   }
 
   final case class Letrec(bindings: Set[Rec], x: Core) extends Core {
+    override def scanPlain(v: Cores.Var): NaturalNumber = bindings.map(_.scanPlain(v)).sum + x.scanPlain(v)
+
     if (bindings.size != bindings.toList.distinctBy(_.id).length) {
       throw new Error("letrec: duplicate id")
     }
@@ -828,7 +874,7 @@ object Cores {
 
       val innerContext = step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(innerContext0))))))))))))))))
 
-      def check(stepContext: Context): Maybe[Context] = bindings.toList.foldLeft(Right(stepContext): Maybe[Context])((c, rec) => c.flatMap(ctx => Letrec.checkBinding(ctx, rec)))
+      def check(stepContext: Context): Maybe[Context] = bindings.toList.foldLeft(Right(stepContext): Maybe[Context])((c, rec) => c.flatMap(ctx => Letrec.checkBinding(ctx, rec, this)))
 
       for {
         ctx1 <- check(innerContext)
@@ -843,10 +889,40 @@ object Cores {
   }
 
   object Letrec {
-    private def checkBinding(context: Context, bind: Rec): Maybe[Context] = bind.kind.evalToType(context).flatMap(bindType => {
+    private def scanIfRec(bindings: HashMap[Var, RecData], id: Var, history: Set[Core], current: Core): Boolean =
+      if (history.contains(current)) {
+        false
+      } else {
+        if (!bindings.forall((v, r) => v == r.id)) {
+          throw new IllegalArgumentException("Illegal bindings")
+        }
+        val nextScan = bindings.keySet.filterNot(current.scanPlain(_) == 0)
+        if (nextScan.contains(id)) {
+          true
+        } else {
+          nextScan.exists(v => {
+            val next = bindings.get(v).get.x
+            scanIfRec(bindings, id, history.incl(next), next)
+          })
+        }
+      }
+
+    private def checkIfInfinite(bindings: Set[Rec], bind: RecData): Boolean = if (!bindings.contains(bind)) {
+      throw new IllegalArgumentException("bindings must contain bind")
+    } else {
+      scanIfRec(HashMap().concat(bindings.map({ case x: RecData => Some(x): Option[RecData]; case _ => None: Option[RecData] }).flatten.map(r => (r.id, r))), bind.id, Set(), bind.x)
+    }
+
+    private def checkBinding(context: Context, bind: Rec, letrec: Letrec): Maybe[Context] = bind.kind.evalToType(context).flatMap(bindType => {
       bind.x.check(context, bindType).flatMap(_ => {
         bind match {
-          case RecData(id, _, _) => if (bindType.attrs.size == AttrSize_Infinite()) Right(context) else Right(context.addRec(id))
+          case bind@RecData(id, _, _) => if (bindType.attrs.size == AttrSize_Infinite()) {
+            Right(context)
+          } else if (checkIfInfinite(letrec.bindings, bind)) {
+            Left(ErrExpectedCodata(context, bind, bindType))
+          } else {
+            Right(context.addRec(id))
+          }
           case RecPi(id, _, bindBody) => bindBody.reducingMatch(context, {
             case lambda: Lambda =>
               bindType.universe.reducingMatch(context, {
@@ -876,6 +952,8 @@ object Cores {
   }
 
   final case class Apply(f: Core, x: Core) extends CoreNeu {
+    override def scanPlain(v: Cores.Var): NaturalNumber = f.scanPlain(v) + x.scanPlain(v)
+
     override def subst(s: Subst): Apply = Apply(f.subst(s), x.subst(s))
 
     override def reduce(context: Context): Core = f.infer(context).flatMap(t => t.universe.reducingMatch(context, {
@@ -888,6 +966,8 @@ object Cores {
   }
 
   final case class The(t: Core, x: Core) extends Core {
+    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+
     override def subst(s: Subst): The = The(t.subst(s), x.subst(s))
 
     override def infer(context: Context): Maybe[Type] = t.evalToType(context)
@@ -896,6 +976,8 @@ object Cores {
   }
 
   final case class InternalThe(t: Type, x: Core) extends Core {
+    override def scanPlain(v: Cores.Var): NaturalNumber = x.scanPlain(v)
+
     override def subst(s: Subst): InternalThe = InternalThe(t.subst(s), x.subst(s))
 
     override def infer(context: Context): Maybe[Type] = Right(t)
