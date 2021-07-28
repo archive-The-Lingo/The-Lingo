@@ -31,6 +31,8 @@ final case class ErrExpectedCodata(context: Context, x: Cores.Rec, t: Core) exte
 
 final case class ErrPlainSubtype(t: Core, sub: Core) extends Err(s"$sub can't be a plain subtype of $t")
 
+final case class ErrWeakSubtype(t: Core, sub: Core) extends Err(s"$sub can't be a weak subtype of $t")
+
 type Maybe[T] = Either[Err, T]
 private implicit def someToRight[T, U](x: Some[T]): Right[U, T] = x match {
   case Some(x) => Right(x)
@@ -463,6 +465,8 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
       this.assumptions.merge(subtype.assumptions).alpha_beta_eta_equals(this.assumptions) &&
       this.diverge.merge(subtype.diverge).alpha_beta_eta_equals(this.diverge)
 
+  def validWeakSubtype(subtype: Attrs): Boolean = this.level.merge(subtype.level).alpha_beta_eta_equals(this.level)
+
   def alpha_beta_eta_equals(other: Attrs, map: AlphaMapping): Boolean =
     level.alpha_beta_eta_equals(other.level, map) &&
       size.alpha_beta_eta_equals(other.size, map) &&
@@ -494,7 +498,11 @@ final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInfera
 
   def validPlainSubtype(subtype: Type): Boolean = attrs.validPlainSubtype(subtype.attrs)
 
+  def validWeakSubtype(subtype: Type): Boolean = attrs.validWeakSubtype(subtype.attrs)
+
   def checkPlainSubtype(subtype: Type): Maybe[Unit] = if (this.validPlainSubtype(subtype)) Right(()) else Left(ErrPlainSubtype(this, subtype))
+
+  def checkWeakSubtype(subtype: Type): Maybe[Unit] = if (this.validWeakSubtype(subtype)) Right(()) else Left(ErrWeakSubtype(this, subtype))
 
   def subsetOrEqual(other: Type): Boolean = universe.alpha_beta_eta_equals(other.universe) && (attrs.alpha_beta_eta_equals(other.attrs) || attrs.merge(other.attrs).alpha_beta_eta_equals(attrs))
 
@@ -646,16 +654,22 @@ object Cores {
 
   final case class Nat() extends Core with CoreInferable {
     override def inf: Type = Universe0
+
+    override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
   // type without attributes
   final case class Universe() extends Core with CoreInferable {
     override def inf: Type = Universe1
+
+    override def evalToType(context: Context): Maybe[Type] = Right(Type(this, Attrs.Base.upper))
   }
 
   // type with attributes
   final case class Kind() extends Core with CoreInferable {
     override def inf: Type = Universe1
+
+    override def evalToType(context: Context): Maybe[Type] = Right(Type(this, Attrs.Base.upper))
   }
 
   final case class MakeKind(x: Core) extends Core {
@@ -699,7 +713,7 @@ object Cores {
         _ <- t.checkPlainSubtype(dT)
         _ <- y.check(innerContext, dT)
       } yield ()
-      case wrong => Left(ErrExpected(context, "Sigma", x, wrong))
+      case wrong => Left(ErrExpected(context, "Sigma", this, wrong))
     })
   }
 
@@ -722,10 +736,22 @@ object Cores {
   }
 
   final case class Sigma(x: Core, id: Var, y: Core) extends Core {
+    override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
   final case class Lambda(arg: Core, body: Core) extends Core {
-    override def check(context: Context, t: Type): Maybe[Unit] = ???
+    override def check(context: Context, t: Type): Maybe[Unit] = t.universe.reducingMatch(context, {
+      case Pi(arg0, id, result0) => for {
+        argT <- arg0.evalToType(context)
+        _ <- t.checkWeakSubtype(argT)
+        _ <- arg.check(context, argT)
+        innerContext = context.updated(id, argT, arg)
+        resultT <- result0.evalToType(innerContext)
+        _ <- t.checkPlainSubtype(resultT)
+        _ <- body.check(innerContext, resultT)
+      } yield ()
+      case wrong => Left(ErrExpected(context, "Pi", this, wrong))
+    })
 
     def checkWithRecSize(context: Context, t: Type, recSize: Core): Maybe[Unit] = ???
   }
