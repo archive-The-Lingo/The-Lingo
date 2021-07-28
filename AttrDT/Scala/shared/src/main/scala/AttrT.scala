@@ -725,7 +725,7 @@ object Cores {
     private def checkBinding(context: Context, bind: Rec): Maybe[Option[Var]] = bind.kind.evalToType(context).flatMap(bindType => {
       bind.x.check(context, bindType).flatMap(_ => {
         bind match {
-          case RecCodata(id, _, x) => if (bindType.attrs.size == AttrSize_Infinite()) Right(None) else Left(ErrExpectedCodata(context, bind, bindType))
+          case RecCodata(id, _, _) => Right(None) // if (bindType.attrs.size == AttrSize_Infinite()) Right(None) else Left(ErrExpectedCodata(context, bind, bindType)) // it might not be a codata
           case RecPi(id, _, bindBody) => bindBody.reducingMatch(context, {
             case lambda: Lambda =>
               bindType.universe.reducingMatch(context, {
@@ -740,7 +740,7 @@ object Cores {
 
                     argAttrs.size match {
                       case AttrSize_Infinite() | AttrSize_UnknownFinite() => if (resultDiverge) Right(None) else Left(ErrDiverge(context, bind))
-                      case AttrSize_Known(size) => if (resultDiverge) Right(None) else lambda.checkWithRecSize(context,bindType,size).flatMap(_=>Right(Some(id)))
+                      case AttrSize_Known(size) => if (resultDiverge) Right(None) else lambda.checkWithRecSize(context, bindType, size).flatMap(_ => Right(Some(id)))
                     }
                   }
                   case Left(err) => Left(err)
