@@ -928,16 +928,21 @@ object Cores {
               bindType.universe.reducingMatch(context, {
                 case Pi(arg, argId, result) => arg.evalToType(context) match {
                   case Right(argType@Type(_, argAttrs)) => {
-                    val resultContext = context.updated(argId, argType)
+                    val doesRec = checkIfInfinite(letrec.bindings, bind)
+                    if (doesRec) {
+                      val resultContext = context.updated(argId, argType)
 
-                    val resultDiverge = result.evalToType(resultContext) match {
-                      case Right(Type(_, resultAttrs)) => resultAttrs.diverge == AttrDiverge_Yes()
-                      case Left(_) => false
-                    }
+                      val resultDiverge = result.evalToType(resultContext) match {
+                        case Right(Type(_, resultAttrs)) => resultAttrs.diverge == AttrDiverge_Yes()
+                        case Left(_) => false
+                      }
 
-                    argAttrs.size match {
-                      case AttrSize_Infinite() | AttrSize_UnknownFinite() => if (resultDiverge) Right(context) else Left(ErrDiverge(context, bind))
-                      case AttrSize_Known(size) => if (resultDiverge) Right(context) else lambda.checkWithRecSize(context, bindType, size).flatMap(_ => Right(context.addRecPi(id)))
+                      argAttrs.size match {
+                        case AttrSize_Infinite() | AttrSize_UnknownFinite() => if (resultDiverge) Right(context) else Left(ErrDiverge(context, bind))
+                        case AttrSize_Known(size) => if (resultDiverge) Right(context) else lambda.checkWithRecSize(context, bindType, size).flatMap(_ => Right(context.addRecPi(id)))
+                      }
+                    } else {
+                      Right(context)
                     }
                   }
                   case Left(err) => Left(err)
