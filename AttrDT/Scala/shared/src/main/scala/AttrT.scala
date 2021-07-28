@@ -25,6 +25,10 @@ final case class ErrCantEvalToType(context: Context, x: Core) extends Err(s"$x i
 
 final case class ErrLetrec(context: Context, x: Core) extends Err(s"illegal letrec $x in the context $context")
 
+final case class ErrDiverge(context: Context, x: Cores.Rec) extends Err(s"expected diverge for $x in the context $context")
+
+final case class ErrExpectedCodata(context: Context, x: Cores.Rec, t: Core) extends Err(s"expected $x to be codata in the context $context, got $t")
+
 type Maybe[T] = Either[Err, T]
 private implicit def someToRight[T, U](x: Some[T]): Right[U, T] = x match {
   case Some(x) => Right(x)
@@ -89,6 +93,18 @@ final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: 
     case Nil => this
     case (id, t, v) :: xs => this.updated(id, t, v).concat(xs)
   }
+
+  def addRecPis(xs: Set[VarId]): Context = Context(context, recPis.union(xs), recSize)
+
+  def isRecPi(x: VarId): Boolean = recPis.contains(x)
+
+  def isRecPi(x: Cores.Var): Boolean = this.isRecPi(x.x)
+
+  def clearRecSize: Context = Context(context, recPis, None)
+
+  def setRecSize(x: Core): Context = Context(context, recPis, Some(x))
+
+  def getRecSize: Option[Core] = recSize
 }
 
 object Context {
@@ -416,23 +432,8 @@ final case class AttrDiverge_Yes() extends AttrDiverge
 
 final case class AttrDiverge_No() extends AttrDiverge
 
-sealed trait AttrRecPi extends Attr {
-  def merge(other: AttrRecPi): AttrRecPi = (this, other) match {
-    case (_, AttrRecPi_Yes()) | (AttrRecPi_Yes(), _) => AttrRecPi_Yes()
-    case (AttrRecPi_No(), AttrRecPi_No()) => AttrRecPi_No()
-  }
-}
-
-object AttrRecPi {
-  val Base = AttrRecPi_No()
-}
-
-final case class AttrRecPi_Yes() extends AttrRecPi
-
-final case class AttrRecPi_No() extends AttrRecPi
-
-final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge, recpi: AttrRecPi) {
-  def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge), recpi.merge(other.recpi))
+final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge) {
+  def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge))
 
   // pi is not plain
   // plain: sigma either ...
@@ -442,8 +443,7 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
       this.usage.merge(subtype.usage).alpha_beta_eta_equals(this.usage) &&
       this.selfUsage.merge(subtype.selfUsage).alpha_beta_eta_equals(this.selfUsage) &&
       this.assumptions.merge(subtype.assumptions).alpha_beta_eta_equals(this.assumptions) &&
-      this.diverge.merge(subtype.diverge).alpha_beta_eta_equals(this.diverge) &&
-      true // no need to check recpi
+      this.diverge.merge(subtype.diverge).alpha_beta_eta_equals(this.diverge)
 
   def alpha_beta_eta_equals(other: Attrs, map: AlphaMapping): Boolean =
     level.alpha_beta_eta_equals(other.level, map) &&
@@ -451,26 +451,21 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
       usage.alpha_beta_eta_equals(other.usage, map) &&
       selfUsage.alpha_beta_eta_equals(other.selfUsage, map) &&
       assumptions.alpha_beta_eta_equals(other.assumptions, map) &&
-      diverge.alpha_beta_eta_equals(other.diverge, map) &&
-      recpi.alpha_beta_eta_equals(other.recpi, map)
+      diverge.alpha_beta_eta_equals(other.diverge, map)
 
   final def alpha_beta_eta_equals(other: Attrs): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
 
-  def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base, AttrRecPi.Base)
+  def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base)
 
-  def erased: Attrs = Attrs(level, size, AttrUsage_Erased(), selfUsage, assumptions, diverge, recpi)
+  def erased: Attrs = Attrs(level, size, AttrUsage_Erased(), selfUsage, assumptions, diverge)
 
-  def sized(size: Core): Attrs = Attrs(level, AttrSize_Known(size), usage, selfUsage, assumptions, diverge, recpi)
+  def sized(size: Core): Attrs = Attrs(level, AttrSize_Known(size), usage, selfUsage, assumptions, diverge)
 
-  def typeInType: Attrs = Attrs(AttrLevel_UniverseInUniverse(), size, usage, selfUsage, assumptions, diverge, recpi)
-
-  def notRecPi: Attrs = Attrs(level, size, usage, selfUsage, assumptions, diverge, AttrRecPi_No())
-
-  def setRecPi: Attrs = Attrs(level, size, usage, selfUsage, assumptions, diverge, AttrRecPi_Yes())
+  def typeInType: Attrs = Attrs(AttrLevel_UniverseInUniverse(), size, usage, selfUsage, assumptions, diverge)
 }
 
 object Attrs {
-  val Base = Attrs(AttrLevel.Base, AttrSize.Base, AttrUsage.Base, AttrSelfUsage.Base, AttrAssumptions.Base, AttrDiverge.Base, AttrRecPi.Base)
+  val Base = Attrs(AttrLevel.Base, AttrSize.Base, AttrUsage.Base, AttrSelfUsage.Base, AttrAssumptions.Base, AttrDiverge.Base)
 }
 
 final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInferable {
@@ -701,65 +696,67 @@ object Cores {
       throw new Error("letrec: duplicate id")
     }
 
-    private def checkBindings(context: Context): Option[Context] = {
+    private def checkBindings(context: Context): Maybe[Context] = {
       val innerContext0 = context.concat(bindings.toList.map(x => x.kind.evalToType.map(t => (x.id.x, t, x.x))).map(_.toOption).flatten)
 
-      def step(innerContext: Context) = context.concat(bindings.toList.map(x => x.kind.evalToType(innerContext).map(t => (x.id.x, t, x.x))).map(_.toOption).flatten)
+      def step(stepContext: Context) = context.concat(bindings.toList.map(x => x.kind.evalToType(stepContext).map(t => (x.id.x, t, x.x))).map(_.toOption).flatten)
 
       val innerContext = step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(innerContext0))))))))))))))))
-      if (bindings.forall(Letrec.checkBinding(innerContext, _))) {
-        Some(innerContext)
-      } else {
-        None
-      }
+      val init: Maybe[Set[Var]] = Right(Set())
+
+      def check(stepContext: Context): Maybe[Set[Var]] = bindings.toList.map(Letrec.checkBinding(stepContext, _)).foldLeft(init)((s, n) => (s and n).map((s, n) => n match {
+        case Some(v) => s.incl(v)
+        case None => s
+      }))
+
+      for {
+        vs <- check(innerContext)
+        vs0 <- check(innerContext.addRecPis(vs.map(_.x)))
+      } yield innerContext
     }
 
     override def check(context: Context, t: Type): Maybe[Unit] = this.checkBindings(context) match {
-      case Some(innerContext) => x.check(Letrec.removeRecPiForLetrecBody(innerContext, bindings.toList), t)
-      case None => Left(ErrLetrec(context, this))
+      case Right(innerContext) => x.check(innerContext, t)
+      case Left(err) => Left(err)
     }
   }
 
   object Letrec {
-    private def checkBinding(context: Context, bind: Rec): Boolean = bind.kind.evalToType(context) match {
-      case Right(t) => {
+    private def checkBinding(context: Context, bind: Rec): Maybe[Option[Var]] = bind.kind.evalToType(context).flatMap(bindType => {
+      bind.x.check(context, bindType).flatMap(_ => {
         bind match {
-          case RecCodata(id, _, x) => t.attrs.size == AttrSize_Infinite()
-          case RecPi(id, _, x) => t.universe.reducingMatch(context, {
-            case Pi(arg, argId, result) => arg.evalToType(context) match {
-              case Right(t@Type(_, argAttrs)) => {
-                val resultContext = context.updated(argId, t)
+          case RecCodata(id, _, x) => if (bindType.attrs.size == AttrSize_Infinite()) Right(None) else Left(ErrExpectedCodata(context, bind, bindType))
+          case RecPi(id, _, bindBody) => bindBody.reducingMatch(context, {
+            case lambda: Lambda =>
+              bindType.universe.reducingMatch(context, {
+                case Pi(arg, argId, result) => arg.evalToType(context) match {
+                  case Right(argType@Type(_, argAttrs)) => {
+                    val resultContext = context.updated(argId, argType)
 
-                def resultDiverge = result.evalToType(resultContext) match {
-                  case Right(Type(_, resultAttrs)) => resultAttrs.diverge == AttrDiverge_Yes()
-                  case Left(_) => false
-                }
+                    val resultDiverge = result.evalToType(resultContext) match {
+                      case Right(Type(_, resultAttrs)) => resultAttrs.diverge == AttrDiverge_Yes()
+                      case Left(_) => false
+                    }
 
-                argAttrs.size match {
-                  case AttrSize_Infinite() | AttrSize_UnknownFinite() => resultDiverge
-                  case AttrSize_Known(size) => t.attrs.recpi == AttrRecPi_Yes() || resultDiverge
+                    argAttrs.size match {
+                      case AttrSize_Infinite() | AttrSize_UnknownFinite() => if (resultDiverge) Right(None) else Left(ErrDiverge(context, bind))
+                      case AttrSize_Known(size) => if (resultDiverge) Right(None) else lambda.checkWithRecSize(context,bindType,size).flatMap(_=>Right(Some(id)))
+                    }
+                  }
+                  case Left(err) => Left(err)
                 }
-              }
-              case Left(_) => false
-            }
-            case _ => false
+                case wrong => Left(ErrExpected(context, "Pi", bindBody, wrong))
+              })
+            case wrong => Left(ErrExpected(context, "Lambda", bindBody, wrong))
           })
         }
-      }
-      case Left(_) => false
-    }
-
-    private def removeRecPiForLetrecBody(context: Context, binds: List[Rec]): Context = binds match {
-      case Nil => context
-      case RecCodata(_, _, _) :: xs => removeRecPiForLetrecBody(context, xs)
-      case RecPi(id, _, _) :: xs => context.get(id) match {
-        case None => removeRecPiForLetrecBody(context, xs)
-        case Some((t, v)) => removeRecPiForLetrecBody(context.updated(id, t.attrsMap(_.notRecPi), v), xs)
-      }
-    }
+      })
+    })
   }
 
-  final case class Lambda(arg: Core, body: Core) extends Core
+  final case class Lambda(arg: Core, body: Core) extends Core {
+    def checkWithRecSize(context: Context, t: Type, recSize: Core): Maybe[Unit] = ???
+  }
 
   final case class Apply(f: Core, x: Core) extends CoreNeu {
     override def reduce(context: Context): Core = f.reducingMatch(context, {
