@@ -19,6 +19,8 @@ final case class ErrCheckFailed(context: Context, expectedType: Core, x: Core, r
 
 final case class ErrExpected(context: Context, expectedType: String, x: Core, realType: Core) extends Err(s"expect $x to be $expectedType in the context $context, got $realType")
 
+final case class ErrExpectedV(context: Context, expectedType: String, x: Core) extends Err(s"expect $x to be $expectedType in the context $context")
+
 final case class ErrTypeUnknown(context: Context, x: Cores.Var) extends Err(s"the type of $x is unknown in the context $context")
 
 final case class ErrCantEvalToType(context: Context, x: Core) extends Err(s"$x in the context $context can't be a type")
@@ -569,7 +571,7 @@ object Exps {
     }
   }
 
-  final case class Lambda(arg: Exp, body: Exp) extends Exp {
+  final case class Lambda(arg: Var, body: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Lambda(arg.toCore(scope), body.toCore(scope))
   }
 
@@ -720,13 +722,12 @@ object Cores {
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
-  final case class Lambda(arg: Core, body: Core) extends Core {
+  final case class Lambda(arg: Var, body: Core) extends Core {
     override def check(context: Context, t: Type): Maybe[Unit] = t.universe.reducingMatch(context, {
       case Pi(arg0, id, result0) => for {
         argT <- arg0.evalToType(context)
         _ <- t.checkWeakSubtype(argT)
-        _ <- arg.check(context, argT)
-        innerContext = context.updated(id, argT, arg)
+        innerContext = context.updated(arg, argT).updated(id, argT, arg)
         resultT <- result0.evalToType(innerContext)
         _ <- t.checkPlainSubtype(resultT)
         _ <- body.check(innerContext, resultT)
@@ -807,9 +808,12 @@ object Cores {
   }
 
   final case class Apply(f: Core, x: Core) extends CoreNeu {
-    override def reduce(context: Context): Core = f.reducingMatch(context, {
-      case Lambda(arg, body) => ???
-      case _ => None
-    }) getOrElse this
+    def reduce_(context: Context): Maybe[(Context, Core)] = f.infer(context).flatMap(t => t.universe.reducingMatch(context, {
+      case Pi(argT, tid, resultT) => f.reducingMatch(context, {
+        case Lambda(arg, body) => argT.evalToType(context).flatMap(argK => Right((context.updated(arg, argK, x), body)))
+        case wrong => Left(ErrExpectedV(context, "Pi", wrong))
+      })
+      case wrong => Left(ErrExpected(context, "Pi", f, wrong))
+    }))
   }
 }
