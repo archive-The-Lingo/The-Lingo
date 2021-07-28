@@ -176,6 +176,10 @@ type Subst = HashMap[Cores.Var, Core]
 sealed trait Core {
   def subst(s: Subst): Core
 
+  final def subst(v: Cores.Var, x: Core): Core = this.subst(HashMap((v, x)))
+
+  final def subst(v: Cores.Var, t: Type, x: Core): Core = this.subst(HashMap((v, Cores.InternalThe(t, x))))
+
   def alpha_beta_eta_equals(other: Core, map: AlphaMapping): Boolean = this == other
 
   final def alpha_beta_eta_equals(other: Core): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
@@ -874,22 +878,28 @@ object Cores {
   final case class Apply(f: Core, x: Core) extends CoreNeu {
     override def subst(s: Subst): Apply = Apply(f.subst(s), x.subst(s))
 
-    def reduce_(context: Context): Maybe[(Context, Core)] = f.infer(context).flatMap(t => t.universe.reducingMatch(context, {
+    override def reduce(context: Context): Core = f.infer(context).flatMap(t => t.universe.reducingMatch(context, {
       case Pi(argT, tid, resultT) => f.reducingMatch(context, {
-        case Lambda(arg, body) => argT.evalToType(context).flatMap(argK => Right((context.updated(arg, argK, x), body)))
+        case Lambda(arg, body) => argT.evalToType(context).flatMap(argK => Right(body.subst(arg, argK, x)))
         case wrong => Left(ErrExpectedV(context, "Pi", wrong))
       })
       case wrong => Left(ErrExpected(context, "Pi", f, wrong))
-    }))
+    })) getOrElse this
   }
 
   final case class The(t: Core, x: Core) extends Core {
     override def subst(s: Subst): The = The(t.subst(s), x.subst(s))
 
+    override def infer(context: Context): Maybe[Type] = t.evalToType(context)
+
+    override def reduce(context: Context): Core = t.evalToType(context).map(InternalThe(_, x)) getOrElse this
   }
 
   final case class InternalThe(t: Type, x: Core) extends Core {
     override def subst(s: Subst): InternalThe = InternalThe(t.subst(s), x.subst(s))
 
+    override def infer(context: Context): Maybe[Type] = Right(t)
+
+    override def reduce(context: Context): Core = x // x.check(context, t).map(_ => x) getOrElse this
   }
 }
