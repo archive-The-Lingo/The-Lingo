@@ -465,31 +465,10 @@ final case class AttrDiverge_Yes() extends AttrDiverge
 
 final case class AttrDiverge_No() extends AttrDiverge
 
-// not really a attr
-sealed trait AttrTempRec extends Attr {
-  def subst(s: Subst): AttrTempRec = this
+final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge) {
+  def subst(s: Subst): Attrs = Attrs(level.subst(s), size.subst(s), usage.subst(s), selfUsage.subst(s), assumptions.subst(s), diverge.subst(s))
 
-  def merge(other: AttrTempRec): AttrTempRec = (this, other) match {
-    case (AttrTempRec_Rec(), _) | (_, AttrTempRec_Rec()) => AttrTempRec_Rec()
-    case (AttrTempRec_RecPi(), _) | (_, AttrTempRec_RecPi()) => AttrTempRec_RecPi()
-    case (AttrTempRec_No(), AttrTempRec_No()) => AttrTempRec_No()
-  }
-}
-
-final case class AttrTempRec_No() extends AttrTempRec
-
-final case class AttrTempRec_RecPi() extends AttrTempRec
-
-final case class AttrTempRec_Rec() extends AttrTempRec
-
-object AttrTempRec {
-  val Base = AttrTempRec_No()
-}
-
-final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge, temprec: AttrTempRec) {
-  def subst(s: Subst): Attrs = Attrs(level.subst(s), size.subst(s), usage.subst(s), selfUsage.subst(s), assumptions.subst(s), diverge.subst(s), temprec.subst(s))
-
-  def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge), temprec.merge(other.temprec))
+  def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge))
 
   // pi is not plain
   // plain: sigma either ...
@@ -499,8 +478,7 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
       this.usage.merge(subtype.usage).alpha_beta_eta_equals(this.usage) &&
       this.selfUsage.merge(subtype.selfUsage).alpha_beta_eta_equals(this.selfUsage) &&
       this.assumptions.merge(subtype.assumptions).alpha_beta_eta_equals(this.assumptions) &&
-      this.diverge.merge(subtype.diverge).alpha_beta_eta_equals(this.diverge) &&
-      this.temprec.merge(subtype.temprec).alpha_beta_eta_equals(this.temprec)
+      this.diverge.merge(subtype.diverge).alpha_beta_eta_equals(this.diverge)
 
   def validWeakSubtype(subtype: Attrs): Boolean = this.level.merge(subtype.level).alpha_beta_eta_equals(this.level)
 
@@ -510,26 +488,21 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
       usage.alpha_beta_eta_equals(other.usage, map) &&
       selfUsage.alpha_beta_eta_equals(other.selfUsage, map) &&
       assumptions.alpha_beta_eta_equals(other.assumptions, map) &&
-      diverge.alpha_beta_eta_equals(other.diverge, map) &&
-      temprec.alpha_beta_eta_equals(other.temprec, map)
+      diverge.alpha_beta_eta_equals(other.diverge, map)
 
   final def alpha_beta_eta_equals(other: Attrs): Boolean = this.alpha_beta_eta_equals(other, AlphaMapping.Empty)
 
-  def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base, AttrTempRec.Base)
+  def upper: Attrs = Attrs(level.upper, AttrSize.Base, selfUsage.upper, AttrSelfUsage.Base, assumptions, AttrDiverge.Base)
 
-  def erased: Attrs = Attrs(level, size, AttrUsage_Erased(), selfUsage, assumptions, diverge, AttrTempRec.Base)
+  def erased: Attrs = Attrs(level, size, AttrUsage_Erased(), selfUsage, assumptions, diverge)
 
-  def sized(size: Core): Attrs = Attrs(level, AttrSize_Known(size), usage, selfUsage, assumptions, diverge, temprec)
+  def sized(size: Core): Attrs = Attrs(level, AttrSize_Known(size), usage, selfUsage, assumptions, diverge)
 
-  def typeInType: Attrs = Attrs(AttrLevel_UniverseInUniverse(), size, usage, selfUsage, assumptions, diverge, temprec)
-
-  def setTempRec(x: AttrTempRec): Attrs = Attrs(level, size, usage, selfUsage, assumptions, diverge, x)
-
-  def getTempRec: AttrTempRec = this.temprec
+  def typeInType: Attrs = Attrs(AttrLevel_UniverseInUniverse(), size, usage, selfUsage, assumptions, diverge)
 }
 
 object Attrs {
-  val Base = Attrs(AttrLevel.Base, AttrSize.Base, AttrUsage.Base, AttrSelfUsage.Base, AttrAssumptions.Base, AttrDiverge.Base, AttrTempRec.Base)
+  val Base = Attrs(AttrLevel.Base, AttrSize.Base, AttrUsage.Base, AttrSelfUsage.Base, AttrAssumptions.Base, AttrDiverge.Base)
 }
 
 final case class Type(universe: Core, attrs: Attrs) extends Core {
@@ -681,9 +654,7 @@ object Cores {
     override def subst(s: Subst): Core = s.getOrElse(this, this)
 
     override def infer(context: Context): Maybe[Type] = context.getType(x) match {
-      case Some(t) => if (context.isRecPi(x)) Right(t.attrsMap(_.setTempRec(AttrTempRec_RecPi())))
-      else if (context.isRec(x)) Right(t.attrsMap(_.setTempRec(AttrTempRec_Rec())))
-      else Right(t)
+      case Some(t) => Right(t)
       case None => Left(ErrTypeUnknown(context, this))
     }
   }
