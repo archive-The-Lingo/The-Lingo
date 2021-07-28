@@ -75,6 +75,8 @@ final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: 
 
   def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))), recPis, recSize, recs)
 
+  def updated(id: Cores.Var, t: Type, v: Core): Context = this.updated(id.x, t, v)
+
   def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)), recPis, recSize, recs)
 
   def updated(id: Cores.Var, t: Type): Context = this.updated(id.x, t)
@@ -559,6 +561,17 @@ object Exps {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Cdr(x.toCore(scope))
   }
 
+  final case class Sigma(x: Exp, id: Var, y: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = {
+      val id0 = id.gen
+      Cores.Sigma(x.toCore(scope), id0, y.toCore(scope.updated(id.x, id0.x)))
+    }
+  }
+
+  final case class Lambda(arg: Exp, body: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Lambda(arg.toCore(scope), body.toCore(scope))
+  }
+
   final case class Pi(x: Exp, id: Var, y: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = {
       val id0 = id.gen
@@ -588,10 +601,6 @@ object Exps {
       val ctx: HashMap[Identifier, VarId] = scope.concat(recScope)
       Cores.Letrec(bindings.map(_.toCore(ctx)), x.toCore(ctx))
     }
-  }
-
-  final case class Lambda(arg: Exp, body: Exp) extends Exp {
-    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Lambda(arg.toCore(scope), body.toCore(scope))
   }
 
   final case class Apply(f: Exp, x: Exp) extends Exp {
@@ -674,14 +683,23 @@ object Cores {
   }
 
   final case class Cons(x: Core, y: Core) extends Core {
-    override def check(context: Context, t: Type): Maybe[Unit] = ???
+    override def check(context: Context, t: Type): Maybe[Unit] = t.universe.reducingMatch(context, {
+      case Sigma(a, id, d) => for {
+        aT <- a.evalToType(context)
+        _ <- x.check(context, aT)
+        innerContext = context.updated(id, aT, x)
+        dT <- d.evalToType(innerContext)
+        _ <- y.check(innerContext, dT)
+      } yield ()
+      case wrong => Left(ErrExpected(context, "Sigma", x, wrong))
+    })
   }
 
   final case class Car(x: Core) extends CoreNeu {
     override def infer(context: Context): Maybe[Type] = x.infer(context) flatMap {
       case Type(uni, attrs) => uni.reducingMatch(context, {
-        case Pi(a, id, d) => a.evalToType(context)
-        case wrong => Left(ErrExpected(context, "Pi", x, wrong))
+        case Sigma(a, id, d) => a.evalToType(context)
+        case wrong => Left(ErrExpected(context, "Sigma", x, wrong))
       })
     }
   }
@@ -689,14 +707,21 @@ object Cores {
   final case class Cdr(x: Core) extends CoreNeu {
     override def infer(context: Context): Maybe[Type] = x.infer(context) flatMap {
       case Type(uni, attrs) => uni.reducingMatch(context, {
-        case Pi(a, id, d) => a.evalToType(context).flatMap((at) => d.evalToType(context.updated(id, at)))
-        case wrong => Left(ErrExpected(context, "Pi", x, wrong))
+        case Sigma(a, id, d) => a.evalToType(context).flatMap((at) => d.evalToType(context.updated(id, at)))
+        case wrong => Left(ErrExpected(context, "Sigma", x, wrong))
       })
     }
   }
 
+  final case class Sigma(x: Core, id: Var, y: Core) extends Core {
+
+  }
+
+  final case class Lambda(arg: Core, body: Core) extends Core {
+    def checkWithRecSize(context: Context, t: Type, recSize: Core): Maybe[Unit] = ???
+  }
+
   final case class Pi(x: Core, id: Var, y: Core) extends Core {
-    override def check(context: Context, t: Type): Maybe[Unit] = ???
   }
 
   sealed abstract class Rec(val id: Var, val kind: Core, val x: Core)
@@ -762,10 +787,6 @@ object Cores {
         }
       })
     })
-  }
-
-  final case class Lambda(arg: Core, body: Core) extends Core {
-    def checkWithRecSize(context: Context, t: Type, recSize: Core): Maybe[Unit] = ???
   }
 
   final case class Apply(f: Core, x: Core) extends CoreNeu {
