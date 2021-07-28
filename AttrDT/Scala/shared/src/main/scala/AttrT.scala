@@ -29,6 +29,8 @@ final case class ErrDiverge(context: Context, x: Cores.Rec) extends Err(s"expect
 
 final case class ErrExpectedCodata(context: Context, x: Cores.Rec, t: Core) extends Err(s"expected $x to be codata in the context $context, got $t")
 
+final case class ErrPlainSubtype(t: Core, sub: Core) extends Err(s"$sub can't be a plain subtype of $t")
+
 type Maybe[T] = Either[Err, T]
 private implicit def someToRight[T, U](x: Some[T]): Right[U, T] = x match {
   case Some(x) => Right(x)
@@ -490,6 +492,10 @@ final case class Type(universe: Core, attrs: Attrs) extends Core with CoreInfera
     case _ => false
   }
 
+  def validPlainSubtype(subtype: Type): Boolean = attrs.validPlainSubtype(subtype.attrs)
+
+  def checkPlainSubtype(subtype: Type): Maybe[Unit] = if (this.validPlainSubtype(subtype)) Right(()) else Left(ErrPlainSubtype(this, subtype))
+
   def subsetOrEqual(other: Type): Boolean = universe.alpha_beta_eta_equals(other.universe) && (attrs.alpha_beta_eta_equals(other.attrs) || attrs.merge(other.attrs).alpha_beta_eta_equals(attrs))
 
   def upperType: Type = Type(Cores.Universe(), attrs.upper)
@@ -686,9 +692,11 @@ object Cores {
     override def check(context: Context, t: Type): Maybe[Unit] = t.universe.reducingMatch(context, {
       case Sigma(a, id, d) => for {
         aT <- a.evalToType(context)
+        _ <- t.checkPlainSubtype(aT)
         _ <- x.check(context, aT)
         innerContext = context.updated(id, aT, x)
         dT <- d.evalToType(innerContext)
+        _ <- t.checkPlainSubtype(dT)
         _ <- y.check(innerContext, dT)
       } yield ()
       case wrong => Left(ErrExpected(context, "Sigma", x, wrong))
@@ -714,10 +722,11 @@ object Cores {
   }
 
   final case class Sigma(x: Core, id: Var, y: Core) extends Core {
-
   }
 
   final case class Lambda(arg: Core, body: Core) extends Core {
+    override def check(context: Context, t: Type): Maybe[Unit] = ???
+
     def checkWithRecSize(context: Context, t: Type, recSize: Core): Maybe[Unit] = ???
   }
 
