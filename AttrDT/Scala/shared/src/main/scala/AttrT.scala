@@ -171,8 +171,10 @@ sealed trait AlphaEtaEqual {
 }
 
 // uses VarId
+type Subst = HashMap[Cores.Var, Core]
+
 sealed trait Core {
-  //def subst(context: Context): Core = ???
+  def subst(s: Subst): Core
 
   def alpha_beta_eta_equals(other: Core, map: AlphaMapping): Boolean = this == other
 
@@ -301,6 +303,11 @@ def mergeTwoNat(x: Core, y: Core): Option[Core] = if (x == y) Some(x) else (for 
 }
 
 sealed trait AttrLevel extends Attr {
+  def subst(s: Subst): AttrLevel = this match {
+    case AttrLevel_Known(x) => AttrLevel_Known(x.subst(s))
+    case other@(AttrLevel_UniverseInUniverse()) => other
+  }
+
   def merge(other: AttrLevel): AttrLevel = (this, other) match {
     case (_, AttrLevel_UniverseInUniverse()) | (AttrLevel_UniverseInUniverse(), _) => AttrLevel_UniverseInUniverse()
     case (AttrLevel_Known(x), AttrLevel_Known(y)) => mergeTwoNat(x, y) match {
@@ -329,6 +336,11 @@ final case class AttrLevel_Known(level: Core) extends AttrLevel {
 }
 
 sealed trait AttrSize extends Attr {
+  def subst(s: Subst): AttrSize = this match {
+    case AttrSize_Known(x) => AttrSize_Known(x.subst(s))
+    case other@(AttrSize_Infinite() | AttrSize_UnknownFinite()) => other
+  }
+
   def merge(other: AttrSize): AttrSize = (this, other) match {
     case (_, AttrSize_Infinite()) | (AttrSize_Infinite(), _) => AttrSize_Infinite()
     case (_, AttrSize_UnknownFinite()) | (AttrSize_UnknownFinite(), _) => AttrSize_UnknownFinite()
@@ -360,6 +372,8 @@ final case class AttrSize_Known(size: Core) extends AttrSize {
 }
 
 sealed trait AttrUsage extends Attr {
+  def subst(s: Subst): AttrUsage = this
+
   def merge(other: AttrUsage): AttrUsage = (this, other) match {
     case (AttrUsage_Erased(), _) | (_, AttrUsage_Erased()) => AttrUsage_Erased()
     case (AttrUsage_Once(), _) | (_, AttrUsage_Once()) => AttrUsage_Once()
@@ -378,6 +392,8 @@ final case class AttrUsage_Once() extends AttrUsage
 final case class AttrUsage_Unlimited() extends AttrUsage
 
 sealed trait AttrSelfUsage extends Attr {
+  def subst(s: Subst): AttrSelfUsage = this
+
   def merge(other: AttrSelfUsage): AttrSelfUsage = (this, other) match {
     case (AttrSelfUsage_Erased(), _) | (_, AttrSelfUsage_Erased()) => AttrSelfUsage_Erased()
     case (AttrSelfUsage_Once(), _) | (_, AttrSelfUsage_Once()) => AttrSelfUsage_Once()
@@ -402,6 +418,8 @@ final case class AttrSelfUsage_Once() extends AttrSelfUsage
 final case class AttrSelfUsage_Unlimited() extends AttrSelfUsage
 
 final case class AttrAssumptions(assumptions: Set[Type]) extends Attr {
+  def subst(s: Subst): AttrAssumptions = AttrAssumptions.safeApply(assumptions.map(_.subst(s)))
+
   def merge(other: AttrAssumptions): AttrAssumptions = AttrAssumptions.safeApply(assumptions.union(other.assumptions))
 
   override def alpha_beta_eta_equals(other: Attr, map: AlphaMapping): Boolean = other match {
@@ -427,6 +445,8 @@ object AttrAssumptions {
 }
 
 sealed trait AttrDiverge extends Attr {
+  def subst(s: Subst): AttrDiverge = this
+
   def merge(other: AttrDiverge): AttrDiverge = (this, other) match {
     case (AttrDiverge_Yes(), _) | (_, AttrDiverge_Yes()) => AttrDiverge_Yes()
     case (AttrDiverge_No(), AttrDiverge_No()) => AttrDiverge_No()
@@ -442,6 +462,8 @@ final case class AttrDiverge_Yes() extends AttrDiverge
 final case class AttrDiverge_No() extends AttrDiverge
 
 final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfUsage: AttrSelfUsage, assumptions: AttrAssumptions, diverge: AttrDiverge) {
+  def subst(s: Subst): Attrs = Attrs(level.subst(s), size.subst(s), usage.subst(s), selfUsage.subst(s), assumptions.subst(s), diverge.subst(s))
+
   def merge(other: Attrs): Attrs = Attrs(level.merge(other.level), size.merge(other.size), usage.merge(other.usage), selfUsage.merge(other.selfUsage), assumptions.merge(other.assumptions), diverge.merge(other.diverge))
 
   // pi is not plain
@@ -480,6 +502,8 @@ object Attrs {
 }
 
 final case class Type(universe: Core, attrs: Attrs) extends Core {
+  override def subst(s: Subst): Type = Type(universe.subst(s), attrs.subst(s))
+
   override def alpha_beta_eta_equals(other: Core, map: AlphaMapping): Boolean = other match {
     case Type(otherUniverse, otherAttrs) => universe.alpha_beta_eta_equals(otherUniverse, map) && attrs.alpha_beta_eta_equals(otherAttrs, map)
     case _ => false
@@ -609,6 +633,10 @@ object Exps {
   final case class Apply(f: Exp, x: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Apply(f.toCore(scope), x.toCore(scope))
   }
+
+  final case class The(t: Exp, x: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.The(t.toCore(scope), x.toCore(scope))
+  }
 }
 
 private def transverse[A](xs: List[Option[A]]): Option[List[A]] = xs match {
@@ -619,6 +647,8 @@ private def transverse[A](xs: List[Option[A]]): Option[List[A]] = xs match {
 
 object Cores {
   final case class Var(x: VarId) extends CoreNeu {
+    override def subst(s: Subst): Core = s.getOrElse(this, this)
+
     override def infer(context: Context): Maybe[Type] = context.getType(x) match {
       case Some(t) => Right(t)
       case None => Left(ErrTypeUnknown(context, this))
@@ -628,10 +658,14 @@ object Cores {
   private val NatT: Type = Type(Nat())
 
   final case class Zero() extends Core {
+    override def subst(s: Subst): Zero = this
+
     override def infer(context: Context): Maybe[Type] = Right(NatT)
   }
 
   final case class Succ(x: Core) extends Core {
+    override def subst(s: Subst): Succ = Succ(x.subst(s))
+
     override def infer(context: Context): Maybe[Type] = Right(NatT)
   }
 
@@ -642,20 +676,28 @@ object Cores {
   private val KindInfinite: Type = Kind0.typeInType
 
   final case class Nat() extends Core with CoreType {
+    override def subst(s: Subst): Nat = this
+
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
   // type without attributes
   final case class Universe() extends Core with CoreType {
+    override def subst(s: Subst): Universe = this
+
     override def evalToType(context: Context): Maybe[Type] = Right(Universe0)
   }
 
   // type with attributes
   final case class Kind() extends Core with CoreType {
+    override def subst(s: Subst): Kind = this
+
     override def evalToType(context: Context): Maybe[Type] = Right(Kind0)
   }
 
   final case class MakeKind(x: Core) extends Core {
+    override def subst(s: Subst): MakeKind = MakeKind(x.subst(s))
+
     override def evalToType(context: Context): Maybe[Type] = (x.check(context, UniverseInfinite)).flatMap(_ => {
       Right(Type(x, Attrs.Base))
     })
@@ -674,6 +716,8 @@ object Cores {
   }
 
   final case class AttrSize(size: Core, kind: Core) extends Core {
+    override def subst(s: Subst): AttrSize = AttrSize(size.subst(s), kind.subst(s))
+
     override def check(context: Context, t: Type): Maybe[Unit] = size.check(context, NatT) and kind.check(context, KindInfinite) and kind.check(context, t)
 
     override def infer(context: Context): Maybe[Type] = (size.check(context, NatT) and kind.check(context, KindInfinite)).flatMap(_ => {
@@ -686,6 +730,8 @@ object Cores {
   }
 
   final case class Cons(x: Core, y: Core) extends Core {
+    override def subst(s: Subst): Cons = Cons(x.subst(s), y.subst(s))
+
     override def check(context: Context, t: Type): Maybe[Unit] = t.universe.reducingMatch(context, {
       case Sigma(a, id, d) => for {
         aT <- a.evalToType(context)
@@ -701,6 +747,8 @@ object Cores {
   }
 
   final case class Car(x: Core) extends CoreNeu {
+    override def subst(s: Subst): Car = Car(x.subst(s))
+
     override def infer(context: Context): Maybe[Type] = x.infer(context) flatMap {
       case Type(uni, attrs) => uni.reducingMatch(context, {
         case Sigma(a, id, d) => a.evalToType(context)
@@ -710,6 +758,8 @@ object Cores {
   }
 
   final case class Cdr(x: Core) extends CoreNeu {
+    override def subst(s: Subst): Cdr = Cdr(x.subst(s))
+
     override def infer(context: Context): Maybe[Type] = x.infer(context) flatMap {
       case Type(uni, attrs) => uni.reducingMatch(context, {
         case Sigma(a, id, d) => a.evalToType(context).flatMap((at) => d.evalToType(context.updated(id, at)))
@@ -719,10 +769,14 @@ object Cores {
   }
 
   final case class Sigma(x: Core, id: Var, y: Core) extends Core with CoreType {
+    override def subst(s: Subst): Sigma = Sigma(x.subst(s), id, y.subst(s))
+
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
   final case class Lambda(arg: Var, body: Core) extends Core {
+    override def subst(s: Subst): Lambda = Lambda(arg, body.subst(s))
+
     override def check(context: Context, t: Type): Maybe[Unit] = t.universe.reducingMatch(context, {
       case Pi(arg0, id, result0) => for {
         argT <- arg0.evalToType(context)
@@ -739,19 +793,29 @@ object Cores {
   }
 
   final case class Pi(x: Core, id: Var, y: Core) extends Core with CoreType {
+    override def subst(s: Subst): Pi = Pi(x.subst(s), id, y.subst(s))
+
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
-  sealed abstract class Rec(val id: Var, val kind: Core, val x: Core)
+  sealed abstract class Rec(val id: Var, val kind: Core, val x: Core) {
+    def subst(s: Subst): Rec
+  }
 
-  final case class RecData(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x)
+  final case class RecData(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x) {
+    override def subst(s: Subst): RecData = RecData(id, kind.subst(s), x.subst(s))
+  }
 
-  final case class RecPi(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x)
+  final case class RecPi(override val id: Var, override val kind: Core, override val x: Core) extends Rec(id, kind, x) {
+    override def subst(s: Subst): RecPi = RecPi(id, kind.subst(s), x.subst(s))
+  }
 
   final case class Letrec(bindings: Set[Rec], x: Core) extends Core {
     if (bindings.size != bindings.toList.distinctBy(_.id).length) {
       throw new Error("letrec: duplicate id")
     }
+
+    override def subst(s: Subst): Letrec = Letrec(bindings.map(_.subst(s)), x.subst(s))
 
     private def checkBindings(context: Context): Maybe[Context] = {
       val innerContext0 = context.concat(bindings.toList.map(x => x.kind.evalToType.map(t => (x.id.x, t, x.x))).map(_.toOption).flatten)
@@ -808,6 +872,8 @@ object Cores {
   }
 
   final case class Apply(f: Core, x: Core) extends CoreNeu {
+    override def subst(s: Subst): Apply = Apply(f.subst(s), x.subst(s))
+
     def reduce_(context: Context): Maybe[(Context, Core)] = f.infer(context).flatMap(t => t.universe.reducingMatch(context, {
       case Pi(argT, tid, resultT) => f.reducingMatch(context, {
         case Lambda(arg, body) => argT.evalToType(context).flatMap(argK => Right((context.updated(arg, argK, x), body)))
@@ -815,5 +881,15 @@ object Cores {
       })
       case wrong => Left(ErrExpected(context, "Pi", f, wrong))
     }))
+  }
+
+  final case class The(t: Core, x: Core) extends Core {
+    override def subst(s: Subst): The = The(t.subst(s), x.subst(s))
+
+  }
+
+  final case class InternalThe(t: Type, x: Core) extends Core {
+    override def subst(s: Subst): InternalThe = InternalThe(t.subst(s), x.subst(s))
+
   }
 }
