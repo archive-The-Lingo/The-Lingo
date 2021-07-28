@@ -64,14 +64,14 @@ object VarId {
   def gen(id: Identifier): VarId = VarId(id, UniqueIdentifier.gen)
 }
 
-final case class Context(context: HashMap[VarId, (Type, Option[Core])]) {
-  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(context.updated(id, (t, v)))
+final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: Set[VarId], recSize: Option[Core]) {
+  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(context.updated(id, (t, v)), recPis, recSize)
 
   def updated(id: Cores.Var, t: Type, v: Option[Core]): Context = this.updated(id.x, t, v)
 
-  def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))))
+  def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))), recPis, recSize)
 
-  def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)))
+  def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)), recPis, recSize)
 
   def updated(id: Cores.Var, t: Type): Context = this.updated(id.x, t)
 
@@ -92,7 +92,7 @@ final case class Context(context: HashMap[VarId, (Type, Option[Core])]) {
 }
 
 object Context {
-  val Empty = Context(HashMap())
+  val Empty = Context(HashMap(), Set(), None)
 }
 
 final case class AlphaMapping(inner: HashMap[VarId, VarId], reverseMap: HashMap[VarId, VarId]) {
