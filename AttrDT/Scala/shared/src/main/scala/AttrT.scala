@@ -27,11 +27,10 @@ final case class ErrCantEvalToType(context: Context, x: Core) extends Err(s"$x i
 
 final case class ErrLetrec(context: Context, x: Core) extends Err(s"illegal letrec $x in the context $context")
 
-/*
 final case class ErrDiverge(context: Context, x: Cores.Rec) extends Err(s"expected diverge for $x in the context $context")
 
-final case class ErrExpectedCodata(context: Context, x: Cores.Rec, t: Core) extends Err(s"expected $x to be codata in the context $context, got $t")
-*/
+final case class ErrExpectedCodata(context: Context, x: Core, t: Core) extends Err(s"expected $x to be codata in the context $context, got $t")
+
 
 final case class ErrPlainSubtype(t: Core, sub: Core) extends Err(s"$sub can't be a plain subtype of $t")
 
@@ -99,7 +98,7 @@ final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: 
 
   def getValue(id: VarId): Option[Core] = context.get(id).map(_._2).flatten
 
-  def getValue(id: Cores.Var): Option[Core] = this.getValue(id)
+  def getValue(id: Cores.Var): Option[Core] = this.getValue(id.x)
 
   def concat(xs: List[(VarId, Type, Core)]): Context = xs match {
     case Nil => this
@@ -906,6 +905,17 @@ object Cores {
     }
 
     private def isRec(context: Context, x: Core): Boolean = extract(context, x).exists(coreContains(context, x, Set(), _))
+
+    private def checkRec(context: Context, x: Core, t: Type): Maybe[Unit] = if (isRec(context, x)) {
+      // todo handle recPi
+      if (t.attrs.size == AttrSize_Infinite()) {
+        Right(())
+      } else {
+        Left(ErrExpectedCodata(context, x, t))
+      }
+    } else {
+      Right(())
+    }
   }
 
   /*
