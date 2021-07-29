@@ -185,6 +185,7 @@ sealed trait Core {
   def weakHeadNormalForm: Core = this.weakHeadNormalForm(Context.Empty)
 
   def reduce(context: Context): Core = this
+  // def reduce(context: Context): Maybe[Context, Core] = ???
 
   def infer(context: Context): Maybe[Type] = {
     val next = this.reduce(context)
