@@ -29,13 +29,13 @@ final case class ErrLetrec(context: Context, x: Core) extends Err(s"illegal letr
 
 final case class ErrDiverge(context: Context, x: Cores.Rec) extends Err(s"expected diverge for $x in the context $context")
 
-final case class ErrUnknownFiniteRec(context: Context, id: Core, x: Core, t: Core) extends Err(s"don't know how to check UnknownFinite $id $x: $t in $context")
+final case class ErrUnknownFiniteRec(context: Context, x: Core, t: Core) extends Err(s"don't know how to check UnknownFinite $x: $t in $context")
 
-final case class ErrNotDivergePiRec(context: Context, id: Core, x: Core, t: Core) extends Err(s"don't know how to check non-diverge Pi $id $x: $t in $context")
+final case class ErrNotDivergePiRec(context: Context, x: Core, t: Core) extends Err(s"don't know how to check non-diverge Pi $x: $t in $context")
 
 final case class ErrRecs(context: Context, errs: List[Err]) extends Err(s"Recs failed in $context caused by $errs")
 
-final case class ErrUnknownTypeRec(context: Context, id: Core, x: Core, t: Core) extends Err(s"don't know how to check $id $x: $t with unknown type in $context")
+final case class ErrUnknownTypeRec(context: Context, x: Core, t: Core) extends Err(s"don't know how to check  $x: $t with unknown type in $context")
 
 final case class ErrExpectedCodata(context: Context, x: Core, t: Core) extends Err(s"expected $x to be codata in the context $context, got $t")
 
@@ -838,6 +838,7 @@ object Cores {
 
     override def check(context: Context, t: Type): Maybe[Unit] = t.universe.reducingMatch(context, {
       case Pi(arg0, id, result0) => for {
+        _ <- Recs.checkRec(context, t, this)
         argT <- arg0.evalToType(context)
         _ <- t.checkWeakSubtype(argT)
         innerContext = context.updated(arg, argT).updated(id, argT, arg)
@@ -945,21 +946,21 @@ object Cores {
 
     private def checkRec(context: Context, rec: Rec): Maybe[(VarId, Type, Core)] = for {
       kind <- rec.kind.evalToType(context)
-      _ <- checkRec(context, rec.id, kind, rec.x)
+      _ <- checkRec(context, kind, rec.x)
     } yield (rec.id.x, kind, rec.x)
 
-    private def checkRec(context: Context, id: Var, kind: Type, x: Core): Maybe[Unit] = x.check(context, kind).flatMap(_ => if (isRecursive(context, x)) {
+    def checkRec(context: Context, kind: Type, x: Core): Maybe[Unit] = x.check(context, kind).flatMap(_ => if (isRecursive(context, x)) {
       if (kind.attrs.size == AttrSize_UnknownFinite()) {
-        Left(ErrUnknownFiniteRec(context, id, x, kind))
+        Left(ErrUnknownFiniteRec(context, x, kind))
         // other parts will handle finite and infinite correctly
       } else {
         kind.universe.weakHeadNormalForm(context) match {
           case Pi(arg, argId, result) => for {
             argK <- arg.evalToType(context)
             resultK <- result.evalToType(context.updated(argId, argK))
-            _ <- if (resultK.attrs.diverge == AttrDiverge_Yes()) Right(()) else Left(ErrNotDivergePiRec(context, id, x, kind))
+            _ <- if (resultK.attrs.diverge == AttrDiverge_Yes()) Right(()) else Left(ErrNotDivergePiRec(context, x, kind))
           } yield ()
-          case _: CoreNeu => Left(ErrUnknownTypeRec(context, id, x, kind))
+          case _: CoreNeu => Left(ErrUnknownTypeRec(context, x, kind))
           case _: RecPi => Right(())
           case _ => Right(())
         }
