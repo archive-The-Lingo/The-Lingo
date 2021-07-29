@@ -75,16 +75,16 @@ object VarId {
   def gen(id: Identifier): VarId = VarId(id, UniqueIdentifier.gen)
 }
 
-final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: Set[VarId], recSize: Option[Core], recs: Set[VarId]) {
-  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(context.updated(id, (t, v)), recPis, recSize, recs)
+final case class Context(context: HashMap[VarId, (Type, Option[Core])]) {
+  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(context.updated(id, (t, v)))
 
   def updated(id: Cores.Var, t: Type, v: Option[Core]): Context = this.updated(id.x, t, v)
 
-  def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))), recPis, recSize, recs)
+  def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))))
 
   def updated(id: Cores.Var, t: Type, v: Core): Context = this.updated(id.x, t, v)
 
-  def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)), recPis, recSize, recs)
+  def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)))
 
   def updated(id: Cores.Var, t: Type): Context = this.updated(id.x, t)
 
@@ -104,36 +104,10 @@ final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: 
     case Nil => this
     case (id, t, v) :: xs => this.updated(id, t, v).concat(xs)
   }
-
-  def addRecPis(xs: Set[VarId]): Context = Context(context, recPis.union(xs), recSize, recs)
-
-  def addRecPi(x: VarId): Context = Context(context, recPis.incl(x), recSize, recs)
-
-  def addRecPi(x: Cores.Var): Context = this.addRecPi(x.x)
-
-  def isRecPi(x: VarId): Boolean = recPis.contains(x)
-
-  def isRecPi(x: Cores.Var): Boolean = this.isRecPi(x.x)
-
-  def clearRecSize: Context = Context(context, recPis, None, recs)
-
-  def setRecSize(x: Core): Context = Context(context, recPis, Some(x), recs)
-
-  def getRecSize: Option[Core] = recSize
-
-  def addRecs(xs: Set[VarId]): Context = Context(context, recPis, recSize, recs.union(xs))
-
-  def addRec(x: VarId): Context = Context(context, recPis, recSize, recs.incl(x))
-
-  def addRec(x: Cores.Var): Context = this.addRec(x.x)
-
-  def isRec(x: VarId): Boolean = recs.contains(x)
-
-  def isRec(x: Cores.Var): Boolean = this.isRec(x.x)
 }
 
 object Context {
-  val Empty = Context(HashMap(), Set(), None, Set())
+  val Empty = Context(HashMap())
 }
 
 final case class AlphaMapping(inner: HashMap[VarId, VarId], reverseMap: HashMap[VarId, VarId]) {
@@ -907,7 +881,7 @@ object Cores {
     private def isRec(context: Context, x: Core): Boolean = extract(context, x).exists(coreContains(context, x, Set(), _))
 
     private def checkRec(context: Context, x: Core, t: Type): Maybe[Unit] = if (isRec(context, x)) {
-      // todo handle recPi
+      // todo handle recPi?
       if (t.attrs.size == AttrSize_Infinite()) {
         Right(())
       } else {
