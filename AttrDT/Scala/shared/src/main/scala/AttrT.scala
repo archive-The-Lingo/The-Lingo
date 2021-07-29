@@ -848,6 +848,15 @@ object Cores {
         _ <- t.checkPlainSubtype(resultT)
         _ <- body.check(innerContext, resultT)
       } yield ()
+      case RecPi(arg0, id, result0) => for {
+        _ <- Recs.checkRec(context, t, this)
+        argT <- arg0.evalToType(context)
+        _ <- t.checkWeakSubtype(argT)
+        innerContext = context.updated(arg, argT).updated(id, argT, arg)
+        resultT <- result0.evalToType(innerContext)
+        _ <- t.checkPlainSubtype(resultT)
+        _ <- body.check(innerContext, resultT)
+      } yield ()
       case wrong => Left(ErrExpected(context, "Pi", this, wrong))
     })
 
