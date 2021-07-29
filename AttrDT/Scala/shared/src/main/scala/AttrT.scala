@@ -27,9 +27,11 @@ final case class ErrCantEvalToType(context: Context, x: Core) extends Err(s"$x i
 
 final case class ErrLetrec(context: Context, x: Core) extends Err(s"illegal letrec $x in the context $context")
 
+/*
 final case class ErrDiverge(context: Context, x: Cores.Rec) extends Err(s"expected diverge for $x in the context $context")
 
 final case class ErrExpectedCodata(context: Context, x: Cores.Rec, t: Core) extends Err(s"expected $x to be codata in the context $context, got $t")
+*/
 
 final case class ErrPlainSubtype(t: Core, sub: Core) extends Err(s"$sub can't be a plain subtype of $t")
 
@@ -624,6 +626,7 @@ object Exps {
     }
   }
 
+  /*
   sealed abstract class Rec(val id: Var, val kind: Exp, val x: Exp) {
     def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec
   }
@@ -647,6 +650,7 @@ object Exps {
       Cores.Letrec(bindings.map(_.toCore(ctx)), x.toCore(ctx))
     }
   }
+  */
 
   final case class Apply(f: Exp, x: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Apply(f.toCore(scope), x.toCore(scope))
@@ -844,6 +848,7 @@ object Cores {
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
+  /*
   sealed abstract class Rec(val id: Var, val kind: Core, val x: Core) {
     def scanPlain(v: Cores.Var): NaturalNumber = x.scanVar(v)
 
@@ -955,6 +960,7 @@ object Cores {
       })
     })
   }
+  */
 
   final case class Apply(f: Core, x: Core) extends CoreNeu {
     override def scanVar(v: Cores.Var): NaturalNumber = f.scanVar(v) + x.scanVar(v)
