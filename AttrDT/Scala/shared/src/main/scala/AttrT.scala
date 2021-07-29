@@ -1018,6 +1018,15 @@ object Cores {
       })
       case wrong => Left(ErrExpected(context, "Pi", f, wrong))
     })) getOrElse this
+
+    override def infer(context: Context): Maybe[Type] = f.infer(context).flatMap(t => t.universe.reducingMatch(context, {
+      case Pi(argT, tid, resultT) => for {
+        argK <- argT.evalToType(context)
+        _ <- x.check(context, argK)
+        resultK <- resultT.evalToType(context.updated(tid, argK, x))
+      } yield resultK
+      case wrong => Left(ErrExpected(context, "Pi", f, wrong))
+    }))
   }
 
   final case class The(t: Core, x: Core) extends Core {
