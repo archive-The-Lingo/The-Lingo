@@ -870,12 +870,22 @@ object Cores {
     override def scan: List[Core] = List(x)
 
     override def subst(s: Subst): Rec = Rec(id, kind.subst(s), x.subst(s))
+
+    private def recs = Recs(Set(this), id)
+
+    override def check(context: Context, t: Type): Maybe[Unit] = recs.check(context, t)
+
+    override def infer(context: Context): Maybe[Type] = recs.infer(context)
+
+    override def reduce(context: Context): Core = recs.reduce(context)
   }
 
   final case class Recs(bindings: Set[Rec], x: Core) extends Core {
     if (bindings.size != bindings.toList.distinctBy(_.id).length) {
       throw new IllegalArgumentException("Recs: duplicate id")
     }
+
+    override def reduce(context: Context): Core = ???
 
     override def scan: List[Core] = bindings.toList ++ List(x)
 
@@ -901,6 +911,16 @@ object Cores {
         Left(ErrRecs(context, failed))
       }
     }
+
+    override def check(context: Context, t: Type): Maybe[Unit] = for {
+      ctx <- checkBindings(context)
+      _ <- x.check(ctx, t)
+    } yield ()
+
+    override def infer(context: Context): Maybe[Type] = for {
+      ctx <- checkBindings(context)
+      t <- x.infer(ctx)
+    } yield t
   }
 
   object Recs {
