@@ -83,16 +83,16 @@ object VarId {
   def gen(id: Identifier): VarId = VarId(id, UniqueIdentifier.gen)
 }
 
-final case class Context(context: HashMap[VarId, (Type, Option[Core])]) {
-  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(context.updated(id, (t, v)))
+final case class Context(context: HashMap[VarId, (Type, Option[Core])], recSize: Option[Core]) {
+  def updated(id: VarId, t: Type, v: Option[Core]): Context = Context(context.updated(id, (t, v)), recSize)
 
   def updated(id: Cores.Var, t: Type, v: Option[Core]): Context = this.updated(id.x, t, v)
 
-  def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))))
+  def updated(id: VarId, t: Type, v: Core): Context = Context(context.updated(id, (t, Some(v))), recSize)
 
   def updated(id: Cores.Var, t: Type, v: Core): Context = this.updated(id.x, t, v)
 
-  def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)))
+  def updated(id: VarId, t: Type): Context = Context(context.updated(id, (t, None)), recSize)
 
   def updated(id: Cores.Var, t: Type): Context = this.updated(id.x, t)
 
@@ -112,10 +112,18 @@ final case class Context(context: HashMap[VarId, (Type, Option[Core])]) {
     case Nil => this
     case (id, t, v) :: xs => this.updated(id, t, v).concat(xs)
   }
+
+  def setRecSize(size: Option[Core]): Context = Context(this.context, size)
+
+  def setRecSize(size: Core): Context = this.setRecSize(Some(size))
+
+  def clearRecSize: Context = this.setRecSize(None)
+
+  def getRecSize: Option[Core] = recSize
 }
 
 object Context {
-  val Empty = Context(HashMap())
+  val Empty = Context(HashMap(), None)
 }
 
 final case class AlphaMapping(inner: HashMap[VarId, VarId], reverseMap: HashMap[VarId, VarId]) {
@@ -852,7 +860,14 @@ object Cores {
         _ <- Recs.checkRec(context, t, this)
         argT <- arg0.evalToType(context)
         _ <- t.checkWeakSubtype(argT)
-        innerContext = context.updated(arg, argT).updated(id, argT, arg)
+        recSize <- argT.attrs.size match {
+          case AttrSize_Known(x) => x.reducingMatch(context, {
+            case Succ(x) => Right(x)
+            case _ => Left(???)
+          })
+          case AttrSize_UnknownFinite() | AttrSize_Infinite() => Left(???)
+        }
+        innerContext = context.updated(arg, argT).updated(id, argT, arg).setRecSize(recSize)
         resultT <- result0.evalToType(innerContext)
         _ <- t.checkPlainSubtype(resultT)
         _ <- body.check(innerContext, resultT)
@@ -1105,12 +1120,31 @@ object Cores {
         case Lambda(arg, body) => argT.evalToType(context).flatMap(argK => Right(body.subst(arg, argK, x)))
         case wrong => Left(ErrExpectedV(context, "Pi", wrong))
       })
+      case RecPi(argT, tid, resultT) => f.reducingMatch(context, {
+        case Lambda(arg, body) => argT.evalToType(context).flatMap(argK => {
+          val argK0 = context.getRecSize match {
+            case None => argK
+            case Some(size) => argK.attrsMap(_.sized(size))
+          }
+          Right(body.subst(arg, argK0, x))
+        })
+        case wrong => Left(ErrExpectedV(context, "Pi", wrong))
+      })
       case wrong => Left(ErrExpected(context, "Pi", f, wrong))
     })) getOrElse this
 
     override def infer(context: Context): Maybe[Type] = f.infer(context).flatMap(t => t.universe.reducingMatch(context, {
       case Pi(argT, tid, resultT) => for {
         argK <- argT.evalToType(context)
+        _ <- x.check(context, argK)
+        resultK <- resultT.evalToType(context.updated(tid, argK, x))
+      } yield resultK
+      case RecPi(argT, tid, resultT) => for {
+        argK <- argT.evalToType(context)
+        argK0 = context.getRecSize match {
+          case None => argK
+          case Some(size) => argK.attrsMap(_.sized(size))
+        }
         _ <- x.check(context, argK)
         resultK <- resultT.evalToType(context.updated(tid, argK, x))
       } yield resultK
