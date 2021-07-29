@@ -626,6 +626,24 @@ object Exps {
     }
   }
 
+  final case class Rec(id: Var, kind: Exp, x: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = {
+      val id0 = id.gen
+      val scope0 = scope.updated(id.x, id0.x)
+      Cores.Rec(id0, kind.toCore(scope0), x.toCore(scope0))
+    }
+  }
+
+  final case class Recs(bindings: Set[Rec], x: Exp) extends Exp {
+    if (bindings.size != bindings.toList.distinctBy(_.id).length) {
+      throw new IllegalArgumentException("Recs: duplicate id")
+    }
+
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = {
+      val scope0 = scope ++ bindings.map(_.id).map(x => (x.x, x.gen.x))
+      Cores.Recs(bindings.map(b => Cores.Rec(b.id.toCore(scope0), b.kind.toCore(scope0), b.x.toCore(scope0))), x.toCore(scope0))
+    }
+  }
   /*
   sealed abstract class Rec(val id: Var, val kind: Exp, val x: Exp) {
     def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec
@@ -846,6 +864,22 @@ object Cores {
     override def subst(s: Subst): Pi = Pi(x.subst(s), id, y.subst(s))
 
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
+  }
+
+  final case class Rec(id: Var, kind: Core, x: Core) extends Core {
+    override def scanVar(v: Cores.Var): NaturalNumber = x.scanVar(v)
+
+    override def subst(s: Subst): Rec = Rec(id, kind.subst(s), x.subst(s))
+  }
+
+  final case class Recs(bindings: Set[Rec], x: Core) extends Core {
+    if (bindings.size != bindings.toList.distinctBy(_.id).length) {
+      throw new IllegalArgumentException("Recs: duplicate id")
+    }
+
+    override def scanVar(v: Cores.Var): NaturalNumber = bindings.map(_.scanVar(v)).sum + x.scanVar(v)
+
+    override def subst(s: Subst): Recs = Recs(bindings.map(_.subst(s)), x.subst(s))
   }
 
   /*
