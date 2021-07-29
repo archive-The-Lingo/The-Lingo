@@ -878,9 +878,10 @@ object Cores {
       }
     }
 
-    private def isRec(context: Context, x: Core): Boolean = extract(context, x).exists(coreContains(context, x, Set(), _))
+    private def isRecursive(context: Context, x: Core): Boolean = extract(context, x).exists(coreContains(context, x, Set(), _))
 
-    private def checkRec(context: Context, x: Core, t: Type): Maybe[Unit] = if (isRec(context, x)) {
+    /*
+    private def checkRecursive(context: Context, x: Core, t: Type): Maybe[Unit] = if (isRecursive(context, x)) {
       // todo handle recPi?
       if (t.attrs.size == AttrSize_Infinite()) {
         Right(())
@@ -890,6 +891,17 @@ object Cores {
     } else {
       Right(())
     }
+    */
+
+    private def checkRec(context:Context,id: Var, kind: Type, x: Core): Maybe[Type] = x.check(context,kind).flatMap(_=>if(isRecursive(context,id)) {
+      if (kind.attrs.size == AttrSize_Infinite()) {
+        Right(kind)
+      } else {
+        ???
+      }
+    } else {
+      Right(kind)
+    })
   }
 
   /*
