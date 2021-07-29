@@ -29,6 +29,14 @@ final case class ErrLetrec(context: Context, x: Core) extends Err(s"illegal letr
 
 final case class ErrDiverge(context: Context, x: Cores.Rec) extends Err(s"expected diverge for $x in the context $context")
 
+final case class ErrUnknownFiniteRec(context: Context, id: Core, x: Core, t: Core) extends Err(s"don't know how to check UnknownFinite $id $x: $t in $context")
+
+final case class ErrNotDivergePiRec(context: Context, id: Core, x: Core, t: Core) extends Err(s"don't know how to check non-diverge Pi $id $x: $t in $context")
+
+final case class ErrRecs(context: Context, errs: List[Err]) extends Err(s"Recs failed in $context caused by $errs")
+
+final case class ErrUnknownTypeRec(context: Context, id: Core, x: Core, t: Core) extends Err(s"don't know how to check $id $x: $t with unknown type in $context")
+
 final case class ErrExpectedCodata(context: Context, x: Core, t: Core) extends Err(s"expected $x to be codata in the context $context, got $t")
 
 
@@ -843,6 +851,14 @@ object Cores {
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
+  final case class RecPi(x: Core, id: Var, y: Core) extends Core with CoreType {
+    override def scan: List[Core] = List(x, y)
+
+    override def subst(s: Subst): Pi = Pi(x.subst(s), id, y.subst(s))
+
+    override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
+  }
+
   final case class Rec(id: Var, kind: Core, x: Core) extends Core {
     override def scan: List[Core] = List(x)
 
@@ -854,11 +870,30 @@ object Cores {
       throw new IllegalArgumentException("Recs: duplicate id")
     }
 
-
     override def scan: List[Core] = bindings.toList ++ List(x)
 
-
     override def subst(s: Subst): Recs = Recs(bindings.map(_.subst(s)), x.subst(s))
+
+    private def checkBindings(context: Context): Maybe[Context] = {
+      val innerContext0 = context.concat(bindings.toList.map(Recs.checkRec(context, _)).map(_.toOption).flatten)
+
+      def step(stepContext: Context) = context.concat(bindings.toList.map(Recs.checkRec(stepContext, _)).map(_.toOption).flatten)
+
+      val innerContext = step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(step(innerContext0))))))))))))))))
+      val addition0 = bindings.toList.map(Recs.checkRec(innerContext, _))
+      val addition = addition0.map(_.toOption).flatten
+      val failed = addition0.collect {
+        case Left(e) => e
+      }
+      if (failed.isEmpty) {
+        if (addition.length != bindings.size) {
+          throw new IllegalStateException("addition.length!=bindings.size")
+        }
+        Right(context.concat(addition))
+      } else {
+        Left(ErrRecs(context, failed))
+      }
+    }
   }
 
   object Recs {
@@ -878,18 +913,32 @@ object Cores {
       }
     }
 
-    private def isRec(context: Context, x: Core): Boolean = extract(context, x).exists(coreContains(context, x, Set(), _))
+    private def isRecursive(context: Context, x: Core): Boolean = extract(context, x).exists(coreContains(context, x, Set(), _))
 
-    private def checkRec(context: Context, x: Core, t: Type): Maybe[Unit] = if (isRec(context, x)) {
-      // todo handle recPi?
-      if (t.attrs.size == AttrSize_Infinite()) {
-        Right(())
+    private def checkRec(context: Context, rec: Rec): Maybe[(VarId, Type, Core)] = for {
+      kind <- rec.kind.evalToType(context)
+      _ <- checkRec(context, rec.id, kind, rec.x)
+    } yield (rec.id.x, kind, rec.x)
+
+    private def checkRec(context: Context, id: Var, kind: Type, x: Core): Maybe[Unit] = x.check(context, kind).flatMap(_ => if (isRecursive(context, x)) {
+      if (kind.attrs.size == AttrSize_UnknownFinite()) {
+        Left(ErrUnknownFiniteRec(context, id, x, kind))
+        // other parts will handle finite and infinite correctly
       } else {
-        Left(ErrExpectedCodata(context, x, t))
+        kind.universe.weakHeadNormalForm(context) match {
+          case Pi(arg, argId, result) => for {
+            argK <- arg.evalToType(context)
+            resultK <- result.evalToType(context.updated(argId, argK))
+            _ <- if (resultK.attrs.diverge == AttrDiverge_Yes()) Right(()) else Left(ErrNotDivergePiRec(context, id, x, kind))
+          } yield ()
+          case _: CoreNeu => Left(ErrUnknownTypeRec(context, id, x, kind))
+          case _: RecPi => Right(())
+          case _ => Right(())
+        }
       }
     } else {
       Right(())
-    }
+    })
   }
 
   /*
