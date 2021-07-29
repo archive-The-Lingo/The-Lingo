@@ -685,7 +685,9 @@ object Cores {
     override def subst(s: Subst): Core = s.getOrElse(this, this)
 
     override def infer(context: Context): Maybe[Type] = context.getType(x) match {
-      case Some(t) => Right(t)
+      case Some(t) => for {
+        _ <- Recs.checkRec(context, t, this)
+      } yield t
       case None => Left(ErrTypeUnknown(context, this))
     }
   }
@@ -946,7 +948,7 @@ object Cores {
 
     private def checkRec(context: Context, rec: Rec): Maybe[(VarId, Type, Core)] = for {
       kind <- rec.kind.evalToType(context)
-      _ <- checkRec(context, kind, rec.x)
+      //_ <- checkRec(context, kind, rec.x) // will be checker in other parts
     } yield (rec.id.x, kind, rec.x)
 
     def checkRec(context: Context, kind: Type, x: Core): Maybe[Unit] = x.check(context, kind).flatMap(_ => if (isRecursive(context, x)) {
