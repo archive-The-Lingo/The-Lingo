@@ -611,6 +611,13 @@ object Exps {
     }
   }
 
+  final case class RecPi(x: Exp, id: Var, y: Exp) extends Exp {
+    override def toCore(scope: HashMap[Identifier, VarId]): Core = {
+      val id0 = id.gen
+      Cores.RecPi(x.toCore(scope), id0, y.toCore(scope.updated(id.x, id0.x)))
+    }
+  }
+
   final case class Rec(id: Var, kind: Exp, x: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = {
       val id0 = id.gen
