@@ -99,6 +99,8 @@ final case class Context(context: HashMap[VarId, (Type, Option[Core])], recPis: 
 
   def getValue(id: VarId): Option[Core] = context.get(id).map(_._2).flatten
 
+  def getValue(id: Cores.Var): Option[Core] = this.getValue(id)
+
   def concat(xs: List[(VarId, Type, Core)]): Context = xs match {
     case Nil => this
     case (id, t, v) :: xs => this.updated(id, t, v).concat(xs)
@@ -884,6 +886,26 @@ object Cores {
 
 
     override def subst(s: Subst): Recs = Recs(bindings.map(_.subst(s)), x.subst(s))
+  }
+
+  object Recs {
+    private def extract(context: Context, x: Core): List[Core] = x match {
+      case v: Var => context.getValue(v).toList
+      case other => other.scan
+    }
+
+    private def coreContains(context: Context, element: Core, history: Set[Core], current: Core): Boolean = {
+      if (element == current) {
+        true
+      } else if (history.contains(current)) {
+        false
+      } else {
+        val newHistory = history.incl(current)
+        extract(context, current).exists(coreContains(context, element, newHistory, _))
+      }
+    }
+
+    private def isRec(context: Context, x: Core): Boolean = extract(context, x).exists(coreContains(context, x, Set(), _))
   }
 
   /*
