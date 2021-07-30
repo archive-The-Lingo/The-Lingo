@@ -647,31 +647,6 @@ object Exps {
       Cores.Recs(bindings.map(b => Cores.Rec(b.id.toCore(scope0), b.kind.toCore(scope0), b.x.toCore(scope0))), x.toCore(scope0))
     }
   }
-  /*
-  sealed abstract class Rec(val id: Var, val kind: Exp, val x: Exp) {
-    def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec
-  }
-
-  final case class RecData(override val id: Var, override val kind: Exp, override val x: Exp) extends Rec(id, kind, x) {
-    override def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec = Cores.RecData(id.toCore(scope), kind.toCore(scope), x.toCore(scope))
-  }
-
-  final case class RecPi(override val id: Var, override val kind: Exp, override val x: Exp) extends Rec(id, kind, x) {
-    override def toCore(scope: HashMap[Identifier, VarId]): Cores.Rec = Cores.RecPi(id.toCore(scope), kind.toCore(scope), x.toCore(scope))
-  }
-
-  final case class Letrec(bindings: Set[Rec], x: Exp) extends Exp {
-    if (bindings.size != bindings.toList.distinctBy(_.id).length) {
-      throw new Error("letrec: duplicate id")
-    }
-    private val recScope: List[(Identifier, VarId)] = bindings.toList.map(_.id).map((id) => (id.x, id.gen.x))
-
-    override def toCore(scope: HashMap[Identifier, VarId]): Core = {
-      val ctx: HashMap[Identifier, VarId] = scope.concat(recScope)
-      Cores.Letrec(bindings.map(_.toCore(ctx)), x.toCore(ctx))
-    }
-  }
-  */
 
   final case class Apply(f: Exp, x: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.Apply(f.toCore(scope), x.toCore(scope))
@@ -720,10 +695,10 @@ object Cores {
     override def infer(context: Context): Maybe[Type] = Right(NatT)
   }
 
-  private val Universe0: Type = Type(Universe(),Attrs.Base.upper)
+  private val Universe0: Type = Type(Universe(), Attrs.Base.upper)
   private[AttrT] val UniverseInfinite: Type = Universe0.typeInType
   private val Universe1: Type = Universe0.upperType
-  private val Kind0: Type = Type(Kind(),Attrs.Base.upper)
+  private val Kind0: Type = Type(Kind(), Attrs.Base.upper)
   private val KindInfinite: Type = Kind0.typeInType
 
   final case class Nat() extends Core with CoreType {
@@ -1045,7 +1020,10 @@ object Cores {
 
     override def subst(s: Subst): The = The(t.subst(s), x.subst(s))
 
-    override def infer(context: Context): Maybe[Type] = t.evalToType(context)
+    override def infer(context: Context): Maybe[Type] = for {
+      result <- t.evalToType(context)
+      _ <- x.check(context, result)
+    } yield result
 
     override def reduce(context: Context): Core = t.evalToType(context).map(InternalThe(_, x)) getOrElse this
   }
@@ -1055,7 +1033,9 @@ object Cores {
 
     override def subst(s: Subst): InternalThe = InternalThe(t.subst(s), x.subst(s))
 
-    override def infer(context: Context): Maybe[Type] = Right(t)
+    override def infer(context: Context): Maybe[Type] = for {
+      _ <- x.check(context, t)
+    } yield t
 
     override def reduce(context: Context): Core = x // x.check(context, t).map(_ => x) getOrElse this
   }
