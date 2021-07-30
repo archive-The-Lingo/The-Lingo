@@ -706,7 +706,9 @@ object Cores {
 
     override def subst(s: Subst): Succ = Succ(x.subst(s))
 
-    override def infer(context: Context): Maybe[Type] = Right(NatT)
+    override def infer(context: Context): Maybe[Type] = for {
+      _ <- x.check(context, NatT)
+    } yield NatT
   }
 
   private val Universe0: Type = Type(Universe(), Attrs.Base.upper)
@@ -1044,10 +1046,14 @@ object Cores {
     override def reduce(context: Context): Core = x // x.check(context, t).map(_ => x) getOrElse this
   }
 
+  private val AtomT = Type(Atom())
+
   final case class Quote(x: Symbol) extends Core {
     override def scan: List[Core] = List()
 
     override def subst(s: Subst): Quote = this
+
+    override def infer(context: Context): Maybe[Type] = Right(AtomT)
   }
 
   final case class Atom() extends Core with CoreUniverse {
