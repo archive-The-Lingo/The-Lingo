@@ -655,6 +655,14 @@ object Exps {
   final case class The(t: Exp, x: Exp) extends Exp {
     override def toCore(scope: HashMap[Identifier, VarId]): Core = Cores.The(t.toCore(scope), x.toCore(scope))
   }
+
+  final case class Quote(x: Symbol) extends Exp {
+    override def toCore: Core = Cores.Quote(x)
+  }
+
+  final case class Atom() extends Exp {
+    override def toCore: Core = Cores.Atom()
+  }
 }
 
 private def transverse[A](xs: List[Option[A]]): Option[List[A]] = xs match {
@@ -1039,4 +1047,19 @@ object Cores {
 
     override def reduce(context: Context): Core = x // x.check(context, t).map(_ => x) getOrElse this
   }
+
+  final case class Quote(x: Symbol) extends Core {
+    override def scan: List[Core] = List()
+
+    override def subst(s: Subst): Quote = this
+  }
+
+  final case class Atom() extends Core with CoreType {
+    override def scan: List[Core] = List()
+
+    override def subst(s: Subst): Atom = this
+
+    override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
+  }
+
 }
