@@ -265,8 +265,12 @@ sealed trait Core {
   }
 }
 
-sealed trait CoreType extends Core {
-  final override def infer(context: Context): Maybe[Type] = this.evalToType(context).map(_.upperType)
+sealed trait CoreUniverse extends Core {
+  final override def infer(context: Context): Maybe[Type] = this.evalToType(context).map(_.upperUniverse)
+}
+
+sealed trait CoreKind extends Core {
+  final override def infer(context: Context): Maybe[Type] = this.evalToType(context).map(_.upperUniverse)
 }
 
 // is neutral if appers in normal form
@@ -535,11 +539,13 @@ final case class Type(universe: Core, attrs: Attrs) extends Core {
 
   def subsetOrEqual(other: Type): Boolean = universe.alpha_beta_eta_equals(other.universe) && (attrs.alpha_beta_eta_equals(other.attrs) || attrs.merge(other.attrs).alpha_beta_eta_equals(attrs))
 
-  def upperType: Type = Type(Cores.Universe(), attrs.upper)
+  def upperUniverse: Type = Type(Cores.Universe(), attrs.upper)
+
+  def upperKind: Type = Type(Cores.Kind(), attrs.upper)
 
   def attrsMap(f: Attrs => Attrs): Type = Type(universe, f(attrs))
 
-  override def infer(context: Context): Maybe[Type] = Right(upperType)
+  override def infer(context: Context): Maybe[Type] = Right(upperUniverse)
 
   def erased: Type = Type(universe, attrs.erased)
 
@@ -705,11 +711,11 @@ object Cores {
 
   private val Universe0: Type = Type(Universe(), Attrs.Base.upper)
   private[AttrT] val UniverseInfinite: Type = Universe0.typeInType
-  private val Universe1: Type = Universe0.upperType
+  private val Universe1: Type = Universe0.upperUniverse
   private val Kind0: Type = Type(Kind(), Attrs.Base.upper)
   private val KindInfinite: Type = Kind0.typeInType
 
-  final case class Nat() extends Core with CoreType {
+  final case class Nat() extends Core with CoreUniverse {
     override def scan: List[Core] = List()
 
     override def subst(s: Subst): Nat = this
@@ -718,7 +724,7 @@ object Cores {
   }
 
   // type without attributes
-  final case class Universe() extends Core with CoreType {
+  final case class Universe() extends Core with CoreUniverse {
     override def scan: List[Core] = List()
 
     override def subst(s: Subst): Universe = this
@@ -727,7 +733,7 @@ object Cores {
   }
 
   // type with attributes
-  final case class Kind() extends Core with CoreType {
+  final case class Kind() extends Core with CoreUniverse {
     override def scan: List[Core] = List()
 
     override def subst(s: Subst): Kind = this
@@ -735,7 +741,7 @@ object Cores {
     override def evalToType(context: Context): Maybe[Type] = Right(Kind0)
   }
 
-  final case class MakeKind(x: Core) extends Core {
+  final case class MakeKind(x: Core) extends Core with CoreKind {
     override def scan: List[Core] = List(x)
 
     override def subst(s: Subst): MakeKind = MakeKind(x.subst(s))
@@ -749,26 +755,16 @@ object Cores {
     } else {
       Left(ErrCheckFailed(context, t, this, Kind()))
     }
-
-    override def infer(context: Context): Maybe[Type] = x.check(context, UniverseInfinite).flatMap(_ => {
-      x.infer(context) map {
-        case Type(_, attrs) => Type(Kind(), attrs.upper)
-      }
-    })
   }
 
-  final case class AttrSize(size: Core, kind: Core) extends Core {
+  final case class AttrSize(size: Core, kind: Core) extends Core with CoreKind {
     override def scan: List[Core] = List(size, kind)
 
     override def subst(s: Subst): AttrSize = AttrSize(size.subst(s), kind.subst(s))
 
     override def check(context: Context, t: Type): Maybe[Unit] = size.check(context, NatT) and kind.check(context, KindInfinite) and kind.check(context, t)
 
-    override def infer(context: Context): Maybe[Type] = (size.check(context, NatT) and kind.check(context, KindInfinite)).flatMap(_ => {
-      kind.infer(context) // evalToType(context).map(_.upperType)
-    })
-
-    override def evalToType(context: Context): Maybe[Type] = (size.check(context, NatT)).flatMap(_ => {
+    override def evalToType(context: Context): Maybe[Type] = (size.check(context, NatT) and kind.check(context, KindInfinite)).flatMap(_ => {
       kind.evalToType(context).map(_.sized(size))
     })
   }
@@ -818,7 +814,7 @@ object Cores {
     }
   }
 
-  final case class Sigma(x: Core, id: Var, y: Core) extends Core with CoreType {
+  final case class Sigma(x: Core, id: Var, y: Core) extends Core with CoreUniverse {
     override def scan: List[Core] = List(x, y)
 
     override def subst(s: Subst): Sigma = Sigma(x.subst(s), id, y.subst(s))
@@ -863,7 +859,7 @@ object Cores {
     def checkWithRecSize(context: Context, t: Type, recSize: Core): Maybe[Unit] = ???
   }
 
-  final case class Pi(x: Core, id: Var, y: Core) extends Core with CoreType {
+  final case class Pi(x: Core, id: Var, y: Core) extends Core with CoreUniverse {
     override def scan: List[Core] = List(x, y)
 
     override def subst(s: Subst): Pi = Pi(x.subst(s), id, y.subst(s))
@@ -871,7 +867,7 @@ object Cores {
     override def evalToType(context: Context): Maybe[Type] = Right(Type(this))
   }
 
-  final case class RecPi(x: Core, id: Var, y: Core) extends Core with CoreType {
+  final case class RecPi(x: Core, id: Var, y: Core) extends Core with CoreUniverse {
     override def scan: List[Core] = List(x, y)
 
     override def subst(s: Subst): Pi = Pi(x.subst(s), id, y.subst(s))
@@ -1054,7 +1050,7 @@ object Cores {
     override def subst(s: Subst): Quote = this
   }
 
-  final case class Atom() extends Core with CoreType {
+  final case class Atom() extends Core with CoreUniverse {
     override def scan: List[Core] = List()
 
     override def subst(s: Subst): Atom = this
