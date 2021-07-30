@@ -18,6 +18,7 @@ lazy val cross = crossProject(JSPlatform, JVMPlatform).withoutSuffixFor(JVMPlatf
   settings(
     name := "foo",
     version := "0.1-SNAPSHOT",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9" % Test,
   ).
   jvmSettings(
     // Add JVM-specific settings here
