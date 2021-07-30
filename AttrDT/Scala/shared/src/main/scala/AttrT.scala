@@ -332,6 +332,8 @@ object AttrLevel {
 
 final case class AttrLevel_UniverseInUniverse() extends AttrLevel
 
+// zero - pure values - Nat ...
+// one - Universe0 Kind0 ...
 final case class AttrLevel_Known(level: Core) extends AttrLevel {
   override def scan: List[Core] = List(level)
 
@@ -718,10 +720,10 @@ object Cores {
     override def infer(context: Context): Maybe[Type] = Right(NatT)
   }
 
-  private val Universe0: Type = Type(Universe())
+  private val Universe0: Type = Type(Universe(),Attrs.Base.upper)
   private[AttrT] val UniverseInfinite: Type = Universe0.typeInType
   private val Universe1: Type = Universe0.upperType
-  private val Kind0: Type = Type(Kind())
+  private val Kind0: Type = Type(Kind(),Attrs.Base.upper)
   private val KindInfinite: Type = Kind0.typeInType
 
   final case class Nat() extends Core with CoreType {
