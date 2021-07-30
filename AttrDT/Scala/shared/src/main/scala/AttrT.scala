@@ -366,6 +366,14 @@ sealed trait AttrSize extends Attr {
     case AttrSize_Infinite() | AttrSize_UnknownFinite() => this
     case AttrSize_Known(x) => AttrSize_Known(Cores.Succ(x))
   }
+
+  def getPlainSubtype(context: Context): Maybe[AttrSize] = this match {
+    case AttrSize_Infinite() | AttrSize_UnknownFinite() => Right(this)
+    case AttrSize_Known(x) => x.reducingMatch(context, {
+      case Cores.Succ(s) => Right(AttrSize_Known(s))
+      case _ => Left(???)
+    })
+  }
 }
 
 object AttrSize {
@@ -494,6 +502,8 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
       this.assumptions.merge(subtype.assumptions).alpha_beta_eta_equals(this.assumptions) &&
       this.diverge.merge(subtype.diverge).alpha_beta_eta_equals(this.diverge)
 
+  def getPlainSubtype(context: Context): Maybe[Attrs] = size.getPlainSubtype(context).map(Attrs(level, _, usage, selfUsage, assumptions, diverge))
+
   def validWeakSubtype(subtype: Attrs): Boolean = this.level.merge(subtype.level).alpha_beta_eta_equals(this.level)
 
   def alpha_beta_eta_equals(other: Attrs, map: AlphaMapping): Boolean =
@@ -511,6 +521,8 @@ final case class Attrs(level: AttrLevel, size: AttrSize, usage: AttrUsage, selfU
   def erased: Attrs = Attrs(level, size, AttrUsage_Erased(), selfUsage, assumptions, diverge)
 
   def sized(size: Core): Attrs = Attrs(level, AttrSize_Known(size), usage, selfUsage, assumptions, diverge)
+
+  def sizeSucc: Attrs = Attrs(level, size.succ, usage, selfUsage, assumptions, diverge)
 
   def typeInType: Attrs = Attrs(AttrLevel_UniverseInUniverse(), size, usage, selfUsage, assumptions, diverge)
 }
@@ -552,6 +564,8 @@ final case class Type(universe: Core, attrs: Attrs) extends Core {
   def sized(size: Core): Type = Type(universe, attrs.sized(size))
 
   def typeInType: Type = Type(universe, attrs.typeInType)
+
+  def sizeSucc: Type = Type(universe, attrs.sizeSucc)
 }
 
 object Type {
@@ -707,8 +721,8 @@ object Cores {
     override def subst(s: Subst): Succ = Succ(x.subst(s))
 
     override def infer(context: Context): Maybe[Type] = for {
-      _ <- x.check(context, NatT)
-    } yield NatT
+      t <- x.infer(context)
+    } yield t.sizeSucc
   }
 
   private val Universe0: Type = Type(Universe(), Attrs.Base.upper)
