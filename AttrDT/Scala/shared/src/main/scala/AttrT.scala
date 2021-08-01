@@ -204,6 +204,8 @@ sealed trait Core {
     }
   }
 
+  final def infer: Maybe[Type] = this.infer(Context.Empty)
+
   def check(context: Context, t: Type): Maybe[Unit] = this.infer(context) match {
     case Right(t0) => if (t.subsetOrEqual(t0)) {
       Right(())
@@ -219,6 +221,8 @@ sealed trait Core {
       }
     }
   }
+
+  final def check(t: Type): Maybe[Unit] = this.check(Context.Empty, t)
 
   //if (this.check(context, Cores.UniverseInfinite)) {
   //  Some(Type(this.subst(context), ???))
