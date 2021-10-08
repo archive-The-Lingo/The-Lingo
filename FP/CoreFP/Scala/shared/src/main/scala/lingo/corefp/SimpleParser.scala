@@ -11,7 +11,7 @@ final case class SimpleParser(file: String = "") {
 
   private def skipWhitespace[_: P] = P(CharsWhileIn(" \r\n\t", 0))
 
-  def value[_: P]: P[Value] = P(atom | list | tagged)
+  def value[_: P]: P[Value] = P(valueExp | atom | list | tagged)
 
   private def valueEnd[_: P]: P[Value] = P(value ~ End)
 
@@ -20,6 +20,8 @@ final case class SimpleParser(file: String = "") {
     case Parsed.Failure(expected, failIndex, extra) => Left(SimpleParserFailure(expected, Nat(failIndex), extra.trace().longAggregateMsg))
     case _ => throw new IllegalStateException() // suppress warning
   }
+
+  private def valueExp[_: P] = P(exp).map(ValueExp(_))
 
   def exp[_: P]: P[Exp] = P((parserLocation ~ (applyFunction | applyMacro | quote | builtin | variable | lambda | rec | comment)).map(x => Located(x._1, x._2)) | located)
 
@@ -67,4 +69,7 @@ final case class SimpleParser(file: String = "") {
   })
 
   def parserLocation[_: P]: P[Location] = P(Index).map(x => UNIXFileLocation(file, Nat(x), None))
+
+  // TODO
+  def parseIncludeValue[_: P]: P[Value] = P("`{" ~/ ??? ~ "}").map(???)
 }
