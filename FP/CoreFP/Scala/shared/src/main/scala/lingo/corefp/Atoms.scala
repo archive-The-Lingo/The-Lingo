@@ -61,6 +61,7 @@ object Atoms {
     val TypeMismatch: Atom = Atom("型不匹配")
     val ArgsMismatch: Atom = Atom("參數不匹配")
   }
+
   object TopLevelExceptionTags {
     val WillNotTerminate: Atom = Atom("惡性自指")
   }
